@@ -1,4 +1,9 @@
-function Export-ExchangeAIHtmlReport {
+﻿function Export-ExchangeAIHtmlReport {
+
+    param(
+        [ValidateSet("Exchange Online", "Entra ID", "SharePoint Online")]
+        [string]$Workload = "Exchange Online"
+    )
 
     $Results = @($Global:ExchangeAIResults)
 
@@ -10,32 +15,100 @@ function Export-ExchangeAIHtmlReport {
     $RootPath = Split-Path $PSScriptRoot -Parent
     $OutputPath = Join-Path $RootPath "06 Output"
 
+    $Config = Get-ExchangeAIConfig
+    $ProductName = $Config.Name
+    $ProductVersion = $Config.Version
+    $ProductDescription = $Config.Description
+
     if (-not (Test-Path $OutputPath)) {
         New-Item -Path $OutputPath -ItemType Directory -Force | Out-Null
     }
 
-    try {
+switch ($Workload) {
 
-        $Org = Get-OrganizationConfig -ErrorAction Stop
+    "Exchange Online" {
 
-        if ([string]::IsNullOrWhiteSpace($Org.DisplayName)) {
+        try {
 
-            $Tenant = (
-                Get-AcceptedDomain |
-                Where-Object { $_.Default -eq $true }
-            ).DomainName
+            $Org = Get-OrganizationConfig -ErrorAction Stop
+
+            if ([string]::IsNullOrWhiteSpace($Org.DisplayName)) {
+
+                $Tenant = (
+                    Get-AcceptedDomain |
+                    Where-Object { $_.Default -eq $true }
+                ).DomainName
+
+            }
+            else {
+
+                $Tenant = $Org.DisplayName
+            }
 
         }
-        else {
+        catch {
 
-            $Tenant = $Org.DisplayName
+            $Tenant = "Unknown Tenant"
         }
 
+        $WorkloadSlug = "ExchangeOnline"
     }
-    catch {
 
-        $Tenant = "Unknown Tenant"
+    "Entra ID" {
+
+        try {
+
+            $GraphContext = Get-MgContext -ErrorAction Stop
+
+            if (-not [string]::IsNullOrWhiteSpace($GraphContext.Account)) {
+
+                $Tenant = ($GraphContext.Account -split "@")[-1]
+
+            }
+            elseif (-not [string]::IsNullOrWhiteSpace($GraphContext.TenantId)) {
+
+                $Tenant = $GraphContext.TenantId
+
+            }
+            else {
+
+                $Tenant = "Unknown Tenant"
+            }
+
+        }
+        catch {
+
+            $Tenant = "Unknown Tenant"
+        }
+
+        $WorkloadSlug = "EntraID"
     }
+
+    "SharePoint Online" {
+
+        try {
+
+            $SpoTenant = Get-SPOTenant -ErrorAction Stop
+
+            if ($SpoTenant.DisplayName) {
+                $Tenant = [string]$SpoTenant.DisplayName
+            }
+            elseif ($SpoTenant.RootSiteUrl) {
+                $Tenant = ([uri]$SpoTenant.RootSiteUrl).Host
+            }
+            else {
+                $Tenant = "SharePoint Online Tenant"
+            }
+
+        }
+        catch {
+
+            $Tenant = "SharePoint Online Tenant"
+        }
+
+        $WorkloadSlug = "SharePointOnline"
+    }
+}
 
     $Passed = @(
         $Results |
@@ -64,20 +137,23 @@ function Export-ExchangeAIHtmlReport {
     if ($Score -ge 90) {
         $ScoreClass = "good"
         $Posture = "Healthy"
+        $RiskLevel = "Low Risk"
     }
     elseif ($Score -ge 70) {
         $ScoreClass = "warning"
         $Posture = "Needs Attention"
+        $RiskLevel = "Medium Risk"
     }
     else {
         $ScoreClass = "critical"
         $Posture = "At Risk"
+        $RiskLevel = "High Risk"
     }
 
     $Timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 
-    $HtmlFileName = "ExchangeAI-Assessment-$Timestamp.html"
-    $CsvFileName  = "ExchangeAI-Assessment-$Timestamp.csv"
+    $HtmlFileName = "TenantIQ-$WorkloadSlug-Assessment-$Timestamp.html"
+    $CsvFileName  = "TenantIQ-$WorkloadSlug-Assessment-$Timestamp.csv"
 
     $HtmlReportPath = Join-Path $OutputPath $HtmlFileName
     $CsvReportPath  = Join-Path $OutputPath $CsvFileName
@@ -281,7 +357,7 @@ function Export-ExchangeAIHtmlReport {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>ExchangeAI Health Assessment</title>
+<title>TenantIQ - $Workload Assessment Report</title>
 
 <style>
 
@@ -301,7 +377,7 @@ body {
 }
 
 .header {
-    background: #062f5f;
+    background: #0078d4;
     color: white;
     padding: 30px 50px;
 }
@@ -322,8 +398,25 @@ body {
 
 .subtitle {
     margin-top: 5px;
-    opacity: 0.85;
+    opacity: 0.9;
     font-size: 16px;
+}
+
+.report-subtitle {
+    margin-top: 7px;
+    opacity: 0.78;
+    font-size: 13px;
+    letter-spacing: 0.2px;
+}
+
+.risk-badge {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.16);
+    font-size: 13px;
+    font-weight: 600;
 }
 
 .header-score {
@@ -360,9 +453,9 @@ body {
 .button {
     display: inline-block;
     padding: 10px 16px;
-    border-radius: 6px;
+    border-radius: 10px;
     border: 0;
-    background: #0f5ea8;
+    background: #0078d4;
     color: white;
     text-decoration: none;
     font-family: inherit;
@@ -371,7 +464,7 @@ body {
 }
 
 .button:hover {
-    background: #0b4b87;
+    background: #106ebe;
 }
 
 .button-secondary {
@@ -391,10 +484,10 @@ body {
 .tenant-info,
 .executive-summary {
     background: white;
-    border-radius: 10px;
+    border-radius: 16px;
     padding: 22px;
     margin-bottom: 25px;
-    box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    box-shadow: 0 6px 18px rgba(0,0,0,.08);
 }
 
 .tenant-info {
@@ -402,7 +495,7 @@ body {
 }
 
 .executive-summary {
-    border-left: 5px solid #0f5ea8;
+    border-left: 5px solid #0078d4;
 }
 
 .executive-title {
@@ -445,9 +538,9 @@ body {
 
 .card {
     background: white;
-    border-radius: 10px;
+    border-radius: 16px;
     padding: 22px;
-    box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    box-shadow: 0 6px 18px rgba(0,0,0,.08);
 }
 
 .card-label {
@@ -489,8 +582,8 @@ body {
 .category-card {
     background: white;
     padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,.07);
+    border-radius: 16px;
+    box-shadow: 0 6px 18px rgba(0,0,0,.07);
 }
 
 .category-name {
@@ -646,13 +739,15 @@ td {
 <div class="header-inner">
 
 <div>
-    <div class="brand">ExchangeAI</div>
-    <div class="subtitle">Exchange Online Health Assessment</div>
+    <div class="brand">TenantIQ</div>
+    <div class="subtitle">Microsoft 365 Assessment Platform</div>
+    <div class="report-subtitle">$Workload Assessment Report</div>
 </div>
 
 <div class="header-score">
     <div class="header-score-label">Overall Health</div>
     <div class="header-score-value">$Score%</div>
+    <div class="risk-badge">$RiskLevel</div>
 </div>
 
 </div>
@@ -684,7 +779,8 @@ Back to Top
 <div class="tenant-info">
     <strong>Tenant:</strong> $EncodedTenant<br>
     <strong>Assessment Date:</strong> $AssessmentDate<br>
-    <strong>ExchangeAI Version:</strong> 0.2
+    <strong>Platform:</strong> $Workload<br>
+    <strong>TenantIQ Version:</strong> $ProductVersion
 </div>
 
 <div class="executive-summary">
@@ -695,7 +791,7 @@ Executive Summary
 
 <div class="executive-text">
 
-ExchangeAI completed <strong>$Total health checks</strong> for tenant
+TenantIQ completed <strong>$Total $Workload health checks</strong> for tenant
 <strong>$EncodedTenant</strong>.
 
 The tenant received an overall health score of
@@ -804,7 +900,7 @@ $FindingRows
 </div>
 
 <div class="footer">
-ExchangeAI v0.2 | Exchange Online Assessment Engine
+TenantIQ v$ProductVersion | Microsoft 365 Assessment Platform | $Workload
 </div>
 
 </div>
@@ -820,14 +916,14 @@ ExchangeAI v0.2 | Exchange Online Assessment Engine
         -Encoding UTF8
 
     Write-Host ""
-    Write-Host "HTML Report Created" -ForegroundColor Green
+    Write-Host "TenantIQ HTML Report Created" -ForegroundColor Green
     Write-Host $HtmlReportPath -ForegroundColor Cyan
 
     Write-Host ""
-    Write-Host "CSV Report Created" -ForegroundColor Green
+    Write-Host "TenantIQ CSV Report Created" -ForegroundColor Green
     Write-Host $CsvReportPath -ForegroundColor Cyan
 
     Start-Process $HtmlReportPath
 
     return $HtmlReportPath
-}
+} 	

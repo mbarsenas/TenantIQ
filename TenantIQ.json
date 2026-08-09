@@ -3,5 +3,13 @@
   "Version": "0.3.0",
   "Description": "Microsoft 365 Assessment Platform",
   "Author": "Mark Barsenas",
-  "Repository": "https://github.com/mbarsenas/TenantIQ"
+  "Repository": "https://github.com/mbarsenas/TenantIQ",
+  "MSP": {
+    "CompanyName": "",
+    "Website": "",
+    "SupportEmail": ""
+  },
+  "Customer": {
+    "CompanyName": ""
+  }
 }

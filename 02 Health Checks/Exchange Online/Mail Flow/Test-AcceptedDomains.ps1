@@ -1,24 +1,23 @@
 $Domains = Get-AcceptedDomain
 
 $Report = $Domains |
-Select-Object Name, DomainName, DomainType, Default
+    Select-Object Name, DomainName, DomainType, Default
 
-$Report | Format-Table -AutoSize
-
-. "$PSScriptRoot\..\..\01 Framework\New-ExchangeAIReport.ps1"
+$Report |
+    Format-Table -AutoSize
 
 New-ExchangeAIReport `
     -Name "AcceptedDomainsHealth" `
     -Data $Report
 
 Write-Host ""
-Write-Host "========== ExchangeAI Health Check ==========" -ForegroundColor Cyan
+Write-Host "========== TenantIQ Health Check ==========" -ForegroundColor Cyan
 Write-Host ""
 
 Write-Host "Accepted Domains Found: $($Domains.Count)"
 
 $DefaultDomain = $Domains |
-Where-Object { $_.Default -eq $true }
+    Where-Object { $_.Default -eq $true }
 
 $RelayDomains = @(
     $Domains |
@@ -30,27 +29,36 @@ $Findings = @()
 $Recommendations = @()
 
 if ($DefaultDomain) {
+
     Write-Host "PASS  Default Domain: $($DefaultDomain.DomainName)" -ForegroundColor Green
+
 }
 else {
+
     Write-Host "FAIL  No Default Domain Found" -ForegroundColor Red
 
     $HasFailure = $true
+
     $Findings += "No default accepted domain is configured."
+
     $Recommendations += "Configure a default accepted domain."
 }
 
 if ($RelayDomains.Count -gt 0) {
+
     Write-Host "WARNING  Internal Relay Domains detected:" -ForegroundColor Yellow
 
     $RelayDomains |
-    Select-Object DomainName |
-    Format-Table -AutoSize
+        Select-Object DomainName |
+        Format-Table -AutoSize
 
     $Findings += "$($RelayDomains.Count) Internal Relay domain(s) detected."
+
     $Recommendations += "Review Internal Relay domains and verify they are intentionally configured."
+
 }
 else {
+
     Write-Host "PASS  No Internal Relay Domains" -ForegroundColor Green
 }
 
@@ -88,5 +96,4 @@ else {
         -Severity "None" `
         -Finding "Accepted domain configuration appears healthy." `
         -Recommendation "No action required."
-
 }

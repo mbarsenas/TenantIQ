@@ -7,7 +7,7 @@ $ExchangeAIHealthChecks = @(
         EstimatedTime = "< 1 sec"
         Version       = "1.0"
         Description   = "Validates accepted domain configuration."
-        Script        = "$PSScriptRoot\..\02 Health Checks\Mail Flow\Test-AcceptedDomains.ps1"
+        Script        = "$PSScriptRoot\..\02 Health Checks\Exchange Online\Mail Flow\Test-AcceptedDomains.ps1"
     }
 
     @{
@@ -17,7 +17,7 @@ $ExchangeAIHealthChecks = @(
         EstimatedTime = "< 1 sec"
         Version       = "1.0"
         Description   = "Verifies DKIM signing configuration."
-        Script        = "$PSScriptRoot\..\02 Health Checks\Mail Flow\Test-DKIM.ps1"
+        Script        = "$PSScriptRoot\..\02 Health Checks\Exchange Online\Mail Flow\Test-DKIM.ps1"
     }
 
     @{
@@ -27,7 +27,7 @@ $ExchangeAIHealthChecks = @(
         EstimatedTime = "< 1 sec"
         Version       = "1.0"
         Description   = "Validates SPF DNS records."
-        Script        = "$PSScriptRoot\..\02 Health Checks\Mail Flow\Test-SPF.ps1"
+        Script        = "$PSScriptRoot\..\02 Health Checks\Exchange Online\Mail Flow\Test-SPF.ps1"
     }
 
     @{
@@ -37,7 +37,7 @@ $ExchangeAIHealthChecks = @(
         EstimatedTime = "< 1 sec"
         Version       = "1.0"
         Description   = "Validates DMARC DNS records."
-        Script        = "$PSScriptRoot\..\02 Health Checks\Mail Flow\Test-DMARC.ps1"
+        Script        = "$PSScriptRoot\..\02 Health Checks\Exchange Online\Mail Flow\Test-DMARC.ps1"
     }
 
     @{
@@ -47,7 +47,7 @@ $ExchangeAIHealthChecks = @(
         EstimatedTime = "1 sec"
         Version       = "1.0"
         Description   = "Reviews transport rules for disabled or audit-mode configurations."
-        Script        = "$PSScriptRoot\..\02 Health Checks\Mail Flow\Test-TransportRules.ps1"
+        Script        = "$PSScriptRoot\..\02 Health Checks\Exchange Online\Mail Flow\Test-TransportRules.ps1"
     }
 
     @{
@@ -57,7 +57,7 @@ $ExchangeAIHealthChecks = @(
         EstimatedTime = "2 sec"
         Version       = "1.0"
         Description   = "Reviews inbound and outbound Exchange Online connectors."
-        Script        = "$PSScriptRoot\..\02 Health Checks\Mail Flow\Test-Connectors.ps1"
+        Script        = "$PSScriptRoot\..\02 Health Checks\Exchange Online\Mail Flow\Test-Connectors.ps1"
     }
 
     @{
@@ -67,7 +67,7 @@ $ExchangeAIHealthChecks = @(
         EstimatedTime = "1 sec"
         Version       = "1.0"
         Description   = "Reviews Exchange Online remote domain settings."
-        Script        = "$PSScriptRoot\..\02 Health Checks\Mail Flow\Test-RemoteDomains.ps1"
+        Script        = "$PSScriptRoot\..\02 Health Checks\Exchange Online\Mail Flow\Test-RemoteDomains.ps1"
     }
 
     @{
@@ -77,7 +77,7 @@ $ExchangeAIHealthChecks = @(
         EstimatedTime = "2 sec"
         Version       = "1.0"
         Description   = "Checks SMTP AUTH usage across mailboxes."
-        Script        = "$PSScriptRoot\..\02 Health Checks\Security\Test-SMTPAuth.ps1"
+        Script        = "$PSScriptRoot\..\02 Health Checks\Exchange Online\Security\Test-SMTPAuth.ps1"
     }
 
     @{
@@ -87,7 +87,7 @@ $ExchangeAIHealthChecks = @(
         EstimatedTime = "2 sec"
         Version       = "1.0"
         Description   = "Detects external forwarding rules."
-        Script        = "$PSScriptRoot\..\02 Health Checks\Security\Test-ExternalForwarding.ps1"
+        Script        = "$PSScriptRoot\..\02 Health Checks\Exchange Online\Security\Test-ExternalForwarding.ps1"
     }
 
     @{
@@ -97,7 +97,7 @@ $ExchangeAIHealthChecks = @(
         EstimatedTime = "2 sec"
         Version       = "1.0"
         Description   = "Verifies mailbox auditing is enabled for the organization."
-        Script        = "$PSScriptRoot\..\02 Health Checks\Security\Test-MailboxAuditing.ps1"
+        Script        = "$PSScriptRoot\..\02 Health Checks\Exchange Online\Security\Test-MailboxAuditing.ps1"
     }
 
     @{
@@ -107,7 +107,7 @@ $ExchangeAIHealthChecks = @(
         EstimatedTime = "2 sec"
         Version       = "1.0"
         Description   = "Reviews Exchange Online authentication policies and Basic Authentication settings."
-        Script        = "$PSScriptRoot\..\02 Health Checks\Security\Test-AuthenticationPolicies.ps1"
+        Script        = "$PSScriptRoot\..\02 Health Checks\Exchange Online\Security\Test-AuthenticationPolicies.ps1"
     }
 
     @{
@@ -117,7 +117,7 @@ $ExchangeAIHealthChecks = @(
         EstimatedTime = "2 sec"
         Version       = "1.0"
         Description   = "Reviews Exchange Online anti-spam policies and recommended settings."
-        Script        = "$PSScriptRoot\..\02 Health Checks\Security\Test-AntiSpam.ps1"
+        Script        = "$PSScriptRoot\..\02 Health Checks\Exchange Online\Security\Test-AntiSpam.ps1"
     }
 
 )

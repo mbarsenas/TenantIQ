@@ -17,4 +17,12 @@
 
 # Windows
 Thumbs.db
-Desktop.ini
+Desktop.iniTenantIQ-Startup.log
+Cleanup-TenantIQEntraScripts.ps1
+99 Archive/
+01 Framework/Export-ExchangeAIHtmlReport-old.ps1
+Cleanup-TenantIQEntraScripts.ps1
+99 Archive/
+01 Framework/Export-ExchangeAIHtmlReport-old.ps1
+
+TenantIQ-Startup.log

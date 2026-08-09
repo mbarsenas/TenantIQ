@@ -15,7 +15,6 @@ function New-HealthCheckResult {
         [string]$Recommendation,
 
         [double]$Duration = 0
-
     )
 
     $Result = [PSCustomObject]@{
@@ -26,13 +25,23 @@ function New-HealthCheckResult {
         Severity       = $Severity
         Finding        = $Finding
         Recommendation = $Recommendation
-        Duration       = [math]::Round($Duration,2)
+        Duration       = [math]::Round($Duration, 2)
         Date           = Get-Date
+    }
 
+    # Ensure the global result collection is always an array.
+    if ($null -eq $Global:ExchangeAIResults) {
+
+        $Global:ExchangeAIResults = @()
+    }
+    elseif ($Global:ExchangeAIResults -isnot [System.Array]) {
+
+        $Global:ExchangeAIResults = @(
+            $Global:ExchangeAIResults
+        )
     }
 
     $Global:ExchangeAIResults += $Result
 
     return $Result
-
 }

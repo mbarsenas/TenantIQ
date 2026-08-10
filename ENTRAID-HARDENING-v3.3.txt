@@ -1,0 +1,20 @@
+TenantIQ Entra ID Hardening v3.3
+
+Fixes the Directory role definitions BadRequest identified by v3.2 diagnostics.
+
+Failing v3.2 request:
+  /v1.0/roleManagement/directory/roleDefinitions?$select=id,displayName,templateId&$top=999
+
+Microsoft Graph's LIST roleDefinitions endpoint documents $filter and $expand support.
+The v3.2 list request used $select, which is not documented for this LIST operation.
+
+v3.3 now requests only the Global Administrator role definition by its well-known
+template ID using the supported $filter parameter:
+
+  templateId eq '62e90394-69f5-4237-9190-012177145e10'
+
+All staged diagnostics remain enabled, so if another Graph request fails, the runner
+will continue to print its exact Stage and URI.
+
+Run:
+  .\Run-EntraID-v3-EvidenceValidation.ps1

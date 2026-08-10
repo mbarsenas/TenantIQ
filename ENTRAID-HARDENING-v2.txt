@@ -1,0 +1,19 @@
+TenantIQ Entra ID Hardening v2
+
+Focus: evidence quality for the six stable FAIL controls.
+
+The v1 cleaned baseline produced 66 controls with:
+30 PASS / 30 WARNING / 6 FAIL / 0 INFO.
+
+v2 deliberately preserves existing scoring thresholds while adding:
+- Original-script backups for the six FAIL controls.
+- Evidence-transparency helper in each target script.
+- Isolated Microsoft Graph evidence collector for critical findings.
+- Detailed authorizationPolicy capture.
+- Global Administrator assignment inventory.
+- 180-day stale-user evidence inventory.
+- Enterprise application / OAuth2 grant inventory.
+- Member-user inventory.
+
+This release does NOT weaken FAIL results merely to improve the score.
+The isolated evidence file is intended to validate and refine the next hardening pass.

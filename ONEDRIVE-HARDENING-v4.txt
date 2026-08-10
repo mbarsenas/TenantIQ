@@ -1,0 +1,28 @@
+TenantIQ OneDrive Hardening v4
+
+Built from v3 tenant assessment:
+TenantIQ--Assessment-20260810-144108.csv
+
+Observed v3 distribution:
+{
+  "PASS": 14,
+  "INFO": 31,
+  "WARNING": 5
+}
+
+v4 changes:
+- Corrected exact registry-name mismatch:
+  Legacy Authentication Exposure -> Legacy Authentication
+- Added deeper evaluation for:
+  High Storage Consumers
+  Orphaned OneDrive Sites
+  Former Employee OneDrives
+  Download Restrictions
+  Recycle Bin Retention
+  OneDrive Recovery Readiness
+  OneDrive Data Residency
+- Added an exact-name audit file so future hardening passes can verify that
+  evaluator switch cases correspond to registered OneDrive check names.
+
+Scoring remains conservative: service-managed, requirement-dependent, or
+insufficiently evidenced controls remain INFO rather than becoming false PASS/FAIL.

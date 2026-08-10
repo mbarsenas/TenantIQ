@@ -1,0 +1,22 @@
+TenantIQ OneDrive Assessment v1
+
+Implemented:
+- OneDrive / SharePoint Online administrative connection verification
+- Dedicated OneDrive module menu
+- Full OneDrive Assessment runner
+- Executes all 50 implemented OneDrive checks in numeric order
+- Per-check exception isolation
+- Standard PASS/WARNING/FAIL/INFO aggregation
+- Score calculation excluding INFO controls
+- HTML report generation using Workload = OneDrive
+- Dedicated OneDrive Health Checks viewer
+
+Current state:
+The 50 OneDrive health-check scripts are the bulk-generated baseline checks created
+earlier. The execution engine is now production-shaped, but most controls will initially
+return INFO until check-specific OneDrive scoring is hardened and validated against the
+tenant.
+
+Next step:
+Run the full OneDrive assessment and use its CSV/report to build OneDrive Hardening v1,
+following the same tenant-validation process used for Microsoft Teams.

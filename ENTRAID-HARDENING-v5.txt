@@ -1,0 +1,20 @@
+TenantIQ Entra ID Hardening v5
+
+Purpose:
+Finish the critical-evidence collector before changing FAIL scoring.
+
+Changes:
+- Normalizes Microsoft Graph hashtable/dictionary objects into PSCustomObject form.
+- Fixes stale-user evidence so UPN, display name, account state, created date, and
+  last successful sign-in are serialized correctly.
+- Collects detailed delegated OAuth2 permission grants.
+- Collects service-principal app-role assignments (application permissions).
+- Resolves client/resource service principal names, app IDs, tenant ownership, and
+  verified publisher where available.
+- Resolves application appRole IDs back to permission values when possible.
+- Enhances contextual analysis with an explicit high-impact permission set.
+- Preserves all existing Entra assessment scoring thresholds in v5.
+
+Next:
+Run .\Run-EntraID-v3-EvidenceValidation.ps1 again and send the regenerated evidence
+and analysis JSON files. Those files will determine the first justified scoring changes.

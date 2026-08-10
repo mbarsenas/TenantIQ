@@ -1,0 +1,78 @@
+TenantIQ OneDrive v6 Exact-Name Audit
+=====================================
+
+Registered controls: 50
+Dedicated exact-match evaluator cases: 38
+Registered controls still using generic path: 12
+Evaluator cases with no registered control: 8
+
+Mappings applied:
+- "Ransomware Recovery Readiness" { -> "Ransomware Recovery Posture" {
+- "Security Baseline Alignment" { -> "OneDrive Security Baseline" {
+- "Governance Baseline Alignment" { -> "OneDrive Governance Summary" {
+- "Files On-Demand Readiness" { -> "Files On-Demand Configuration" {
+- "Known Folder Move Readiness" { -> "Known Folder Move" {
+
+Exact matched controls:
+- Anyone Link Exposure
+- Block Sync on Unmanaged Devices
+- Conditional Access Alignment
+- DLP Coverage
+- Default Sharing Links
+- Deleted User Retention Coverage
+- Device Compliance Alignment
+- Download Restrictions
+- External User Expiration
+- Files On-Demand Configuration
+- Former Employee OneDrives
+- Guest Resharing
+- High Storage Consumers
+- Inactive OneDrive Sites
+- Information Barriers Integration
+- Legacy Authentication
+- MFA Access Alignment
+- OneDrive External Sharing
+- OneDrive Governance Summary
+- OneDrive License Coverage
+- OneDrive Ownership Coverage
+- OneDrive Retention
+- OneDrive Security Baseline
+- OneDrive Site Inventory
+- OneDrive Storage Defaults
+- OneDrive Tenant Configuration
+- Orphaned OneDrive Sites
+- Ransomware Recovery Posture
+- Records Management Integration
+- Recycle Bin Retention
+- Retention Policy Coverage
+- Sensitivity Label Coverage
+- Sharing Domain Restrictions
+- Storage Utilization
+- Sync Client Restrictions
+- Unmanaged Device Access
+- Version History Configuration
+- eDiscovery Readiness
+
+Remaining generic-path controls:
+- App-Only Authentication
+- File Restore Readiness
+- Known Folder Move Adoption
+- Known Folder Move Readiness
+- Malware and Infected File Controls
+- OneDrive Admin Notifications
+- OneDrive Service Health Readiness
+- OneDrive Usage Trends
+- Personal Vault Governance
+- Restore Capability Review
+- Sync App Version Governance
+- Sync Health Reporting
+
+Unregistered evaluator cases:
+- Anonymous Link Expiration
+- Default Link Permission
+- Domain Restricted Sync
+- Idle Session Sign-Out
+- Known Folder Move
+- OneDrive Access Control
+- OneDrive Data Residency
+- OneDrive Recovery Readiness

@@ -1,0 +1,20 @@
+TenantIQ Entra ID Hardening v3.1
+
+Fixes the BadRequest from Run-EntraID-v3-EvidenceValidation.ps1.
+
+Root cause:
+The Graph users request selected signInActivity while requesting $top=999.
+Microsoft Graph limits collection page size to 500 when signInActivity is selected.
+
+v3.1 changes:
+- Changes the users/signInActivity request to $top=500.
+- Adds User.Read.All explicitly.
+- Breaks directory-role collection into simpler supported Graph requests.
+- Resolves Global Administrator principals separately instead of relying on a
+  complex roleAssignments $expand.
+- Adds a Stage property to failure JSON so future API errors identify the exact
+  Graph call that failed.
+- Preserves the same evidence/analysis output filenames and runner workflow.
+
+Run:
+.\Run-EntraID-v3-EvidenceValidation.ps1

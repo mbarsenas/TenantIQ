@@ -1,0 +1,29 @@
+TenantIQ OneDrive Hardening v3
+
+Built from v2 tenant assessment:
+TenantIQ--Assessment-20260810-135216.csv
+
+Observed v2 distribution:
+{
+  "PASS": 13,
+  "WARNING": 6,
+  "INFO": 31
+}
+
+Changes:
+1. Fixed OneDrive License Coverage display/count bug.
+2. Conditional Access MFA detection now recognizes both:
+   - builtInControls containing 'mfa'
+   - authenticationStrength grant controls
+3. Expanded Purview retention-scope inspection across common SharePoint/OneDrive
+   location/workload properties.
+4. Added native SPO scoring for:
+   - Legacy Authentication Exposure
+   - Idle Session Sign-Out
+   - Default Link Permission
+   - Anonymous Link Expiration
+   - OneDrive Access Control
+
+Safety:
+Controls remain INFO where TenantIQ cannot make an authoritative judgment from
+the returned tenant configuration. No false FAIL results are introduced.

@@ -1,4 +1,4 @@
-$TenantIQEntraHealthChecks = @(
+﻿$TenantIQEntraHealthChecks = @(
 
     @{
         Name          = "User Account Summary"
@@ -76,16 +76,6 @@ $TenantIQEntraHealthChecks = @(
 		Version       = "1.0"
 		Description   = "Reviews Global Administrator assignments for identifiable cloud-only emergency access accounts and Conditional Access exclusions."
 		Script        = "$PSScriptRoot\..\02 Health Checks\Entra ID\Privileged Access\Test-BreakGlassAccounts.ps1"
-	}
-
-	@{
-		Name          = "Risky Users"
-		Category      = "Security"
-		Severity      = "High"
-		EstimatedTime = "10 sec"
-		Version       = "1.0"
-		Description   = "Reviews Entra Identity Protection for active risky users, risk severity, compromised accounts, and remediation status."
-		Script        = "$PSScriptRoot\..\02 Health Checks\Entra ID\Security\Test-RiskyUsers.ps1"
 	}
 	
 	@{
@@ -166,15 +156,6 @@ $TenantIQEntraHealthChecks = @(
 		Description   = "Reviews enabled Entra member accounts for stale sign-in activity, long-term inactivity, and accounts that have never signed in."
 		Script        = "$PSScriptRoot\..\02 Health Checks\Entra ID\Identity\Test-StaleUserAccounts.ps1"
 	}
-	@{
-		Name          = "Risky Sign-Ins"
-		Category      = "Security"
-		Severity      = "High"
-		EstimatedTime = "30 sec"
-		Version       = "1.0"
-		Description   = "Reviews recent Entra sign-in activity for Identity Protection risk detections, high-risk authentication events, and compromised sign-ins."
-		Script        = "$PSScriptRoot\..\02 Health Checks\Entra ID\Security\Test-RiskySignIns.ps1"
-	}
 
 	@{
 		Name          = "Named Locations"
@@ -222,15 +203,6 @@ $TenantIQEntraHealthChecks = @(
 		Version       = "1.0"
 		Description   = "Reviews Entra default user permissions, application registration, tenant and group creation, guest invitation settings, and application consent policy."
 		Script        = "$PSScriptRoot\..\02 Health Checks\Entra ID\Identity\Test-DefaultUserPermissions.ps1"
-	}
-	@{
-		Name          = "Authentication Registration Campaign"
-		Category      = "Authentication"
-		Severity      = "Low"
-		EstimatedTime = "5 sec"
-		Version       = "1.0"
-		Description   = "Reviews the Entra authentication methods registration campaign, targeting, exclusions, and stronger authentication method adoption."
-		Script        = "$PSScriptRoot\..\02 Health Checks\Entra ID\Authentication\Test-AuthenticationRegistrationCampaign.ps1"
 	}
 	@{
 		Name          = "Authentication Registration Campaign"
@@ -428,15 +400,6 @@ $TenantIQEntraHealthChecks = @(
 		Version       = "1.0"
 		Description   = "Reviews Microsoft Entra workload identity risk detections and identifies active, high-risk, or confirmed compromised service principal events."
 		Script        = "$PSScriptRoot\..\02 Health Checks\Entra ID\Identity Protection\Test-ServicePrincipalRiskDetections.ps1"
-	}
-	@{
-		Name          = "Named Locations"
-		Category      = "Conditional Access"
-		Severity      = "Medium"
-		EstimatedTime = "5 sec"
-		Version       = "1.0"
-		Description   = "Reviews Entra Conditional Access named locations, trusted IP locations, and whether configured locations are actively referenced by enabled Conditional Access policies."
-		Script        = "$PSScriptRoot\..\02 Health Checks\Entra ID\Conditional Access\Test-NamedLocations.ps1"
 	}
 
 	@{

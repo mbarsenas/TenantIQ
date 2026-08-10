@@ -1,0 +1,16 @@
+TenantIQ Entra ID Hardening v1 - Registry Deduplication
+=========================================================
+
+Registry entries before: 70
+Duplicate entries removed: 4
+Registry entries after: 66
+Duplicate names remaining: 0
+Missing script paths: 0
+
+Duplicate policy:
+- Risky Users: retained Identity Protection implementation.
+- Risky Sign-Ins: retained Identity Protection implementation.
+- Named Locations: retained one identical registry entry.
+- Authentication Registration Campaign: retained one identical registry entry.
+
+No health-check script was deleted from disk. v1 only removes duplicate registry execution.

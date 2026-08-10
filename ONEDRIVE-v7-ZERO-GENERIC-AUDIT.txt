@@ -1,0 +1,11 @@
+TenantIQ OneDrive v7 Zero-Generic Audit
+=======================================
+
+Registered controls: 50
+Registered controls with dedicated evaluator cases: 50
+Registered controls still using generic fallback: 0
+
+Still generic:
+NONE
+
+Note: INFO remains a valid result for controls whose authoritative evidence requires endpoint telemetry, Service Health, or organization-specific policy.

@@ -1,0 +1,24 @@
+TenantIQ Teams Hardening v4.3
+
+Fixes the Teams Upgrade Policy false-positive discovered during tenant validation.
+
+Previous behavior:
+Get-CsTeamsUpgradePolicy returned all Microsoft built-in policy definitions, and
+TenantIQ counted built-in SfBOnly/SfBWithTeamsCollab definitions as active legacy
+configuration.
+
+Correct behavior in v4.3:
+- Reads the Global TeamsUpgradePolicy separately.
+- Enumerates users with Get-CsOnlineUser.
+- Evaluates TeamsUpgradeEffectiveMode / TeamsUpgradePolicy at the user level.
+- Built-in policy definitions are never scored merely because they exist.
+- WARNING only when one or more users actually have an effective legacy mode:
+    SfBOnly
+    SfBWithTeamsCollab
+    SfBWithTeamsCollabAndMeetings
+- PASS when no users have an effective legacy coexistence mode.
+- Global Islands is reported as context, not automatically scored as a warning.
+
+Microsoft documentation explicitly states that the relevant TeamsUpgradePolicy
+instances in Microsoft 365 are built-in system policies and that the Global policy
+applies unless a user is explicitly assigned another policy.

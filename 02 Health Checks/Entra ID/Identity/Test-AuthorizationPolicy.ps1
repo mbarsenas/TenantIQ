@@ -1,3 +1,72 @@
+﻿# TenantIQ Entra ID Production v6
+# This control consumes the validated isolated Graph evidence cache when available.
+# If the cache is unavailable, the original native implementation runs unchanged.
+
+$TenantIQEvidence = $null
+if (Get-Command Get-TenantIQEntraProductionEvidence -ErrorAction SilentlyContinue) {
+    $TenantIQEvidence = Get-TenantIQEntraProductionEvidence
+}
+
+if ($null -ne $TenantIQEvidence) {
+    $Stopwatch = [Diagnostics.Stopwatch]::StartNew()
+    $Policy = $TenantIQEvidence.AuthorizationPolicy
+    $Default = $Policy.defaultUserRolePermissions
+
+    $Findings = @()
+    if ($Default.allowedToCreateApps -eq $true) { $Findings += "Default users can register applications." }
+    if ($Default.allowedToCreateSecurityGroups -eq $true) { $Findings += "Default users can create security groups." }
+    if ($Default.allowedToCreateTenants -eq $true) { $Findings += "Default users can create new tenants." }
+
+    $MemberEquivalentGuestRole = "a0b1b346-4d3e-4e8b-98f8-753987be4970"
+    $GuestMemberEquivalent = ([string]$Policy.guestUserRoleId -eq $MemberEquivalentGuestRole)
+
+    if ($GuestMemberEquivalent) {
+        $Findings += "Guest users have the same directory access level as member users."
+    }
+
+    $Stopwatch.Stop()
+
+    if ($GuestMemberEquivalent) {
+        $Status = "FAIL"
+        $Severity = "High"
+        $Recommendation = "Restrict guest directory access and review broad default user permissions. Apply least privilege unless an explicit business requirement is documented."
+    }
+    elseif ($Findings.Count -gt 0) {
+        $Status = "WARNING"
+        $Severity = "Medium"
+        $Recommendation = "Review default user permissions for app registration, security-group creation, and tenant creation."
+    }
+    else {
+        $Status = "PASS"
+        $Severity = "None"
+        $Recommendation = "Continue periodic authorization-policy review."
+    }
+
+    $Finding = if ($Findings.Count -gt 0) {
+        ($Findings -join " ") + " Evidence source: isolated Microsoft Graph authorizationPolicy."
+    } else {
+        "No high-risk authorization-policy settings were detected. Evidence source: isolated Microsoft Graph authorizationPolicy."
+    }
+
+    Write-Host "Authorization Policy (Validated Evidence)" -ForegroundColor Cyan
+    Write-Host "Guest Member-Equivalent Access : $GuestMemberEquivalent"
+    Write-Host "Users Can Register Apps        : $($Default.allowedToCreateApps)"
+    Write-Host "Users Can Create Sec Groups    : $($Default.allowedToCreateSecurityGroups)"
+    Write-Host "Users Can Create Tenants       : $($Default.allowedToCreateTenants)"
+    Write-Host ""
+
+    $null = New-HealthCheckResult `
+        -Check "Authorization Policy" `
+        -Category "Identity" `
+        -Status $Status `
+        -Severity $Severity `
+        -Finding $Finding `
+        -Recommendation $Recommendation `
+        -Duration $Stopwatch.Elapsed.TotalSeconds
+    return
+}
+
+# Native fallback
 $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
 Write-ExchangeAILog -Message "Starting Entra ID Authorization Policy health check." -Level INFO
@@ -165,3 +234,4 @@ catch {
         -Recommendation "Verify Policy.Read.All consent and Microsoft Graph connectivity." `
         -Duration $Stopwatch.Elapsed.TotalSeconds
 }
+

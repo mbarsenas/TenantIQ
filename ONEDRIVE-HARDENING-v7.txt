@@ -1,0 +1,26 @@
+TenantIQ OneDrive Hardening v7
+
+Built from v6 tenant assessment TenantIQ--Assessment-20260810-155523.csv.
+
+v6 distribution:
+{
+  "PASS": 20,
+  "INFO": 22,
+  "WARNING": 8
+}
+
+Goal:
+Zero registered OneDrive controls using the generic placeholder evaluator.
+
+v7 adds explicit handlers for all 12 controls that were still on
+the generic path in v6.
+
+Important:
+A dedicated handler does NOT mean every control is forcibly scored. Controls that
+require endpoint telemetry, Microsoft 365 Service Health, or tenant-specific policy
+remain INFO with an explicit evidence limitation and remediation path.
+
+Post-build:
+- Registered controls: 50
+- Dedicated registered handlers: 50
+- Generic registered controls: 0

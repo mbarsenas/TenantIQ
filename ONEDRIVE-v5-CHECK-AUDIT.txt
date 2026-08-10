@@ -1,0 +1,20 @@
+Registered checks: 50
+Dedicated evaluator cases: 35
+Remaining generic path: 15
+
+Remaining generic checks:
+- App-Only Authentication
+- File Restore Readiness
+- Files On-Demand Configuration
+- Known Folder Move Adoption
+- Malware and Infected File Controls
+- OneDrive Admin Notifications
+- OneDrive Governance Summary
+- OneDrive Security Baseline
+- OneDrive Service Health Readiness
+- OneDrive Usage Trends
+- Personal Vault Governance
+- Ransomware Recovery Posture
+- Restore Capability Review
+- Sync App Version Governance
+- Sync Health Reporting

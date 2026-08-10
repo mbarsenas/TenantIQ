@@ -1,0 +1,28 @@
+TenantIQ Teams Hardening v4
+
+Purpose:
+Resolve Microsoft Graph / MSAL assembly collisions such as:
+
+Method 'GetTokenAsync' in type
+'Microsoft.Graph.PowerShell.Authentication.Core.Utilities.UserProvidedTokenCredential'
+... does not have an implementation.
+
+Architecture change:
+- Teams/Exchange/Purview remain in the main TenantIQ PowerShell process.
+- Graph-dependent Teams controls no longer call Connect-MgGraph in that process.
+- A clean child PowerShell process collects all required Graph evidence once.
+- PowerShell 7 (pwsh.exe) is preferred when installed.
+- Windows PowerShell (powershell.exe) is the fallback.
+- The child process writes a JSON evidence cache to:
+  00 Runtime\Teams-Graph-Evidence.json
+- Graph-dependent Teams checks consume that cache.
+- The cache is cleared at the start of every full Teams assessment.
+
+Graph evidence collected:
+- Teams-backed Microsoft 365 groups
+- Group lifecycle policies
+- Intune managed device compliance
+- Default Entra cross-tenant access policy
+
+This design isolates Microsoft.Graph MSAL assemblies from ExchangeOnlineManagement,
+MicrosoftTeams, SharePoint Online Management Shell, and Purview assemblies.

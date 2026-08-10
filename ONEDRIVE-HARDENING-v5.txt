@@ -1,0 +1,19 @@
+TenantIQ OneDrive Hardening v5
+
+Built from v4 assessment TenantIQ--Assessment-20260810-145857.csv.
+
+v4 distribution:
+{
+  "PASS": 17,
+  "INFO": 26,
+  "WARNING": 7
+}
+
+v5:
+- Expands isolated Graph evidence with subscribed SKUs/service plans.
+- Reworks OneDrive License Coverage to use SharePoint/OneDrive-capable SKU evidence.
+- Adds dedicated evaluation for sync restrictions, Known Folder Move readiness,
+  Files On-Demand readiness, ransomware recovery, Records Management integration,
+  Security Baseline Alignment, and Governance Baseline Alignment.
+- Maintains INFO for endpoint-only controls that SPO/Graph cannot authoritatively prove.
+- Regenerates exact-name evaluator audit.

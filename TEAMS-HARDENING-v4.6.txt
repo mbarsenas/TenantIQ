@@ -1,0 +1,16 @@
+TenantIQ Teams Hardening v4.6
+
+Fix:
+The tenant's installed Get-CsOnlineUser implementation rejected both:
+- -ResultSize Unlimited
+- -ResultSize ([uint32]::MaxValue)
+
+The latter overflowed a System.Int32 parameter.
+
+v4.6 now uses:
+Get-CsOnlineUser -ResultSize 1000000
+
+This is a safe Int32-compatible upper bound and is more than sufficient for
+TenantIQ user enumeration in practical Microsoft 365 tenants.
+
+No other Teams assessment logic was changed.

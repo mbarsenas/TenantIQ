@@ -1,3 +1,80 @@
+﻿# TenantIQ Entra ID Production v6
+# This control consumes the validated isolated Graph evidence cache when available.
+# If the cache is unavailable, the original native implementation runs unchanged.
+
+$TenantIQEvidence = $null
+if (Get-Command Get-TenantIQEntraProductionEvidence -ErrorAction SilentlyContinue) {
+    $TenantIQEvidence = Get-TenantIQEntraProductionEvidence
+}
+
+if ($null -ne $TenantIQEvidence) {
+    $Stopwatch = [Diagnostics.Stopwatch]::StartNew()
+
+    $HighImpactPattern = '^(Directory\.ReadWrite\.All|RoleManagement\.ReadWrite\.Directory|Application\.ReadWrite\.All|AppRoleAssignment\.ReadWrite\.All|Group\.ReadWrite\.All|User\.ReadWrite\.All|Mail\.ReadWrite|Mail\.Send|Sites\.FullControl\.All|Sites\.ReadWrite\.All)$'
+
+    $All = @(
+        @($TenantIQEvidence.EnterpriseApps.DelegatedPermissions) +
+        @($TenantIQEvidence.EnterpriseApps.ApplicationPermissions)
+    )
+
+    $Critical = @($All | Where-Object { $_.Permission -match $HighImpactPattern })
+    $TenantId = [string]$TenantIQEvidence.TenantId
+
+    $CriticalThirdParty = @(
+        $Critical |
+        Where-Object {
+            $Owner = [string]$_.ClientOwnerOrganizationId
+            -not [string]::IsNullOrWhiteSpace($Owner) -and
+            -not [string]::IsNullOrWhiteSpace($TenantId) -and
+            $Owner -ne $TenantId -and
+            $Owner -ne "72f988bf-86f1-41af-91ab-2d7cd011db47"
+        }
+    )
+
+    $Stopwatch.Stop()
+
+    if ($CriticalThirdParty.Count -gt 0) {
+        $Status = "FAIL"; $Severity = "High"
+        $Finding = "$($CriticalThirdParty.Count) high-impact permission grant(s) were confirmed on non-tenant-owned, non-Microsoft enterprise applications."
+        $Recommendation = "Immediately review the affected applications, admin consent, publisher trust, ownership, and business justification. Remove unnecessary high-impact grants."
+    }
+    elseif ($Critical.Count -gt 0) {
+        $Status = "WARNING"; $Severity = "High"
+        $Finding = "$($Critical.Count) high-impact delegated/application permission grant(s) were confirmed. No non-tenant-owned, non-Microsoft critical grants were established by the validated evidence."
+        $Recommendation = "Review high-impact grants for least privilege, consent scope, application ownership, publisher trust, and continued business need."
+    }
+    else {
+        $Status = "PASS"; $Severity = "None"
+        $Finding = "No permissions in the TenantIQ high-impact permission set were detected in validated Graph evidence."
+        $Recommendation = "Continue periodic enterprise application consent reviews."
+    }
+
+    Write-Host "Enterprise Application Permissions (Validated Evidence)" -ForegroundColor Cyan
+    Write-Host "Delegated permissions   : $($TenantIQEvidence.EnterpriseApps.DelegatedPermissionCount)"
+    Write-Host "Application permissions : $($TenantIQEvidence.EnterpriseApps.ApplicationPermissionCount)"
+    Write-Host "High-impact permissions : $($Critical.Count)"
+    Write-Host "Critical third-party    : $($CriticalThirdParty.Count)"
+    Write-Host ""
+
+    if ($Critical.Count -gt 0) {
+        $Critical |
+            Select-Object ClientDisplayName,ResourceDisplayName,PermissionType,Permission,ConsentType,ClientPublisher |
+            Format-Table -AutoSize
+        Write-Host ""
+    }
+
+    $null = New-HealthCheckResult `
+        -Check "Enterprise Application Permissions" `
+        -Category "Applications" `
+        -Status $Status `
+        -Severity $Severity `
+        -Finding $Finding `
+        -Recommendation $Recommendation `
+        -Duration $Stopwatch.Elapsed.TotalSeconds
+    return
+}
+
+# Native fallback
 $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
 Write-ExchangeAILog `

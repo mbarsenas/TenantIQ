@@ -1,0 +1,14 @@
+TenantIQ Teams Hardening v4.2
+
+Fixes the persistent OutputPath prompt even when an older copy of
+01 Framework\Invoke-TenantIQGraphIsolatedCache.ps1 is left behind by an
+in-place ZIP extraction.
+
+TenantIQ.ps1 now explicitly excludes that runtime worker from the framework
+dot-source loader.
+
+A cleanup helper is also included:
+Remove-StaleTenantIQRuntimeFiles.ps1
+
+You can run it once after extraction if desired, but the updated launcher is
+safe even if the stale file remains.

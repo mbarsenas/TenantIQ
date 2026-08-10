@@ -1,0 +1,27 @@
+TenantIQ Entra ID Hardening v5.1
+
+Performance release for critical Entra ID evidence collection.
+
+Problem:
+v5 queried /servicePrincipals/{id}/appRoleAssignments once for every service principal.
+In the validated tenant this meant roughly 293 sequential Microsoft Graph requests,
+which made the child PowerShell process appear hung.
+
+v5.1:
+- Uses Microsoft Graph JSON batching for application-permission collection.
+- Sends up to 20 service-principal appRoleAssignment requests per batch.
+- Reduces ~293 sequential calls to roughly 15 Graph batch calls.
+- Displays batch progress in the isolated PowerShell window.
+- Continues when an individual service principal or batch item is inaccessible.
+- Preserves detailed delegated/application permission evidence.
+- Preserves the v5 contextual analyzer and all 66 assessment controls.
+
+Run:
+  .\Run-EntraID-v3-EvidenceValidation.ps1
+
+Expected child-window progress:
+  Collecting application permissions in Graph batches...
+  Service principals: 293 | Batches: 15
+  Batch 1/15 ...
+  ...
+  [OK] Application permission batching complete.

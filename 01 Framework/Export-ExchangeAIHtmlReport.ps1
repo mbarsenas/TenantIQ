@@ -1,7 +1,7 @@
 ﻿function Export-ExchangeAIHtmlReport {
 
     param(
-        [ValidateSet("Exchange Online", "Entra ID", "SharePoint Online")]
+        [ValidateSet("Exchange Online","Entra ID","SharePoint Online","Microsoft Teams","OneDrive","Microsoft Intune","Microsoft Defender","Microsoft Purview")]
         [string]$Workload = "Exchange Online"
     )
 

@@ -1,0 +1,555 @@
+# TenantIQ - Troubleshooting
+
+This guide covers common TenantIQ installation, authentication, permissions, module, assessment, and reporting problems.
+
+When troubleshooting TenantIQ, first determine whether the problem originates from TenantIQ or from the underlying Microsoft 365 PowerShell module.
+
+TIP: Test the affected Microsoft command directly in PowerShell. If the Microsoft command fails outside TenantIQ, resolve that issue before troubleshooting TenantIQ.
+
+
+## TenantIQ Does Not Start
+
+If TenantIQ does not start when running:
+
+  .\TenantIQ.ps1
+
+verify that you are running the command from the TenantIQ root directory.
+
+Check your current directory:
+
+  Get-Location
+
+Confirm the TenantIQ script exists:
+
+  Test-Path .\TenantIQ.ps1
+
+A result of:
+
+  True
+
+confirms the script exists in the current directory.
+
+
+## PowerShell Blocks the Script
+
+If PowerShell reports that scripts are disabled, check the current execution policies:
+
+  Get-ExecutionPolicy -List
+
+TenantIQ requires an execution policy that permits the scripts to run.
+
+WARNING: Do not weaken organizational PowerShell security controls without authorization.
+
+If the TenantIQ files were downloaded from the Internet, Windows may have marked them as downloaded files.
+
+The installation can be inspected and unblocked according to your organization's security requirements.
+
+
+## Module Not Found
+
+TenantIQ depends on Microsoft administrative PowerShell modules.
+
+If you receive errors such as:
+
+  The term 'Connect-ExchangeOnline' is not recognized
+
+  The term 'Connect-MgGraph' is not recognized
+
+  The term 'Connect-SPOService' is not recognized
+
+verify that the appropriate Microsoft module is installed.
+
+
+## Exchange Online Module
+
+Check ExchangeOnlineManagement:
+
+  Get-Module ExchangeOnlineManagement -ListAvailable
+
+The module can be installed with:
+
+  Install-Module ExchangeOnlineManagement -Scope CurrentUser
+
+After installing or changing the module, close PowerShell and open a new session before testing again.
+
+
+## Microsoft Graph Module
+
+Check Microsoft Graph modules:
+
+  Get-Module Microsoft.Graph* -ListAvailable
+
+Microsoft Graph PowerShell can be installed with:
+
+  Install-Module Microsoft.Graph -Scope CurrentUser
+
+
+## SharePoint Online Module
+
+Check the SharePoint Online Management Shell:
+
+  Get-Module Microsoft.Online.SharePoint.PowerShell -ListAvailable
+
+SharePoint Online health checks require the Microsoft SharePoint Online PowerShell commands used by TenantIQ.
+
+
+## Exchange Online Shows Not Connected
+
+TenantIQ checks for an active Exchange Online connection.
+
+You can inspect the current connection manually:
+
+  Get-ConnectionInformation
+
+A healthy Exchange Online connection normally reports:
+
+  State       : Connected
+  TokenStatus : Active
+
+If no connection exists, connect manually:
+
+  Connect-ExchangeOnline
+
+Then verify:
+
+  Get-ConnectionInformation
+
+
+## Exchange Online Authentication Errors
+
+If Exchange Online fails during authentication, first test:
+
+  Connect-ExchangeOnline
+
+outside TenantIQ.
+
+If the same error occurs, the issue is with the Exchange Online PowerShell environment or Microsoft authentication process rather than the TenantIQ health check.
+
+
+## Microsoft.Identity.Client or WithBroker Errors
+
+An Exchange Online connection may occasionally fail with an error similar to:
+
+  Method not found:
+  Microsoft.Identity.Client.PublicClientApplicationBuilder
+  Microsoft.Identity.Client.Broker.BrokerExtension.WithBroker(...)
+
+This can indicate conflicting Microsoft authentication assemblies or ExchangeOnlineManagement module versions.
+
+Check installed versions:
+
+  Get-InstalledModule ExchangeOnlineManagement -AllVersions
+
+Also check available versions:
+
+  Get-Module ExchangeOnlineManagement -ListAvailable
+
+If obsolete ExchangeOnlineManagement versions are installed and are no longer required, remove them according to your organization's module-management procedures.
+
+After changing module versions:
+
+  1. Close ALL PowerShell windows.
+
+  2. Open a new PowerShell session.
+
+  3. Import the intended ExchangeOnlineManagement version.
+
+  4. Test Connect-ExchangeOnline outside TenantIQ.
+
+This is important because Microsoft.Identity.Client assemblies already loaded into a PowerShell process may remain loaded until the process terminates.
+
+
+## Exchange Online WAM Problems
+
+Some Exchange Online authentication problems may involve Web Account Manager authentication.
+
+Where supported by the installed ExchangeOnlineManagement version, Microsoft provides:
+
+  Connect-ExchangeOnline -DisableWAM
+
+as a troubleshooting option.
+
+TIP: Treat DisableWAM as an authentication troubleshooting measure rather than a substitute for resolving broken or conflicting module installations.
+
+
+## Multiple ExchangeOnlineManagement Versions
+
+Check all available versions:
+
+  Get-Module ExchangeOnlineManagement -ListAvailable |
+      Sort-Object Version -Descending
+
+Multiple versions are not automatically a problem.
+
+However, obsolete versions combined with different Microsoft.Identity.Client dependencies can complicate authentication troubleshooting.
+
+Verify which version is actually loaded:
+
+  Get-Module ExchangeOnlineManagement
+
+When troubleshooting, use a fresh PowerShell session and verify the expected version before connecting.
+
+
+## Entra ID Shows Not Connected
+
+TenantIQ uses Microsoft Graph PowerShell for Entra ID assessments.
+
+Check the current Microsoft Graph context:
+
+  Get-MgContext
+
+If no context is returned, establish a connection:
+
+  Connect-MgGraph
+
+Then run:
+
+  Get-MgContext
+
+Verify that the expected account and tenant are displayed.
+
+
+## Entra ID Permission Errors
+
+A successful Microsoft Graph connection does not guarantee that every health check has sufficient permissions.
+
+Symptoms can include:
+
+  Access denied
+  Authorization_RequestDenied
+  Insufficient privileges
+  Forbidden
+  403 responses
+
+Review the scopes returned by:
+
+  Get-MgContext
+
+The connected account and Microsoft Graph scopes must provide sufficient permission for the configuration being assessed.
+
+Some scopes may require administrator consent.
+
+
+## SharePoint Online Shows Not Connected
+
+SharePoint Online requires a connection to the tenant's SharePoint administrative service.
+
+Connect with:
+
+  Connect-SPOService -Url https://<tenant>-admin.sharepoint.com
+
+Replace:
+
+  <tenant>
+
+with the SharePoint tenant name.
+
+For example:
+
+  Connect-SPOService -Url https://contoso-admin.sharepoint.com
+
+Then test:
+
+  Get-SPOTenant
+
+If Get-SPOTenant succeeds, the SharePoint administrative connection is functioning.
+
+
+## SharePoint Reports "No Connection Available"
+
+If a SharePoint health check reports:
+
+  No connection available.
+  Use Connect-SPOService before running this CmdLet.
+
+the current PowerShell session does not have a valid SharePoint Online administrative connection.
+
+Run:
+
+  Connect-SPOService -Url https://<tenant>-admin.sharepoint.com
+
+and rerun the assessment.
+
+
+## SharePoint Access Denied for Individual Sites
+
+TenantIQ may successfully connect to SharePoint Online but still receive:
+
+  Access is denied
+  E_ACCESSDENIED
+  0x80070005
+
+when querying an individual site.
+
+This does not necessarily mean the entire SharePoint connection failed.
+
+Some SharePoint operations require additional access to the individual site collection.
+
+For example:
+
+  Get-SPOUser -Site <site URL>
+
+can have additional site-level administrative requirements.
+
+TenantIQ should report sites that could not be assessed separately rather than automatically classifying them as unhealthy.
+
+
+## Health Check Fails but Connection Works
+
+If the workload reports Connected but an individual health check fails:
+
+  1. Run the affected health check individually.
+
+  2. Read the complete error.
+
+  3. Identify the Microsoft cmdlet producing the failure.
+
+  4. Run that cmdlet manually.
+
+  5. Verify administrative permissions.
+
+  6. Verify the required property or feature exists in the tenant.
+
+  7. Review the TenantIQ log.
+
+Individual Microsoft 365 features can vary based on licensing, tenant configuration, service availability, and administrative permissions.
+
+
+## A Property Says "Not Returned"
+
+Some TenantIQ health checks may display:
+
+  Not returned
+
+This normally means the Microsoft administrative API or PowerShell object did not return that property in the current environment.
+
+It should not automatically be interpreted as:
+
+  Disabled
+  Enabled
+  Misconfigured
+  Compliant
+  Non-compliant
+
+TenantIQ attempts to distinguish unavailable data from actual configuration values.
+
+
+## Unexpected Warning
+
+A WARNING means TenantIQ detected a condition that should be reviewed.
+
+It does not necessarily mean the tenant is incorrectly configured.
+
+Consider:
+
+  Business requirements
+  Security architecture
+  Licensing
+  Governance policy
+  Workload design
+  Intentional exceptions
+
+before changing Microsoft 365 configuration.
+
+WARNING: Do not modify a production tenant solely because TenantIQ generated a warning without first validating the finding.
+
+
+## False Positive Suspected
+
+If a TenantIQ finding appears incorrect:
+
+  1. Record the health check name.
+
+  2. Record the values displayed by TenantIQ.
+
+  3. Identify the Microsoft property being evaluated.
+
+  4. Verify the property directly using the Microsoft administrative cmdlet.
+
+  5. Determine whether the values are semantically comparable.
+
+  6. Review whether the health check applies to that site, workload, object type, or licensing model.
+
+A health check should not score a configuration when the underlying Microsoft data cannot reliably support that conclusion.
+
+
+## HTML Report Generation Fails
+
+If TenantIQ completes an assessment but report generation fails, verify:
+
+  Assessment results exist
+  The reporting framework loaded successfully
+  The selected workload is supported
+  The output directory is writable
+  Required report files are present
+
+Review the error displayed by:
+
+  Export-ExchangeAIHtmlReport.ps1
+
+and the TenantIQ logs.
+
+
+## Workload Not Supported by Report Generator
+
+If report generation returns an error indicating that a workload is not part of a ValidateSet, the report framework may not yet be configured for that workload.
+
+Verify that the TenantIQ reporting framework supports:
+
+  Exchange Online
+  Entra ID
+  SharePoint Online
+
+for the installed TenantIQ version.
+
+
+## Health Check Script Not Found
+
+If TenantIQ reports that a health check script cannot be found, verify the workload module points to the correct file.
+
+TenantIQ health checks are organized under:
+
+  02 Health Checks
+
+with workload-specific directories such as:
+
+  Exchange Online
+  Entra ID
+  SharePoint Online
+
+Do not rename or move health-check scripts without updating the corresponding workload module registration.
+
+
+## TenantIQ Files Were Moved
+
+TenantIQ uses relative paths throughout the project.
+
+Moving the entire TenantIQ directory is generally different from moving individual framework files.
+
+If individual directories or scripts are renamed, the references inside TenantIQ modules may no longer resolve.
+
+Check:
+
+  01 Framework
+  02 Health Checks
+  07 Assets
+  10 Modules
+
+when investigating missing-file errors.
+
+
+## Git Repository Problems
+
+Before making major TenantIQ changes, check:
+
+  git status
+
+A clean repository reports:
+
+  nothing to commit, working tree clean
+
+After validated TenantIQ changes, commit them to source control according to your development process.
+
+TIP: Do not blindly commit log files, temporary files, backup scripts, authentication material, or other runtime artifacts.
+
+
+## TenantIQ Log Files
+
+TenantIQ writes diagnostic information to its logging system.
+
+When troubleshooting, look for entries containing:
+
+  [INFO]
+  [WARNING]
+  [ERROR]
+
+ERROR entries usually provide the best starting point for determining which Microsoft command or TenantIQ component failed.
+
+
+## Start With a Fresh PowerShell Session
+
+Many Microsoft 365 PowerShell problems can be affected by modules and .NET assemblies already loaded into memory.
+
+When behavior is inconsistent:
+
+  1. Close TenantIQ.
+
+  2. Close all PowerShell windows.
+
+  3. Open a fresh PowerShell session.
+
+  4. Verify module versions.
+
+  5. Test the Microsoft connection.
+
+  6. Launch TenantIQ.
+
+This is particularly useful after installing, removing, or updating Microsoft 365 PowerShell modules.
+
+
+## Troubleshooting Order
+
+Use this order when diagnosing TenantIQ problems:
+
+  1. Verify PowerShell starts normally.
+
+  2. Verify TenantIQ starts.
+
+  3. Verify the required Microsoft module is installed.
+
+  4. Verify the Microsoft connection works outside TenantIQ.
+
+  5. Verify the correct tenant and account are connected.
+
+  6. Verify required permissions.
+
+  7. Run one TenantIQ health check.
+
+  8. Review the exact error and TenantIQ log.
+
+  9. Test the underlying Microsoft cmdlet directly.
+
+  10. Run the Full Assessment only after individual checks work.
+
+
+## Quick Diagnostic Commands
+
+Exchange Online:
+
+  Get-Module ExchangeOnlineManagement -ListAvailable
+
+  Get-ConnectionInformation
+
+Entra ID:
+
+  Get-Module Microsoft.Graph* -ListAvailable
+
+  Get-MgContext
+
+SharePoint Online:
+
+  Get-Module Microsoft.Online.SharePoint.PowerShell -ListAvailable
+
+  Get-SPOTenant
+
+TenantIQ source control:
+
+  git status
+
+
+## When Reporting a TenantIQ Problem
+
+Collect the following information when investigating or reporting an issue:
+
+  TenantIQ version
+  Workload
+  Health check name
+  Exact error message
+  PowerShell version
+  Microsoft module version
+  Connection status
+  Relevant TenantIQ log entry
+
+Do not include passwords, access tokens, client secrets, private keys, or other authentication credentials.
+
+TIP: Exact error text is significantly more useful than screenshots containing only part of an error.

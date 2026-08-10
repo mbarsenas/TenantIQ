@@ -1,0 +1,47 @@
+TenantIQ Entra ID Hardening v1 - FAIL Validation
+================================================
+
+v1 does not soften the six baseline FAIL results merely to improve the score.
+Each existing algorithm was reviewed for internal consistency with the evidence it returned.
+
+Check: MFA Registration
+Baseline finding: 24 of 29 member accounts are not registered for MFA. MFA registration coverage is 17%.
+Baseline recommendation: Prioritize MFA registration for member accounts and review Conditional Access enforcement.
+v1 action: PRESERVED
+
+Check: Authentication Methods
+Baseline finding: 24 of 29 member accounts have no registered authentication methods.
+Baseline recommendation: Review affected accounts and require registration of approved authentication methods.
+v1 action: PRESERVED
+
+Check: Global Administrators
+Baseline finding: 9 active Global Administrator accounts were detected.
+Baseline recommendation: Reduce Global Administrator assignments and use least-privileged Entra roles wherever possible.
+v1 action: PRESERVED
+
+Check: Enterprise Application Permissions
+Baseline finding: 22 critical high-impact permission grant(s) were detected on non-tenant-owned enterprise applications.
+Baseline recommendation: Immediately review critical third-party application permissions and admin consent. Remove grants that are unnecessary and validate application ownership, publisher trust, and business justification.
+v1 action: PRESERVED
+
+Check: Stale User Accounts
+Baseline finding: 21 enabled member account(s) have no successful sign-in activity within the last 180 days.
+Baseline recommendation: Investigate long-inactive enabled accounts, confirm business ownership, disable unnecessary identities, and establish a recurring stale-account review process.
+v1 action: PRESERVED
+
+Check: Authorization Policy
+Baseline finding: Default users can register applications. Default users can create security groups. Default users can create new tenants. Guest users have the same directory access level as member users.
+Baseline recommendation: Review the tenant authorization policy. Keep risky-app consent disabled and avoid granting guest users the same default directory permissions as member users unless there is a documented business requirement.
+v1 action: PRESERVED
+
+Authorization Policy note:
+The check only emits FAIL when risky-app consent is enabled or the returned guestUserRoleId maps
+to the member-equivalent directory role. Broad default user permissions alone remain WARNING.
+
+Global Administrators note:
+The existing check treats >5 active Global Administrators as FAIL, 5 as WARNING, 2-4 as PASS,
+and separately fails disabled or guest Global Administrator assignments. v1 preserves this logic.
+
+Future hardening:
+v2 can deepen these checks with isolated Graph evidence and richer exception/context handling
+without changing a result unless the tenant evidence justifies it.

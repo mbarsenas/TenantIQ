@@ -1,0 +1,31 @@
+TenantIQ Teams Hardening v1
+
+This package upgrades the Teams assessment from generic inventory-only INFO results
+to check-specific scoring for controls where Microsoft Teams PowerShell exposes a
+clear, authoritative configuration signal.
+
+Hardened/scored areas include:
+- Tenant connectivity/configuration
+- Upgrade policy
+- Meeting policy inventory
+- Anonymous meeting join
+- External meeting join
+- Meeting recording/transcription posture
+- Lobby configuration
+- Federation posture
+- Guest calling
+- App permission/setup policy presence
+- Team ownership coverage
+- Ownerless teams
+- Single-owner teams
+- Guest membership inventory
+- Calling policy inventory
+- Emergency calling policy presence
+- Voice routing/dial plan/caller ID inventory
+
+Inventory/context-dependent controls remain INFO by design. This prevents TenantIQ
+from inventing PASS/FAIL results for controls that require Purview, Entra, Intune,
+activity telemetry, licensing, or an organization-specific approved baseline.
+
+The next hardening pass should use the first real tenant run to refine property names,
+licensing-dependent behavior, and organization-specific thresholds.

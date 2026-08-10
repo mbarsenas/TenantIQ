@@ -1,0 +1,20 @@
+TenantIQ OneDrive Hardening v6
+
+Purpose:
+Exact-name cleanup pass based on the v5 tenant validation.
+
+Corrected evaluator-to-registry mappings:
+- Ransomware Recovery Readiness -> Ransomware Recovery Posture
+- Security Baseline Alignment -> OneDrive Security Baseline
+- Governance Baseline Alignment -> OneDrive Governance Summary
+- Files On-Demand Readiness -> Files On-Demand Configuration
+- Known Folder Move Readiness -> Known Folder Move
+
+Post-fix audit:
+- Registered controls: 50
+- Dedicated exact-match cases: 38
+- Remaining generic-path controls: 12
+- Unregistered evaluator cases: 8
+
+No new scoring logic was added in v6. This release is intentionally limited to
+routing existing hardened logic to the correct registered OneDrive controls.

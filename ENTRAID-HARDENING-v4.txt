@@ -1,0 +1,30 @@
+TenantIQ Entra ID Hardening v4
+
+Purpose:
+Correct the evidence collector before changing the six critical control scores.
+
+Changes:
+1. Restored 6 critical-control scripts from the clean v2 originals,
+   removing accidental nested helper-function injection from v2/v3.
+2. Fixed Invoke-MgGraphRequest collection parsing for hashtable/dictionary responses.
+   This addresses evidence files that incorrectly showed:
+   - 0 member users
+   - 0 Global Administrators
+   - 0 stale users
+   - 1 service principal
+   - 1 OAuth2 permission grant
+3. Fixed Global Administrator role-definition response parsing for dictionary responses.
+4. Corrected the contextual analyzer guest-role IDs:
+   - a0b1b346-4d3e-4e8b-98f8-753987be4970 = User / same access as members
+   - 10dae51f-b6af-4016-8d66-8c2a99b929b3 = Guest User / limited access
+   - 2af84b1e-32c8-42b7-82bc-daa82404023b = Restricted Guest User
+5. No assessment scoring thresholds are changed in v4.
+
+Important:
+The prior v3 analysis that said member-equivalent guest access was not confirmed was
+incorrect because its member-equivalent guest-role constant was wrong. The raw evidence
+guestUserRoleId was a0b1b346-4d3e-4e8b-98f8-753987be4970, which is the member-equivalent
+guest access level.
+
+Next:
+Run .\Run-EntraID-v3-EvidenceValidation.ps1 again and review the regenerated evidence.

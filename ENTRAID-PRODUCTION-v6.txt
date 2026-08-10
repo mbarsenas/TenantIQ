@@ -1,0 +1,37 @@
+TenantIQ Entra ID Production v6
+
+Milestone:
+Moves validated isolated-Graph evidence into the normal Entra ID assessment.
+
+Behavior:
+- A full Entra ID assessment now collects the critical evidence cache once at startup.
+- Graph collection remains isolated from the main Windows PowerShell process.
+- Enterprise application app-role queries remain batched.
+- Authorization Policy, Global Administrators, and Enterprise Application Permissions
+  consume validated cached evidence directly.
+- If evidence collection fails, those checks automatically fall back to the previous
+  native TenantIQ implementations.
+
+Production scoring:
+Authorization Policy:
+- FAIL when guestUserRoleId is member-equivalent.
+- WARNING for broad default-user creation permissions without member-equivalent guest access.
+- PASS when neither condition is present.
+
+Global Administrators:
+- Uses validated user role assignments.
+- 0 = FAIL, 1 = WARNING High, 2-4 = PASS, 5 = WARNING Medium, >5 = FAIL High.
+
+Enterprise Application Permissions:
+- Evaluates explicit high-impact permission values from delegated and application grants.
+- FAIL only when a high-impact permission is established on a non-tenant-owned,
+  non-Microsoft application.
+- Microsoft-owned or tenant-owned high-impact grants remain WARNING/Review rather than
+  being automatically classified as third-party critical.
+
+Stale User Accounts is intentionally NOT switched to the cache in v6 because the
+validated evidence count (26) differs from the current production check (21). That
+algorithm will be reconciled separately before production replacement.
+
+MFA Registration and Authentication Methods retain their current Microsoft Graph Reports
+implementations because their evidence source already directly exposes registration state.

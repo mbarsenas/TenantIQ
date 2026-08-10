@@ -1,0 +1,18 @@
+OneDrive Hardening v1 filename/case correction
+
+The first generated v1 evaluator used several friendly check names that did not exactly
+match the 50 names registered in OneDrive.ps1. This package corrects those switch-case
+names so the hardened logic is actually invoked by the registered roadmap checks.
+
+Corrected controls include:
+- OneDrive External Sharing
+- Anyone Link Exposure
+- Default Sharing Links
+- Sharing Domain Restrictions
+- OneDrive Retention
+- Deleted User Retention Coverage
+- OneDrive Storage Defaults
+- Storage Utilization
+- Version History Configuration
+- Block Sync on Unmanaged Devices
+- OneDrive Site Inventory

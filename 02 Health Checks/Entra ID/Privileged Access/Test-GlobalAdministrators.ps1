@@ -1,3 +1,66 @@
+﻿# TenantIQ Entra ID Production v6
+# This control consumes the validated isolated Graph evidence cache when available.
+# If the cache is unavailable, the original native implementation runs unchanged.
+
+$TenantIQEvidence = $null
+if (Get-Command Get-TenantIQEntraProductionEvidence -ErrorAction SilentlyContinue) {
+    $TenantIQEvidence = Get-TenantIQEntraProductionEvidence
+}
+
+if ($null -ne $TenantIQEvidence) {
+    $Stopwatch = [Diagnostics.Stopwatch]::StartNew()
+    $Assignments = @($TenantIQEvidence.GlobalAdministrators.Assignments)
+    $Users = @($Assignments | Where-Object { $_.PrincipalType -match "user" })
+    $NonUsers = @($Assignments | Where-Object { $_.PrincipalType -notmatch "user" })
+    $Count = $Users.Count
+    $Stopwatch.Stop()
+
+    if ($Count -eq 0) {
+        $Status = "FAIL"; $Severity = "High"
+        $Finding = "No user Global Administrator assignments were detected in validated Graph evidence."
+        $Recommendation = "Verify privileged role assignments and maintain appropriate administrative redundancy."
+    }
+    elseif ($Count -eq 1) {
+        $Status = "WARNING"; $Severity = "High"
+        $Finding = "Only one user Global Administrator assignment was detected."
+        $Recommendation = "Maintain administrative redundancy and separate emergency access accounts."
+    }
+    elseif ($Count -gt 5) {
+        $Status = "FAIL"; $Severity = "High"
+        $Finding = "$Count user Global Administrator assignments were confirmed by isolated Graph evidence."
+        $Recommendation = "Reduce Global Administrator assignments and use least-privileged roles or PIM eligibility wherever possible."
+    }
+    elseif ($Count -eq 5) {
+        $Status = "WARNING"; $Severity = "Medium"
+        $Finding = "Five user Global Administrator assignments were confirmed by isolated Graph evidence."
+        $Recommendation = "Review each assignment and confirm unrestricted tenant-wide privilege is required."
+    }
+    else {
+        $Status = "PASS"; $Severity = "None"
+        $Finding = "$Count user Global Administrator assignments were confirmed by isolated Graph evidence."
+        $Recommendation = "Continue least-privilege and periodic privileged-role reviews."
+    }
+
+    if ($NonUsers.Count -gt 0) {
+        $Finding += " $($NonUsers.Count) non-user Global Administrator assignment(s) were also present and should be reviewed separately."
+    }
+
+    Write-Host "Global Administrators (Validated Evidence)" -ForegroundColor Cyan
+    $Assignments | Select-Object DisplayName,UPN,PrincipalType | Format-Table -AutoSize
+    Write-Host ""
+
+    $null = New-HealthCheckResult `
+        -Check "Global Administrators" `
+        -Category "Privileged Access" `
+        -Status $Status `
+        -Severity $Severity `
+        -Finding $Finding `
+        -Recommendation $Recommendation `
+        -Duration $Stopwatch.Elapsed.TotalSeconds
+    return
+}
+
+# Native fallback
 $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
 Write-ExchangeAILog `

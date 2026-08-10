@@ -1,0 +1,31 @@
+TenantIQ Teams Hardening v3
+
+Built from the real v2 tenant assessment:
+TenantIQ--Assessment-20260809-223238.csv
+
+Observed v2 distribution:
+{
+  "INFO": 36,
+  "PASS": 10,
+  "WARNING": 4
+}
+
+v3 adds cross-workload evaluation for:
+- Inactive Teams lifecycle review using Microsoft Graph group metadata
+- Microsoft 365 Group expiration/lifecycle policy
+- Intune managed-device compliance
+- Teams/Microsoft 365 Group sensitivity-label coverage
+- Purview Information Barriers
+- Purview Teams retention integration
+- Purview DLP integration
+- Purview eDiscovery visibility/readiness
+- Purview unified audit-log accessibility
+- Entra cross-tenant access posture for shared-channel governance
+
+Design rule:
+TenantIQ does not convert a control to PASS/FAIL merely because an API returned an object.
+Controls remain INFO when licensing, organizational policy, or additional telemetry is required
+for an authoritative judgment.
+
+This package may prompt for Microsoft Graph and Microsoft Purview sign-in during the Teams
+assessment because v3 intentionally evaluates cross-workload dependencies.

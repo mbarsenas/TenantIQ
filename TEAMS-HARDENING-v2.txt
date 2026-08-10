@@ -1,0 +1,29 @@
+TenantIQ Teams Hardening v2
+
+Built from the actual tenant assessment CSV:
+TenantIQ--Assessment-20260809-222408.csv
+
+Observed v1 results:
+{'INFO': 36, 'PASS': 9, 'WARNING': 5}
+
+v2 changes:
+1. Removed duplicate ownership scoring:
+   - Teams Ownership Coverage is now an INFO aggregate summary.
+   - Ownerless Teams and Single-Owner Teams remain the scored controls.
+2. Refined Teams Upgrade Policy scoring:
+   - Islands is no longer automatically treated as a warning.
+   - Only explicit legacy Skype for Business coexistence modes are flagged.
+3. Added dedicated evaluation paths for:
+   - Teams Messaging Policies
+   - User Chat Controls
+   - Giphy and Meme Controls
+   - Teams Channel Policies
+   - Private Channel Creation
+   - Shared Channel Creation
+   - PSTN Usage Configuration
+   - Emergency Call Routing
+4. Preserved INFO for controls where a universal PASS/FAIL would require licensing,
+   Purview/Entra/Intune data, activity telemetry, or an organization-approved baseline.
+5. INFO results remain excluded from TenantIQ score calculation.
+
+This package is intended for the next real-tenant validation run.

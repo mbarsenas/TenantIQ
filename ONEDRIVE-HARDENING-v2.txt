@@ -1,0 +1,32 @@
+TenantIQ OneDrive Hardening v2
+
+Built from the real v1 assessment:
+TenantIQ--Assessment-20260810-134206.csv
+
+Observed v1 distribution:
+{
+  "INFO": 36,
+  "WARNING": 5,
+  "PASS": 9
+}
+
+v2 adds isolated Microsoft Graph evidence for:
+- Conditional Access policy presence
+- MFA Conditional Access controls
+- Intune managed-device compliance
+- Enabled-member licensing inventory
+- Organization/user inventory
+
+v2 adds Purview evaluation for:
+- Sensitivity labels
+- DLP
+- Retention policies
+- eDiscovery visibility
+- Information Barriers
+
+Graph is intentionally executed in a separate child PowerShell process to avoid
+the Microsoft.Graph/MSAL assembly collisions previously encountered with Exchange
+Online and Microsoft Teams.
+
+INFO remains the fallback where TenantIQ cannot make an authoritative judgment from
+the available API data, licensing, or organization-specific policy.

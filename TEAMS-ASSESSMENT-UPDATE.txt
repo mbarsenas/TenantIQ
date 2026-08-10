@@ -1,0 +1,19 @@
+TenantIQ Microsoft Teams Assessment Update
+
+Implemented:
+- Microsoft Teams automatic connection/verification
+- Full Microsoft Teams Assessment runner
+- Executes all 50 enabled Teams checks in numeric order
+- Per-check exception isolation so one failed control does not stop the assessment
+- Standardized result aggregation
+- PASS/WARNING/FAIL/INFO totals
+- Score calculation only when scored controls exist
+- HTML report generation attempt using the existing TenantIQ report framework
+- Dedicated Teams module menu and Health Checks viewer
+- Corrected Exchange Online dashboard count regression
+
+Important:
+The 50 Teams check files in this package are the bulk-generated baseline checks created earlier.
+They currently return INFO/readiness results unless a check has been separately hardened and
+validated. The full assessment now runs correctly, but a meaningful Teams security score
+requires check-by-check scoring logic to be validated against the tenant.

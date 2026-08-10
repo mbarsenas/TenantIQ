@@ -1,0 +1,21 @@
+TenantIQ Teams Hardening v4.5
+
+Fix:
+The tenant's installed MicrosoftTeams module defines Get-CsOnlineUser -ResultSize
+as System.UInt32. Passing the string 'Unlimited' therefore caused:
+
+Cannot convert value "Unlimited" to type "System.UInt32"
+
+v4.5 now uses:
+Get-CsOnlineUser -ResultSize ([uint32]::MaxValue)
+
+This preserves full user enumeration without relying on a string token unsupported
+by the installed module version.
+
+Expected Teams Upgrade Policy behavior:
+- PASS when no users have effective legacy coexistence modes.
+- WARNING only when actual users are in:
+    SfBOnly
+    SfBWithTeamsCollab
+    SfBWithTeamsCollabAndMeetings
+- Global Islands remains context only.

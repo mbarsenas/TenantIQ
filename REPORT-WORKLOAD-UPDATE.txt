@@ -1,0 +1,13 @@
+TenantIQ Report Workload Update
+
+The HTML reporting function's Workload ValidateSet was expanded to support:
+- Exchange Online
+- Entra ID
+- SharePoint Online
+- Microsoft Teams
+- OneDrive
+- Microsoft Intune
+- Microsoft Defender
+- Microsoft Purview
+
+This fixes the Microsoft Teams assessment failure that occurred only at report generation.

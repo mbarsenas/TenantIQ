@@ -1,0 +1,19 @@
+TenantIQ Entra ID Hardening v1
+
+Starting baseline:
+- 70 executed controls
+- 31 PASS
+- 33 WARNING
+- 6 FAIL
+- 0 INFO
+
+v1 changes:
+1. Deduplicated the Entra ID registry from 70 to 66 unique executions.
+2. Preserved the richer Identity Protection versions of Risky Users and Risky Sign-Ins.
+3. Removed duplicate execution of Named Locations and Authentication Registration Campaign.
+4. Validated all remaining registered script paths.
+5. Reviewed the six baseline FAIL algorithms and preserved them rather than weakening scoring
+   without contradictory tenant evidence.
+6. Added FAIL-validation and dedup audit documents.
+
+Expected next assessment count: 66 controls.

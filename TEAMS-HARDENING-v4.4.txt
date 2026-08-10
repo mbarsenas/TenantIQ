@@ -1,0 +1,27 @@
+TenantIQ Teams Hardening v4.4
+
+Fix:
+Tenant validation confirmed that Get-CsOnlineUser directly exposes:
+- TeamsUpgradeEffectiveMode
+- TeamsUpgradePolicy
+- TeamsUpgradeOverridePolicy
+- TeamsUpgradeNotificationsEnabled
+- TeamsUpgradePolicyIsReadOnly
+
+The v4.3 Teams Upgrade Policy control attempted to use the -Properties parameter,
+which is not required and can behave inconsistently across MicrosoftTeams module
+versions.
+
+v4.4 now retrieves users with:
+
+Get-CsOnlineUser -ResultSize Unlimited
+
+and reads TeamsUpgradeEffectiveMode / TeamsUpgradePolicy directly from each user.
+
+Expected result:
+- PASS when no users have an effective legacy mode.
+- WARNING when one or more users have:
+    SfBOnly
+    SfBWithTeamsCollab
+    SfBWithTeamsCollabAndMeetings
+- Global Islands remains informational context and is not automatically penalized.

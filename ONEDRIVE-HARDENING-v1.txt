@@ -1,0 +1,34 @@
+TenantIQ OneDrive Hardening v1
+
+Built from baseline tenant assessment:
+TenantIQ--Assessment-20260810-023002.csv
+
+Baseline result distribution:
+{
+  "INFO": 50
+}
+
+v1 adds direct scoring where the SharePoint Online Management Shell exposes a
+clear OneDrive/tenant signal, including:
+- Tenant configuration access
+- OneDrive sharing capability
+- Anyone-link availability
+- Default sharing-link type
+- External-user expiration
+- Guest resharing
+- Domain-restricted sharing
+- Unmanaged-device access
+- Sync-client restrictions
+- Domain-restricted sync
+- Deleted-user OneDrive retention
+- Default storage quota
+- Storage utilization
+- Ownership coverage
+- Inactive OneDrive sites
+- Version-history configuration
+
+Controls that require Microsoft Graph, Entra Conditional Access, Intune, Purview,
+usage telemetry, licensing context, or an organization-approved baseline remain INFO.
+
+Next step:
+Run the full OneDrive assessment and use the resulting report for OneDrive Hardening v2.

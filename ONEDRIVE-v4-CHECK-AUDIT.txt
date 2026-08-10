@@ -1,0 +1,59 @@
+TenantIQ OneDrive v4 exact-name audit
+
+Registered checks: 50
+Dedicated evaluator cases: 33
+Remaining generic/INFO-path checks: 17
+
+Dedicated cases:
+- Anyone Link Exposure
+- Block Sync on Unmanaged Devices
+- Conditional Access Alignment
+- DLP Coverage
+- Default Sharing Links
+- Deleted User Retention Coverage
+- Device Compliance Alignment
+- Download Restrictions
+- External User Expiration
+- Former Employee OneDrives
+- Guest Resharing
+- High Storage Consumers
+- Inactive OneDrive Sites
+- Information Barriers Integration
+- Legacy Authentication
+- MFA Access Alignment
+- OneDrive External Sharing
+- OneDrive License Coverage
+- OneDrive Ownership Coverage
+- OneDrive Retention
+- OneDrive Site Inventory
+- OneDrive Storage Defaults
+- OneDrive Tenant Configuration
+- Orphaned OneDrive Sites
+- Recycle Bin Retention
+- Retention Policy Coverage
+- Sensitivity Label Coverage
+- Sharing Domain Restrictions
+- Storage Utilization
+- Sync Client Restrictions
+- Unmanaged Device Access
+- Version History Configuration
+- eDiscovery Readiness
+
+Remaining generic-path checks:
+- App-Only Authentication
+- File Restore Readiness
+- Files On-Demand Configuration
+- Known Folder Move Adoption
+- Known Folder Move Readiness
+- Malware and Infected File Controls
+- OneDrive Admin Notifications
+- OneDrive Governance Summary
+- OneDrive Security Baseline
+- OneDrive Service Health Readiness
+- OneDrive Usage Trends
+- Personal Vault Governance
+- Ransomware Recovery Posture
+- Records Management Integration
+- Restore Capability Review
+- Sync App Version Governance
+- Sync Health Reporting

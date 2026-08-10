@@ -1,0 +1,267 @@
+﻿{
+    "Success":  true,
+    "Error":  null,
+    "GeneratedAt":  "2026-08-10T02:21:27.0606877-05:00",
+    "Account":  "mbarsenas@387l8c.onmicrosoft.com",
+    "TeamsGroups":  [
+                        {
+                            "@odata.context":  "https://graph.microsoft.com/v1.0/$metadata#groups(id,displayName,renewedDateTime,createdDateTime,assignedLabels)",
+                            "value":  [
+                                          {
+                                              "id":  "9dc8ca73-5e71-456f-baf5-cf528f188964",
+                                              "assignedLabels":  [
+
+                                                                 ],
+                                              "displayName":  "Sales and Marketing",
+                                              "createdDateTime":  "\/Date(1669782662000)\/",
+                                              "renewedDateTime":  "\/Date(1669782662000)\/"
+                                          },
+                                          {
+                                              "id":  "f1492604-993a-43e9-bb76-6866baa7f7a2",
+                                              "assignedLabels":  [
+
+                                                                 ],
+                                              "displayName":  "Retail",
+                                              "createdDateTime":  "\/Date(1669782615000)\/",
+                                              "renewedDateTime":  "\/Date(1669782615000)\/"
+                                          },
+                                          {
+                                              "id":  "07600614-9f70-400b-b77e-1ff784ce2cc0",
+                                              "assignedLabels":  [
+
+                                                                 ],
+                                              "displayName":  "MSFT",
+                                              "createdDateTime":  "\/Date(1669780644000)\/",
+                                              "renewedDateTime":  "\/Date(1669780644000)\/"
+                                          },
+                                          {
+                                              "id":  "d1bc154f-13ce-4e73-baa4-567c377ea019",
+                                              "assignedLabels":  [
+
+                                                                 ],
+                                              "displayName":  "Digital Initiative Public Relations",
+                                              "createdDateTime":  "\/Date(1669782441000)\/",
+                                              "renewedDateTime":  "\/Date(1669782441000)\/"
+                                          },
+                                          {
+                                              "id":  "d72c15b2-7c12-4c04-ae5b-07657320fc8c",
+                                              "assignedLabels":  [
+
+                                                                 ],
+                                              "displayName":  "Mark 8 Project Team",
+                                              "createdDateTime":  "\/Date(1669782509000)\/",
+                                              "renewedDateTime":  "\/Date(1669782509000)\/"
+                                          },
+                                          {
+                                              "id":  "e28b76ce-c63c-4c45-9b15-20d8b9b5346d",
+                                              "assignedLabels":  [
+
+                                                                 ],
+                                              "displayName":  "U.S. Sales",
+                                              "createdDateTime":  "\/Date(1669782701000)\/",
+                                              "renewedDateTime":  "\/Date(1669782701000)\/"
+                                          },
+                                          {
+                                              "id":  "bce51542-5d4c-4eef-b2a3-4dc4312b8156",
+                                              "assignedLabels":  [
+
+                                                                 ],
+                                              "displayName":  "ABC",
+                                              "createdDateTime":  "\/Date(1718376604000)\/",
+                                              "renewedDateTime":  "\/Date(1718376604000)\/"
+                                          },
+                                          {
+                                              "id":  "11b3d5a2-75ae-42fb-b382-f0ce5b7e9a7f",
+                                              "assignedLabels":  [
+
+                                                                 ],
+                                              "displayName":  "Marks Test",
+                                              "createdDateTime":  "\/Date(1753909768000)\/",
+                                              "renewedDateTime":  "\/Date(1753909768000)\/"
+                                          },
+                                          {
+                                              "id":  "c79fcd38-5969-4e21-8267-c41e731d7392",
+                                              "assignedLabels":  [
+
+                                                                 ],
+                                              "displayName":  "TEST 1",
+                                              "createdDateTime":  "\/Date(1754284819000)\/",
+                                              "renewedDateTime":  "\/Date(1754284819000)\/"
+                                          }
+                                      ]
+                        }
+                    ],
+    "LifecyclePolicies":  [
+                              {
+                                  "@odata.context":  "https://graph.microsoft.com/v1.0/$metadata#groupLifecyclePolicies",
+                                  "value":  [
+
+                                            ]
+                              }
+                          ],
+    "ManagedDevices":  [
+                           {
+                               "@odata.context":  "https://graph.microsoft.com/v1.0/$metadata#deviceManagement/managedDevices(id,deviceName,operatingSystem,complianceState)",
+                               "@odata.count":  0,
+                               "value":  [
+
+                                         ]
+                           }
+                       ],
+    "CrossTenantDefault":  {
+                               "inboundTrust":  {
+                                                    "isMfaAccepted":  false,
+                                                    "isHybridAzureADJoinedDeviceAccepted":  false,
+                                                    "isCompliantDeviceAccepted":  false
+                                                },
+                               "isServiceDefault":  true,
+                               "automaticUserConsentSettings":  {
+                                                                    "inboundAllowed":  false,
+                                                                    "outboundAllowed":  false
+                                                                },
+                               "b2bCollaborationInbound":  {
+                                                               "applications":  {
+                                                                                    "targets":  [
+                                                                                                    {
+                                                                                                        "target":  "AllApplications",
+                                                                                                        "targetType":  "application"
+                                                                                                    }
+                                                                                                ],
+                                                                                    "accessType":  "allowed"
+                                                                                },
+                                                               "usersAndGroups":  {
+                                                                                      "targets":  [
+                                                                                                      {
+                                                                                                          "target":  "AllUsers",
+                                                                                                          "targetType":  "user"
+                                                                                                      }
+                                                                                                  ],
+                                                                                      "accessType":  "allowed"
+                                                                                  }
+                                                           },
+                               "@odata.context":  "https://graph.microsoft.com/v1.0/$metadata#policies/crossTenantAccessPolicy/default/$entity",
+                               "b2bDirectConnectOutbound":  {
+                                                                "applications":  {
+                                                                                     "targets":  [
+                                                                                                     {
+                                                                                                         "target":  "AllApplications",
+                                                                                                         "targetType":  "application"
+                                                                                                     }
+                                                                                                 ],
+                                                                                     "accessType":  "blocked"
+                                                                                 },
+                                                                "usersAndGroups":  {
+                                                                                       "targets":  [
+                                                                                                       {
+                                                                                                           "target":  "AllUsers",
+                                                                                                           "targetType":  "user"
+                                                                                                       }
+                                                                                                   ],
+                                                                                       "accessType":  "blocked"
+                                                                                   }
+                                                            },
+                               "id":  "97e567a7-0b49-4205-8bff-1adfaccd5cee",
+                               "b2bDirectConnectInbound":  {
+                                                               "applications":  {
+                                                                                    "targets":  [
+                                                                                                    {
+                                                                                                        "target":  "AllApplications",
+                                                                                                        "targetType":  "application"
+                                                                                                    }
+                                                                                                ],
+                                                                                    "accessType":  "blocked"
+                                                                                },
+                                                               "usersAndGroups":  {
+                                                                                      "targets":  [
+                                                                                                      {
+                                                                                                          "target":  "AllUsers",
+                                                                                                          "targetType":  "user"
+                                                                                                      }
+                                                                                                  ],
+                                                                                      "accessType":  "blocked"
+                                                                                  }
+                                                           },
+                               "invitationRedemptionIdentityProviderConfiguration":  {
+                                                                                         "fallbackIdentityProvider":  "defaultConfiguredIdp",
+                                                                                         "primaryIdentityProviderPrecedenceOrder":  [
+                                                                                                                                        "azureActiveDirectory",
+                                                                                                                                        "externalFederation",
+                                                                                                                                        "socialIdentityProviders"
+                                                                                                                                    ]
+                                                                                     },
+                               "m365CollaborationOutbound":  {
+                                                                 "usersAndGroups":  {
+                                                                                        "targets":  [
+                                                                                                        {
+                                                                                                            "target":  "AllUsers",
+                                                                                                            "targetType":  "user"
+                                                                                                        }
+                                                                                                    ],
+                                                                                        "accessType":  "allowed"
+                                                                                    }
+                                                             },
+                               "b2bCollaborationOutbound":  {
+                                                                "applications":  {
+                                                                                     "targets":  [
+                                                                                                     {
+                                                                                                         "target":  "AllApplications",
+                                                                                                         "targetType":  "application"
+                                                                                                     }
+                                                                                                 ],
+                                                                                     "accessType":  "allowed"
+                                                                                 },
+                                                                "usersAndGroups":  {
+                                                                                       "targets":  [
+                                                                                                       {
+                                                                                                           "target":  "AllUsers",
+                                                                                                           "targetType":  "user"
+                                                                                                       }
+                                                                                                   ],
+                                                                                       "accessType":  "allowed"
+                                                                                   }
+                                                            },
+                               "m365CollaborationInbound":  {
+                                                                "users":  {
+                                                                              "targets":  [
+                                                                                              {
+                                                                                                  "target":  "AllUsers",
+                                                                                                  "targetType":  "user"
+                                                                                              }
+                                                                                          ],
+                                                                              "accessType":  "blocked"
+                                                                          }
+                                                            },
+                               "appServiceConnectInbound":  {
+                                                                "applications":  {
+                                                                                     "targets":  [
+                                                                                                     {
+                                                                                                         "target":  "AllApplications",
+                                                                                                         "targetType":  "application"
+                                                                                                     }
+                                                                                                 ],
+                                                                                     "accessType":  "blocked"
+                                                                                 }
+                                                            },
+                               "tenantRestrictions":  {
+                                                          "usersAndGroups":  {
+                                                                                 "targets":  [
+                                                                                                 {
+                                                                                                     "target":  "AllUsers",
+                                                                                                     "targetType":  "user"
+                                                                                                 }
+                                                                                             ],
+                                                                                 "accessType":  "blocked"
+                                                                             },
+                                                          "applications":  {
+                                                                               "targets":  [
+                                                                                               {
+                                                                                                   "target":  "AllApplications",
+                                                                                                   "targetType":  "application"
+                                                                                               }
+                                                                                           ],
+                                                                               "accessType":  "blocked"
+                                                                           },
+                                                          "devices":  null
+                                                      }
+                           }
+}

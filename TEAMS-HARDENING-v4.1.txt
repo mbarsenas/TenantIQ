@@ -1,0 +1,18 @@
+TenantIQ Teams Hardening v4.1
+
+Fix:
+The isolated Graph collector was previously stored under 01 Framework.
+TenantIQ loads framework .ps1 files during startup, which caused PowerShell
+to execute the collector directly and prompt for its mandatory OutputPath parameter.
+
+The collector has been moved to:
+00 Runtime\Tools\Invoke-TenantIQGraphIsolatedCache.ps1
+
+The Teams hardened evaluator now launches that script only when a Graph-dependent
+Teams control needs isolated Microsoft Graph evidence.
+
+Expected startup behavior:
+- TenantIQ launches normally.
+- No OutputPath prompt appears.
+- When the first Graph-dependent Teams check runs, TenantIQ launches the isolated
+  child PowerShell process and supplies OutputPath automatically.

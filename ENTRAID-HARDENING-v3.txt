@@ -1,0 +1,25 @@
+TenantIQ Entra ID Hardening v3
+
+Clean v2 baseline:
+PASS 30
+WARNING 30
+FAIL 6
+INFO 0
+TOTAL 66
+
+Focus:
+- Authorization Policy: split member-equivalent guest access from broad default-user permissions.
+- Global Administrators: distinguish user vs service-principal assignments in contextual evidence.
+- Stale Users: explicitly treat 180-day inactivity as lifecycle review evidence, with exceptions requiring documentation.
+- Enterprise Applications: state that raw grant counts are insufficient to prove criticality.
+- MFA Registration / Authentication Methods: preserve current thresholds pending richer per-user registration evidence.
+
+New:
+- Run-EntraID-v3-EvidenceValidation.ps1
+- 00 Runtime\Tools\Invoke-TenantIQEntraIDV3Analysis.ps1
+- v3 evidence helper embedded in the six stable FAIL scripts.
+- Original v2 target scripts preserved in 00 Runtime\EntraID-v3-Originals.
+
+Important:
+v3 does not automatically downgrade the six FAIL results. It creates the contextual evidence needed
+to change scoring only when the tenant data supports that change.

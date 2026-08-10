@@ -1,0 +1,24 @@
+TenantIQ Entra ID Hardening v3.2
+
+Diagnostic fix for the remaining Graph BadRequest.
+
+v3.2 does not guess which Graph request is failing.
+
+The isolated evidence collector now records:
+- Stage
+- Exact Graph URI
+- Exception type
+- Error message
+
+Run-EntraID-v3-EvidenceValidation.ps1 now prints those fields before throwing.
+
+Run:
+.\Run-EntraID-v3-EvidenceValidation.ps1
+
+If collection fails, the console will now show something like:
+
+Stage : Users and sign-in activity
+URI   : /v1.0/users?... 
+Error : Response status code ...
+
+That output identifies the exact request TenantIQ must correct next.

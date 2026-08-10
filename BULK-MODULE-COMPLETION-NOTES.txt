@@ -1,0 +1,21 @@
+TenantIQ Multi-Module Bulk Completion Package
+Generated: 2026-08-09
+
+Modules processed:
+- EntraID.ps1: preserved existing health-check scripts (70 paths verified)
+- MicrosoftDefender.ps1: 50 generated baseline scripts
+- MicrosoftIntune.ps1: 50 generated baseline scripts
+- MicrosoftPurview.ps1: 50 generated baseline scripts
+- MicrosoftTeams.ps1: 50 generated baseline scripts
+- OneDrive.ps1: 50 generated baseline scripts
+
+Important:
+The newly generated Defender, Intune, Purview, Teams, and OneDrive checks are executable
+inventory/readiness baseline checks. They intentionally return INFO instead of manufacturing
+PASS/WARNING scores until each control is validated against a real tenant.
+
+Shared runtime:
+01 Framework\Invoke-TenantIQBulkCheck.ps1
+
+All roadmap script paths validated: YES
+Missing paths: 0

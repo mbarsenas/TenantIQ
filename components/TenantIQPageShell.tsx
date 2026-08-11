@@ -14,14 +14,14 @@ const TRUST_STATS = [
 ];
 
 const WORKLOADS = [
-  "Entra ID",
-  "Exchange Online",
-  "SharePoint",
-  "Teams",
-  "OneDrive",
-  "Intune",
-  "Defender",
-  "Purview",
+  { name: "Entra ID", mark: "E", className: "entra" },
+  { name: "Exchange Online", mark: "X", className: "exchange" },
+  { name: "SharePoint", mark: "S", className: "sharepoint" },
+  { name: "Teams", mark: "T", className: "teams" },
+  { name: "OneDrive", mark: "☁", className: "onedrive" },
+  { name: "Intune", mark: "I", className: "intune" },
+  { name: "Defender", mark: "◆", className: "defender" },
+  { name: "Purview", mark: "P", className: "purview" },
 ];
 
 function HomeEnhancements() {
@@ -60,12 +60,10 @@ function HomeEnhancements() {
         <div className="workload-strip-wrap">
           <div className="workload-strip-title">Microsoft 365 workloads covered</div>
           <div className="workload-strip">
-            {WORKLOADS.map((workload, index) => (
-              <div className="workload-item" key={workload}>
-                <span>{workload}</span>
-                {index < WORKLOADS.length - 1 && (
-                  <span className="workload-dot" aria-hidden="true">•</span>
-                )}
+            {WORKLOADS.map((workload) => (
+              <div className="workload-item" key={workload.name}>
+                <span className={`workload-logo ${workload.className}`} aria-hidden="true">{workload.mark}</span>
+                <span className="workload-name">{workload.name}</span>
               </div>
             ))}
           </div>
@@ -209,9 +207,7 @@ export default function TenantIQPageShell({ mode }: { mode: PageMode }) {
           border-right: 1px solid rgba(139,149,165,.14);
         }
 
-        .trust-stat:last-child {
-          border-right: 0;
-        }
+        .trust-stat:last-child { border-right: 0; }
 
         .trust-stat-icon {
           width: 8px;
@@ -242,7 +238,7 @@ export default function TenantIQPageShell({ mode }: { mode: PageMode }) {
           position: absolute;
           left: 0;
           right: 0;
-          bottom: 26px;
+          bottom: 18px;
           padding-top: 17px;
           border-top: 1px solid rgba(76,141,255,.17);
           text-align: center;
@@ -263,80 +259,73 @@ export default function TenantIQPageShell({ mode }: { mode: PageMode }) {
         }
 
         .workload-strip {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-wrap: wrap;
-          gap: 8px 13px;
-          margin-top: -11px;
-          color: #C5CCDA;
-          font-family: 'Inter', sans-serif;
-          font-size: 12px;
+          display: grid;
+          grid-template-columns: repeat(8, minmax(0, 1fr));
+          gap: 10px;
+          margin-top: -10px;
         }
 
         .workload-item {
-          display: inline-flex;
+          display: flex;
+          flex-direction: column;
           align-items: center;
-          gap: 13px;
+          justify-content: center;
+          gap: 7px;
+          min-width: 0;
+          color: #C5CCDA;
+          font-family: 'Inter', sans-serif;
+          font-size: 11px;
+          white-space: nowrap;
         }
 
-        .workload-dot {
-          color: #4C8DFF;
-          opacity: .7;
+        .workload-logo {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          border: 1px solid rgba(76,141,255,.32);
+          border-radius: 8px;
+          color: #8FC0FF;
+          background: linear-gradient(145deg, rgba(33,87,181,.30), rgba(16,31,58,.68));
+          box-shadow: inset 0 0 12px rgba(76,141,255,.08), 0 0 12px rgba(33,112,255,.08);
+          font-family: 'Space Grotesk', sans-serif;
+          font-size: 13px;
+          font-weight: 700;
+        }
+
+        .workload-logo.entra { border-radius: 50% 35% 50% 35%; color: #64C7FF; }
+        .workload-logo.exchange { color: #56A7FF; }
+        .workload-logo.sharepoint { color: #63D4CE; }
+        .workload-logo.teams { color: #9E9BFF; }
+        .workload-logo.onedrive { color: #62B9FF; font-size: 15px; }
+        .workload-logo.intune { color: #67C9FF; }
+        .workload-logo.defender { color: #70B7FF; }
+        .workload-logo.purview { color: #A39CFF; }
+
+        .workload-name {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 100%;
         }
 
         @media (max-width: 900px) {
-          #top {
-            padding-bottom: 330px;
-          }
-
-          .home-enhancements {
-            height: 340px;
-          }
-
-          .trust-stat-row {
-            width: 100%;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-          }
-
-          .trust-stat:nth-child(2) {
-            border-right: 0;
-          }
-
-          .trust-stat:nth-child(-n+2) {
-            border-bottom: 1px solid rgba(139,149,165,.14);
-          }
+          #top { padding-bottom: 370px; }
+          .home-enhancements { height: 380px; }
+          .trust-stat-row { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .trust-stat:nth-child(2) { border-right: 0; }
+          .trust-stat:nth-child(-n+2) { border-bottom: 1px solid rgba(139,149,165,.14); }
+          .workload-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 15px; }
         }
 
         @media (max-width: 560px) {
-          #top {
-            padding-bottom: 400px;
-          }
-
-          .home-enhancements {
-            height: 410px;
-          }
-
-          .home-enhancements-inner {
-            width: min(100% - 30px, 1100px);
-          }
-
-          .trust-stat {
-            padding: 10px 11px;
-          }
-
-          .workload-strip-wrap {
-            bottom: 22px;
-          }
-
-          .workload-strip {
-            gap: 7px 9px;
-            font-size: 11px;
-          }
-
-          .workload-item {
-            gap: 9px;
-          }
+          #top { padding-bottom: 500px; }
+          .home-enhancements { height: 510px; }
+          .home-enhancements-inner { width: min(100% - 30px, 1100px); }
+          .trust-stat { padding: 10px 11px; }
+          .workload-strip-wrap { bottom: 18px; }
+          .workload-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .workload-item { font-size: 10px; }
         }
       `}</style>
 

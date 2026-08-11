@@ -66,6 +66,34 @@ function Complete-TenantIQPurviewSimpleEvidence {
     Add-TenantIQPurviewResult $CheckName $Category $PresentStatus 'None' $Finding $PresentRecommendation $Stopwatch.Elapsed.TotalSeconds
 }
 
+function Get-TenantIQInformationBarrierEvidence {
+    param([ValidateSet('Segments','Policies')][string]$Type)
+
+    $Candidates = if ($Type -eq 'Segments') {
+        @('Get-InformationBarrierSegment','Get-OrganizationSegment')
+    }
+    else {
+        @('Get-InformationBarrierPolicy')
+    }
+
+    $Probe = Invoke-TenantIQPurviewCommandProbe -Candidates $Candidates
+    if ($Probe.Success) { return $Probe }
+
+    # Fallback to Exchange Online organization-segment evidence when the
+    # Purview-specific cmdlets are not imported in the compliance session.
+    if ($Type -eq 'Segments' -and (Get-Command Get-OrganizationSegment -ErrorAction SilentlyContinue)) {
+        try {
+            $Data = @(Get-OrganizationSegment -ErrorAction Stop)
+            return [pscustomobject]@{ Success=$true; Source='Get-OrganizationSegment'; Items=$Data; Count=$Data.Count; Error=$null }
+        }
+        catch {
+            return [pscustomobject]@{ Success=$false; Source='Get-OrganizationSegment'; Items=@(); Count=0; Error=$_.Exception.Message }
+        }
+    }
+
+    return $Probe
+}
+
 function Invoke-TenantIQPurviewHardenedCheck {
     param([Parameter(Mandatory)][string]$CheckName,[Parameter(Mandatory)][string]$Category,[Parameter(Mandatory)][string]$DeclaredSeverity)
 
@@ -74,30 +102,45 @@ function Invoke-TenantIQPurviewHardenedCheck {
         if (-not (Ensure-TenantIQComplianceConnection)) { throw 'Microsoft Purview compliance connection is required.' }
 
         switch ($CheckName) {
-            'Purview Tenant Configuration' {
-                Complete-TenantIQPurviewSimpleEvidence $CheckName $Category $DeclaredSeverity @('Get-RoleGroup') 'NOT EVALUATED' 'No Purview administrative role-group evidence was returned.' 'Confirm Security & Compliance PowerShell access.' 'PASS' '{count} Purview/Security & Compliance role group object(s) were returned from {source}, confirming tenant-level administrative access.' 'Review least-privilege role assignments periodically.' $sw; return
-            }
-            'Audit Configuration' {
-                $p=Invoke-TenantIQPurviewCommandProbe -Candidates @('Get-AdminAuditLogConfig')
+            'Information Barriers Segments' {
+                $p = Get-TenantIQInformationBarrierEvidence -Type 'Segments'
                 $sw.Stop()
-                if(-not $p.Success){Add-TenantIQPurviewResult $CheckName $Category 'NOT EVALUATED' 'None' "Audit configuration evidence could not be retrieved: $($p.Error)" 'Confirm Exchange Online/Purview audit permissions.' $sw.Elapsed.TotalSeconds;return}
-                if($p.Count -eq 0){Add-TenantIQPurviewResult $CheckName $Category 'NOT EVALUATED' 'None' 'No audit configuration object was returned.' 'Confirm audit configuration access.' $sw.Elapsed.TotalSeconds;return}
-                $Obj=$p.Items|Select-Object -First 1
-                $Unified=$null
-                if($Obj.PSObject.Properties.Name -contains 'UnifiedAuditLogIngestionEnabled'){$Unified=[bool]$Obj.UnifiedAuditLogIngestionEnabled}
-                if($Unified -eq $false){Add-TenantIQPurviewResult $CheckName $Category 'WARNING' $DeclaredSeverity 'Unified audit log ingestion appears disabled.' 'Enable unified audit logging unless an explicit documented exception exists.' $sw.Elapsed.TotalSeconds}else{Add-TenantIQPurviewResult $CheckName $Category 'PASS' 'None' 'Audit configuration evidence was returned and unified audit logging is not reported as disabled.' 'Continue validating audit retention and alerting requirements.' $sw.Elapsed.TotalSeconds};return
+                if (-not $p.Success) {
+                    Add-TenantIQPurviewResult $CheckName $Category 'INFO' 'None' 'Information Barriers segment inventory is not exposed by the currently loaded read-only PowerShell cmdlets in this tenant/session.' 'If Information Barriers is licensed and in scope, review segment configuration in Microsoft Purview. No gap is asserted without evidence.' $sw.Elapsed.TotalSeconds
+                    return
+                }
+                if ($p.Count -eq 0) {
+                    Add-TenantIQPurviewResult $CheckName $Category 'INFO' 'None' 'No Information Barriers segments are configured.' 'No action is required unless Information Barriers is required by organizational separation or regulatory policy.' $sw.Elapsed.TotalSeconds
+                    return
+                }
+                Add-TenantIQPurviewResult $CheckName $Category 'INFO' 'None' "$($p.Count) Information Barriers segment object(s) were returned from $($p.Source)." 'Review segment membership attributes, ownership, and stale definitions.' $sw.Elapsed.TotalSeconds
+                return
             }
-            'Audit Retention Policies' {
-                Complete-TenantIQPurviewSimpleEvidence $CheckName $Category $DeclaredSeverity @('Get-UnifiedAuditLogRetentionPolicy') 'INFO' 'No custom unified audit log retention policies were returned.' 'Review whether default audit retention satisfies requirements.' 'PASS' '{count} unified audit log retention policy object(s) are configured.' 'Review durations and priority ordering.' $sw; return
-            }
-            'Audit Search Readiness' {
-                $p=Invoke-TenantIQPurviewCommandProbe -Candidates @('Search-UnifiedAuditLog') -Parameters @{StartDate=(Get-Date).AddMinutes(-10);EndDate=(Get-Date);ResultSize=1}
+            'Information Barriers Policies' {
+                $p = Get-TenantIQInformationBarrierEvidence -Type 'Policies'
                 $sw.Stop()
-                if($p.Success){Add-TenantIQPurviewResult $CheckName $Category 'PASS' 'None' 'Unified audit search command executed successfully.' 'Maintain Audit/Search permissions and retention.' $sw.Elapsed.TotalSeconds}else{Add-TenantIQPurviewResult $CheckName $Category 'NOT EVALUATED' 'None' "Audit search could not be executed: $($p.Error)" 'Confirm Audit/Search permissions and licensing.' $sw.Elapsed.TotalSeconds};return
+                if (-not $p.Success) {
+                    Add-TenantIQPurviewResult $CheckName $Category 'INFO' 'None' 'Information Barriers policy inventory is not exposed by the currently loaded read-only PowerShell cmdlets in this tenant/session.' 'If Information Barriers is licensed and in scope, review active policies in Microsoft Purview. No gap is asserted without evidence.' $sw.Elapsed.TotalSeconds
+                    return
+                }
+                if ($p.Count -eq 0) {
+                    Add-TenantIQPurviewResult $CheckName $Category 'INFO' 'None' 'No Information Barriers policies are configured.' 'No action is required unless Information Barriers is required by organizational separation or regulatory policy.' $sw.Elapsed.TotalSeconds
+                    return
+                }
+                $Enabled = @($p.Items | Where-Object { (Test-TenantIQPurviewEnabledObject $_) -ne $false }).Count
+                if ($Enabled -gt 0) {
+                    Add-TenantIQPurviewResult $CheckName $Category 'INFO' 'None' "$($p.Count) Information Barriers policy object(s) were returned and at least $Enabled appear enabled or active." 'Review segment pairing, policy state, enforcement, and exceptions.' $sw.Elapsed.TotalSeconds
+                }
+                else {
+                    Add-TenantIQPurviewResult $CheckName $Category 'INFO' 'None' "$($p.Count) Information Barriers policy object(s) were returned, but active state could not be confirmed from the exposed properties." 'Review policy state and enforcement in Microsoft Purview.' $sw.Elapsed.TotalSeconds
+                }
+                return
             }
-            'Retention Policies' {
-                $p=Invoke-TenantIQPurviewCommandProbe -Candidates @('Get-RetentionCompliancePolicy');$sw.Stop();if(-not $p.Success){Add-TenantIQPurviewResult $CheckName $Category 'NOT EVALUATED' 'None' "Retention policy evidence could not be retrieved: $($p.Error)" 'Confirm Purview permissions.' $sw.Elapsed.TotalSeconds;return};if($p.Count -eq 0){Add-TenantIQPurviewResult $CheckName $Category 'WARNING' $DeclaredSeverity 'No retention policies are configured.' 'Define retention policies for in-scope workloads.' $sw.Elapsed.TotalSeconds;return};$Enabled=@($p.Items|Where-Object{(Test-TenantIQPurviewEnabledObject $_)-ne $false}).Count;if($Enabled -gt 0){Add-TenantIQPurviewResult $CheckName $Category 'PASS' 'None' "$($p.Count) retention policy object(s) were found and at least $Enabled appear enabled or active." 'Review scope and durations.' $sw.Elapsed.TotalSeconds}else{Add-TenantIQPurviewResult $CheckName $Category 'WARNING' $DeclaredSeverity "$($p.Count) retention policy object(s) exist, but none appear enabled." 'Enable an applicable retention policy.' $sw.Elapsed.TotalSeconds};return
-            }
+            'Purview Tenant Configuration' { Complete-TenantIQPurviewSimpleEvidence $CheckName $Category $DeclaredSeverity @('Get-RoleGroup') 'NOT EVALUATED' 'No Purview administrative role-group evidence was returned.' 'Confirm Security & Compliance PowerShell access.' 'PASS' '{count} Purview/Security & Compliance role group object(s) were returned from {source}, confirming tenant-level administrative access.' 'Review least-privilege role assignments periodically.' $sw; return }
+            'Audit Configuration' { $p=Invoke-TenantIQPurviewCommandProbe -Candidates @('Get-AdminAuditLogConfig');$sw.Stop();if(-not $p.Success){Add-TenantIQPurviewResult $CheckName $Category 'NOT EVALUATED' 'None' "Audit configuration evidence could not be retrieved: $($p.Error)" 'Confirm Exchange Online/Purview audit permissions.' $sw.Elapsed.TotalSeconds;return};if($p.Count -eq 0){Add-TenantIQPurviewResult $CheckName $Category 'NOT EVALUATED' 'None' 'No audit configuration object was returned.' 'Confirm audit configuration access.' $sw.Elapsed.TotalSeconds;return};$Obj=$p.Items|Select-Object -First 1;$Unified=$null;if($Obj.PSObject.Properties.Name -contains 'UnifiedAuditLogIngestionEnabled'){$Unified=[bool]$Obj.UnifiedAuditLogIngestionEnabled};if($Unified -eq $false){Add-TenantIQPurviewResult $CheckName $Category 'WARNING' $DeclaredSeverity 'Unified audit log ingestion appears disabled.' 'Enable unified audit logging unless an explicit documented exception exists.' $sw.Elapsed.TotalSeconds}else{Add-TenantIQPurviewResult $CheckName $Category 'PASS' 'None' 'Audit configuration evidence was returned and unified audit logging is not reported as disabled.' 'Continue validating audit retention and alerting requirements.' $sw.Elapsed.TotalSeconds};return }
+            'Audit Retention Policies' { Complete-TenantIQPurviewSimpleEvidence $CheckName $Category $DeclaredSeverity @('Get-UnifiedAuditLogRetentionPolicy') 'INFO' 'No custom unified audit log retention policies were returned.' 'Review whether default audit retention satisfies requirements.' 'PASS' '{count} unified audit log retention policy object(s) are configured.' 'Review durations and priority ordering.' $sw; return }
+            'Audit Search Readiness' { $p=Invoke-TenantIQPurviewCommandProbe -Candidates @('Search-UnifiedAuditLog') -Parameters @{StartDate=(Get-Date).AddMinutes(-10);EndDate=(Get-Date);ResultSize=1};$sw.Stop();if($p.Success){Add-TenantIQPurviewResult $CheckName $Category 'PASS' 'None' 'Unified audit search command executed successfully.' 'Maintain Audit/Search permissions and retention.' $sw.Elapsed.TotalSeconds}else{Add-TenantIQPurviewResult $CheckName $Category 'NOT EVALUATED' 'None' "Audit search could not be executed: $($p.Error)" 'Confirm Audit/Search permissions and licensing.' $sw.Elapsed.TotalSeconds};return }
+            'Retention Policies' { Complete-TenantIQPurviewSimpleEvidence $CheckName $Category $DeclaredSeverity @('Get-RetentionCompliancePolicy') 'WARNING' 'No retention policies are configured.' 'Define retention policies for in-scope workloads.' 'PASS' '{count} retention policy object(s) are configured.' 'Review scope and durations.' $sw; return }
             'Retention Labels' { Complete-TenantIQPurviewSimpleEvidence $CheckName $Category $DeclaredSeverity @('Get-ComplianceTag') 'INFO' 'No retention labels are configured.' 'Define labels if label-based retention is required.' 'PASS' '{count} retention label object(s) are configured.' 'Review retention actions and record behavior.' $sw; return }
             'Retention Label Publishing' { Complete-TenantIQPurviewSimpleEvidence $CheckName $Category $DeclaredSeverity @('Get-RetentionComplianceRule') 'INFO' 'No retention compliance rules were returned.' 'Publish retention labels where required.' 'PASS' '{count} retention compliance rule object(s) were returned.' 'Review policy targets and publication scope.' $sw; return }
             'Adaptive Policy Scopes' { Complete-TenantIQPurviewSimpleEvidence $CheckName $Category $DeclaredSeverity @('Get-AdaptiveScope') 'INFO' 'No adaptive scopes are configured.' 'No action is required unless adaptive scoping is part of the governance design.' 'INFO' '{count} adaptive scope object(s) are configured.' 'Review adaptive scope queries and ownership.' $sw; return }
@@ -125,8 +168,6 @@ function Invoke-TenantIQPurviewHardenedCheck {
             'Insider Risk Alerts' { $sw.Stop();Add-TenantIQPurviewResult $CheckName $Category 'INFO' 'None' 'Insider Risk alert inventory is not reliably exposed by the read-only PowerShell surface used here.' 'Review current Insider Risk alerts in Microsoft Purview when the feature is in scope.' $sw.Elapsed.TotalSeconds;return }
             'Communication Compliance Policies' { Complete-TenantIQPurviewSimpleEvidence $CheckName $Category $DeclaredSeverity @('Get-SupervisoryReviewPolicyV2','Get-CommunicationCompliancePolicy') 'INFO' 'No communication-compliance policies were returned.' 'No action is required unless Communication Compliance is licensed and in scope.' 'INFO' '{count} communication-compliance policy object(s) were returned.' 'Review policy scope, reviewers, and privacy controls.' $sw; return }
             'Communication Compliance Alerts' { $sw.Stop();Add-TenantIQPurviewResult $CheckName $Category 'INFO' 'None' 'Communication Compliance alert inventory is not reliably exposed by the current read-only PowerShell surface.' 'Review current Communication Compliance alerts in Microsoft Purview when the feature is in scope.' $sw.Elapsed.TotalSeconds;return }
-            'Information Barriers Segments' { Complete-TenantIQPurviewSimpleEvidence $CheckName $Category $DeclaredSeverity @('Get-InformationBarrierSegment') 'INFO' 'No information-barrier segments were returned.' 'No action is required unless Information Barriers is in scope.' 'INFO' '{count} information-barrier segment object(s) were returned.' 'Review segment definitions and membership attributes.' $sw; return }
-            'Information Barriers Policies' { Complete-TenantIQPurviewSimpleEvidence $CheckName $Category $DeclaredSeverity @('Get-InformationBarrierPolicy') 'INFO' 'No information-barrier policies were returned.' 'No action is required unless Information Barriers is in scope.' 'INFO' '{count} information-barrier policy object(s) were returned.' 'Review policy state, segment pairing, and enforcement.' $sw; return }
             'eDiscovery Cases' { Complete-TenantIQPurviewSimpleEvidence $CheckName $Category $DeclaredSeverity @('Get-ComplianceCase') 'INFO' 'No eDiscovery cases are currently configured.' 'No action is required unless legal or investigation activity requires a case.' 'INFO' '{count} eDiscovery case object(s) are currently present.' 'Review open cases, custodians, holds, and ownership.' $sw; return }
             'eDiscovery Holds' { Complete-TenantIQPurviewSimpleEvidence $CheckName $Category $DeclaredSeverity @('Get-CaseHoldPolicy','Get-CaseHoldRule') 'INFO' 'No eDiscovery hold objects were returned.' 'No action is required unless legal hold obligations exist.' 'INFO' '{count} eDiscovery hold policy/rule object(s) were returned.' 'Review hold scope and stale holds.' $sw; return }
             'Content Search Readiness' { $p=Invoke-TenantIQPurviewCommandProbe -Candidates @('Get-ComplianceSearch');$sw.Stop();if($p.Success){Add-TenantIQPurviewResult $CheckName $Category 'PASS' 'None' "Compliance Search cmdlet access succeeded. $($p.Count) existing search object(s) were returned." 'Maintain appropriate eDiscovery and compliance search role assignments.' $sw.Elapsed.TotalSeconds}else{Add-TenantIQPurviewResult $CheckName $Category 'NOT EVALUATED' 'None' "Content search evidence could not be retrieved: $($p.Error)" 'Confirm Compliance Search/eDiscovery permissions.' $sw.Elapsed.TotalSeconds};return }

@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import TenantIQLandingV2 from "./TenantIQLandingV2";
 
 type PageMode = "home" | "product" | "details";
@@ -25,18 +26,18 @@ const WORKLOADS = [
 
 function HomeEnhancements() {
   return (
-    <section className="home-enhancements" aria-label="TenantIQ platform highlights">
+    <div className="home-enhancements" aria-label="TenantIQ platform highlights">
       <div className="home-network" aria-hidden="true">
-        <svg viewBox="0 0 1600 360" preserveAspectRatio="none">
+        <svg viewBox="0 0 1600 330" preserveAspectRatio="none">
           <g className="network-lines">
-            <path d="M0 250 L150 205 L310 245 L470 185 L630 230 L790 170 L965 220 L1120 160 L1290 210 L1450 145 L1600 185" />
-            <path d="M20 320 L205 270 L370 300 L535 235 L720 285 L900 230 L1065 275 L1230 215 L1390 255 L1575 205" />
-            <path d="M150 205 L205 270 M310 245 L370 300 M470 185 L535 235 M630 230 L720 285 M790 170 L900 230 M965 220 L1065 275 M1120 160 L1230 215 M1290 210 L1390 255 M1450 145 L1575 205" />
-            <path d="M205 270 L310 245 M370 300 L470 185 M535 235 L630 230 M720 285 L790 170 M900 230 L965 220 M1065 275 L1120 160 M1230 215 L1290 210 M1390 255 L1450 145" />
+            <path d="M0 220 L150 175 L310 215 L470 155 L630 200 L790 140 L965 190 L1120 130 L1290 180 L1450 115 L1600 155" />
+            <path d="M20 300 L205 250 L370 280 L535 215 L720 265 L900 210 L1065 255 L1230 195 L1390 235 L1575 185" />
+            <path d="M150 175 L205 250 M310 215 L370 280 M470 155 L535 215 M630 200 L720 265 M790 140 L900 210 M965 190 L1065 255 M1120 130 L1230 195 M1290 180 L1390 235 M1450 115 L1575 185" />
+            <path d="M205 250 L310 215 M370 280 L470 155 M535 215 L630 200 M720 265 L790 140 M900 210 L965 190 M1065 255 L1120 130 M1230 195 L1290 180 M1390 235 L1450 115" />
           </g>
           <g className="network-nodes">
             {[150, 205, 310, 370, 470, 535, 630, 720, 790, 900, 965, 1065, 1120, 1230, 1290, 1390, 1450, 1575].map((x, index) => {
-              const yValues = [205, 270, 245, 300, 185, 235, 230, 285, 170, 230, 220, 275, 160, 215, 210, 255, 145, 205];
+              const yValues = [175, 250, 215, 280, 155, 215, 200, 265, 140, 210, 190, 255, 130, 195, 180, 235, 115, 185];
               return <circle key={x} cx={x} cy={yValues[index]} r={index % 4 === 0 ? 5 : 3} />;
             })}
           </g>
@@ -62,17 +63,21 @@ function HomeEnhancements() {
             {WORKLOADS.map((workload, index) => (
               <div className="workload-item" key={workload}>
                 <span>{workload}</span>
-                {index < WORKLOADS.length - 1 && <span className="workload-dot" aria-hidden="true">•</span>}
+                {index < WORKLOADS.length - 1 && (
+                  <span className="workload-dot" aria-hidden="true">•</span>
+                )}
               </div>
             ))}
           </div>
         </div>
       </div>
-    </section>
+    </div>
   );
 }
 
 export default function TenantIQPageShell({ mode }: { mode: PageMode }) {
+  const [heroTarget, setHeroTarget] = useState<HTMLElement | null>(null);
+
   useEffect(() => {
     const routeMap: Record<string, string> = {
       "#top": "/",
@@ -95,7 +100,11 @@ export default function TenantIQPageShell({ mode }: { mode: PageMode }) {
         };
       }
     }
-  }, []);
+
+    if (mode === "home") {
+      setHeroTarget(document.getElementById("top"));
+    }
+  }, [mode]);
 
   return (
     <>
@@ -108,6 +117,17 @@ export default function TenantIQPageShell({ mode }: { mode: PageMode }) {
           #top {
             position: relative;
             overflow: hidden;
+            min-height: 100vh;
+            padding-bottom: 292px;
+            background:
+              radial-gradient(circle at 20% 78%, rgba(37,99,235,.10), transparent 27%),
+              radial-gradient(circle at 82% 72%, rgba(76,141,255,.08), transparent 30%),
+              #0D1321 !important;
+          }
+
+          #top .hero-grid {
+            position: relative;
+            z-index: 3;
           }
         ` : ""}
 
@@ -124,23 +144,21 @@ export default function TenantIQPageShell({ mode }: { mode: PageMode }) {
         ` : ""}
 
         .home-enhancements {
-          position: relative;
-          min-height: 330px;
-          margin-top: -1px;
+          position: absolute;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          height: 305px;
           overflow: hidden;
-          background:
-            radial-gradient(circle at 20% 45%, rgba(37,99,235,.10), transparent 26%),
-            radial-gradient(circle at 78% 36%, rgba(76,141,255,.09), transparent 28%),
-            linear-gradient(180deg, #0D1321 0%, #09111F 100%);
-          border-top: 1px solid rgba(76,141,255,.08);
+          z-index: 1;
+          pointer-events: none;
         }
 
         .home-network {
           position: absolute;
-          inset: 0;
-          pointer-events: none;
-          opacity: .52;
-          mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,.92) 26%, #000 100%);
+          inset: 30px 0 0;
+          opacity: .46;
+          mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,.78) 20%, #000 55%, rgba(0,0,0,.90) 100%);
         }
 
         .home-network svg {
@@ -151,42 +169,43 @@ export default function TenantIQPageShell({ mode }: { mode: PageMode }) {
 
         .network-lines {
           fill: none;
-          stroke: rgba(45,123,255,.28);
+          stroke: rgba(45,123,255,.27);
           stroke-width: 1;
           vector-effect: non-scaling-stroke;
         }
 
         .network-nodes {
           fill: #33A1FF;
-          filter: drop-shadow(0 0 7px rgba(51,161,255,.85));
+          filter: drop-shadow(0 0 7px rgba(51,161,255,.8));
         }
 
         .home-enhancements-inner {
           position: relative;
           z-index: 2;
           width: min(1100px, calc(100% - 48px));
+          height: 100%;
           margin: 0 auto;
-          padding: 18px 0 34px;
         }
 
         .trust-stat-row {
+          position: absolute;
+          top: 0;
+          left: 0;
           display: grid;
           grid-template-columns: repeat(4, minmax(0, 1fr));
-          max-width: 760px;
-          gap: 0;
-          margin-bottom: 126px;
-          border-top: 1px solid rgba(139,149,165,.12);
-          border-bottom: 1px solid rgba(139,149,165,.12);
-          background: rgba(13,19,33,.32);
-          backdrop-filter: blur(6px);
+          width: min(700px, 64%);
+          border-top: 1px solid rgba(139,149,165,.13);
+          border-bottom: 1px solid rgba(139,149,165,.13);
+          background: rgba(13,19,33,.16);
+          backdrop-filter: blur(4px);
         }
 
         .trust-stat {
           display: flex;
           align-items: center;
-          gap: 10px;
-          min-height: 70px;
-          padding: 12px 18px;
+          gap: 9px;
+          min-height: 64px;
+          padding: 10px 16px;
           border-right: 1px solid rgba(139,149,165,.14);
         }
 
@@ -195,12 +214,12 @@ export default function TenantIQPageShell({ mode }: { mode: PageMode }) {
         }
 
         .trust-stat-icon {
-          width: 9px;
-          height: 9px;
+          width: 8px;
+          height: 8px;
           flex: 0 0 auto;
           border: 1px solid #4C8DFF;
           border-radius: 50%;
-          box-shadow: 0 0 12px rgba(76,141,255,.45);
+          box-shadow: 0 0 11px rgba(76,141,255,.45);
         }
 
         .trust-stat-value {
@@ -212,31 +231,34 @@ export default function TenantIQPageShell({ mode }: { mode: PageMode }) {
         }
 
         .trust-stat-label {
-          margin-top: 4px;
+          margin-top: 3px;
           color: #7F899A;
           font-family: 'Inter', sans-serif;
-          font-size: 11px;
-          line-height: 1.25;
-          text-transform: lowercase;
+          font-size: 10px;
+          line-height: 1.2;
         }
 
         .workload-strip-wrap {
-          position: relative;
-          padding-top: 18px;
-          border-top: 1px solid rgba(76,141,255,.18);
+          position: absolute;
+          left: 0;
+          right: 0;
+          bottom: 26px;
+          padding-top: 17px;
+          border-top: 1px solid rgba(76,141,255,.17);
           text-align: center;
+          pointer-events: auto;
         }
 
         .workload-strip-title {
           display: inline-block;
           position: relative;
-          top: -30px;
-          padding: 0 18px;
+          top: -29px;
+          padding: 0 16px;
           color: #4C8DFF;
-          background: #09111F;
+          background: #0D1321;
           font-family: 'IBM Plex Mono', monospace;
-          font-size: 11px;
-          letter-spacing: .06em;
+          font-size: 10px;
+          letter-spacing: .07em;
           text-transform: uppercase;
         }
 
@@ -245,28 +267,36 @@ export default function TenantIQPageShell({ mode }: { mode: PageMode }) {
           align-items: center;
           justify-content: center;
           flex-wrap: wrap;
-          gap: 10px 14px;
-          margin-top: -10px;
+          gap: 8px 13px;
+          margin-top: -11px;
           color: #C5CCDA;
           font-family: 'Inter', sans-serif;
-          font-size: 13px;
+          font-size: 12px;
         }
 
         .workload-item {
           display: inline-flex;
           align-items: center;
-          gap: 14px;
+          gap: 13px;
         }
 
         .workload-dot {
           color: #4C8DFF;
-          opacity: .65;
+          opacity: .7;
         }
 
-        @media (max-width: 820px) {
+        @media (max-width: 900px) {
+          #top {
+            padding-bottom: 330px;
+          }
+
+          .home-enhancements {
+            height: 340px;
+          }
+
           .trust-stat-row {
+            width: 100%;
             grid-template-columns: repeat(2, minmax(0, 1fr));
-            margin-bottom: 108px;
           }
 
           .trust-stat:nth-child(2) {
@@ -279,31 +309,39 @@ export default function TenantIQPageShell({ mode }: { mode: PageMode }) {
         }
 
         @media (max-width: 560px) {
+          #top {
+            padding-bottom: 400px;
+          }
+
           .home-enhancements {
-            min-height: 390px;
+            height: 410px;
           }
 
           .home-enhancements-inner {
-            width: min(100% - 32px, 1100px);
+            width: min(100% - 30px, 1100px);
           }
 
           .trust-stat {
-            padding: 11px 12px;
+            padding: 10px 11px;
+          }
+
+          .workload-strip-wrap {
+            bottom: 22px;
           }
 
           .workload-strip {
-            gap: 8px 10px;
-            font-size: 12px;
+            gap: 7px 9px;
+            font-size: 11px;
           }
 
           .workload-item {
-            gap: 10px;
+            gap: 9px;
           }
         }
       `}</style>
 
       <TenantIQLandingV2 />
-      {mode === "home" && <HomeEnhancements />}
+      {mode === "home" && heroTarget && createPortal(<HomeEnhancements />, heroTarget)}
     </>
   );
 }

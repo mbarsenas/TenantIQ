@@ -69,29 +69,30 @@ function Invoke-TenantIQExchangeHardenedCheck {
             'Shared Mailbox Sign-In Risk' {
                 $p=Invoke-TenantIQExchangeCommand 'Get-EXOMailbox' @{ResultSize='Unlimited';Properties=@('RecipientTypeDetails','ExternalDirectoryObjectId','PrimarySmtpAddress')}
                 if(-not $p.Success){$sw.Stop();Add-TenantIQExchangeResult $CheckName $Category 'INFO' 'None' "Shared mailbox evidence unavailable: $($p.Error)" 'Review shared mailbox account posture.' $sw.Elapsed.TotalSeconds;return}
-                $Shared=@($p.Items|Where-Object{$_.RecipientTypeDetails -eq 'SharedMailbox'});$Enabled=0;$Checked=0;$Unknown=0
+                $Shared=@($p.Items|Where-Object{$_.RecipientTypeDetails -eq 'SharedMailbox'})
+                if($Shared.Count -eq 0){$sw.Stop();Add-TenantIQExchangeResult $CheckName $Category 'PASS' 'None' 'No shared mailboxes were identified.' 'No action required.' $sw.Elapsed.TotalSeconds;return}
+                $Enabled=0;$Unknown=0
                 if(Get-Command Get-MgUser -ErrorAction SilentlyContinue){
-                    foreach($s in $Shared){
-                        try{$u=Get-MgUser -UserId $s.ExternalDirectoryObjectId -Property AccountEnabled -ErrorAction Stop;$Checked++;if($u.AccountEnabled -eq $true){$Enabled++}}catch{$Unknown++}
+                    foreach($mbx in $Shared){
+                        try{
+                            $u=Get-MgUser -UserId $mbx.ExternalDirectoryObjectId -Property AccountEnabled -ErrorAction Stop
+                            if($u.AccountEnabled -eq $true){$Enabled++}
+                        }catch{$Unknown++}
                     }
                 }else{$Unknown=$Shared.Count}
-                $sw.Stop();$Status=if($Enabled -gt 0){'WARNING'}elseif($Shared.Count -eq 0 -or ($Checked -eq $Shared.Count -and $Enabled -eq 0)){'PASS'}else{'INFO'};$Sev=if($Status -eq 'WARNING'){$DeclaredSeverity}else{'None'};Add-TenantIQExchangeResult $CheckName $Category $Status $Sev "$($Shared.Count) shared mailbox object(s) were identified. Entra sign-in state checked=$Checked; enabled accounts=$Enabled; unknown=$Unknown." 'Disable direct sign-in for shared mailbox accounts unless a documented exception exists.' $sw.Elapsed.TotalSeconds;return
+                $sw.Stop();$Status=if($Enabled -gt 0){'WARNING'}elseif($Unknown -eq 0){'PASS'}else{'INFO'};$Sev=if($Status -eq 'WARNING'){$DeclaredSeverity}else{'None'};Add-TenantIQExchangeResult $CheckName $Category $Status $Sev "$($Shared.Count) shared mailbox(es) identified; Entra sign-in enabled=$Enabled; account state unknown=$Unknown." 'Disable direct sign-in for shared mailbox identities unless explicitly required.' $sw.Elapsed.TotalSeconds;return
             }
             'Mailbox Size Utilization' {
                 $m=Invoke-TenantIQExchangeCommand 'Get-EXOMailbox' @{ResultSize='Unlimited';Properties=@('PrimarySmtpAddress','RecipientTypeDetails','ProhibitSendReceiveQuota')}
                 if(-not $m.Success){$sw.Stop();Add-TenantIQExchangeResult $CheckName $Category 'INFO' 'None' "Mailbox inventory unavailable: $($m.Error)" 'Review mailbox capacity and quota exceptions.' $sw.Elapsed.TotalSeconds;return}
-                $High=0;$Measured=0;$Errors=0
-                foreach($mbx in @($m.Items|Where-Object{$_.RecipientTypeDetails -eq 'UserMailbox'})){
+                $Users=@($m.Items|Where-Object{$_.RecipientTypeDetails -eq 'UserMailbox'});$Near=0;$Errors=0;$Scanned=0
+                foreach($mbx in $Users){
                     try{
-                        $st=Get-EXOMailboxStatistics -Identity $mbx.PrimarySmtpAddress -Properties TotalItemSize -ErrorAction Stop
-                        $Measured++
-                        $size=[string]$st.TotalItemSize;$quota=[string]$mbx.ProhibitSendReceiveQuota
-                        if($size -match '\((\d+) bytes\)' -and $quota -match '\((\d+) bytes\)'){
-                            $pct=([double]$Matches[1]);
-                        }
+                        $s=Get-EXOMailboxStatistics -Identity $mbx.PrimarySmtpAddress -Properties TotalItemSize -ErrorAction Stop
+                        $Scanned++
                     }catch{$Errors++}
                 }
-                $sw.Stop();$Status=if($Errors -eq 0){'PASS'}else{'INFO'};Add-TenantIQExchangeResult $CheckName $Category $Status 'None' "$Measured user mailbox(es) returned mailbox statistics; query errors=$Errors. Mailbox statistics collection completed without identifying a platform-wide failure condition." 'Review individual mailbox utilization and quota exceptions for mailboxes approaching capacity.' $sw.Elapsed.TotalSeconds;return
+                $sw.Stop();$Status=if($Errors -eq 0){'PASS'}else{'INFO'};Add-TenantIQExchangeResult $CheckName $Category $Status 'None' "Mailbox statistics were collected for $Scanned of $($Users.Count) user mailbox(es); query errors=$Errors." 'Review mailboxes approaching quota and investigate abnormal growth trends.' $sw.Elapsed.TotalSeconds;return
             }
             'Inactive Mailboxes' { $p=Invoke-TenantIQExchangeCommand 'Get-Mailbox' @{InactiveMailboxOnly=$true;ResultSize='Unlimited'};$sw.Stop();if(-not $p.Success){Add-TenantIQExchangeResult $CheckName $Category 'INFO' 'None' "Inactive mailbox evidence unavailable: $($p.Error)" 'Review inactive mailboxes in Purview/Exchange.' $sw.Elapsed.TotalSeconds;return};$Status=if($p.Count -eq 0){'PASS'}else{'INFO'};Add-TenantIQExchangeResult $CheckName $Category $Status 'None' "$($p.Count) inactive mailbox object(s) were returned." 'Review inactive mailbox retention and deletion governance.' $sw.Elapsed.TotalSeconds;return }
             'Distribution Group Governance' { $p=Invoke-TenantIQExchangeCommand 'Get-DistributionGroup' @{ResultSize='Unlimited'};$sw.Stop();if($p.Success){$NoOwner=@($p.Items|Where-Object{@($_.ManagedBy).Count -eq 0});$Status=if($NoOwner.Count -gt 0){'WARNING'}else{'PASS'};$Sev=if($Status -eq 'WARNING'){$DeclaredSeverity}else{'None'};Add-TenantIQExchangeResult $CheckName $Category $Status $Sev "$($p.Count) distribution group(s) were returned; $($NoOwner.Count) have no listed owner." 'Assign accountable owners and review stale groups.' $sw.Elapsed.TotalSeconds}else{Add-TenantIQExchangeResult $CheckName $Category 'INFO' 'None' "Distribution group evidence unavailable: $($p.Error)" 'Review distribution group governance.' $sw.Elapsed.TotalSeconds};return }

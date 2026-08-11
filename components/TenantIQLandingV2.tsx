@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useEffect, useState } from "react";
 import {
@@ -44,7 +44,15 @@ const FONT_DISPLAY = "'Space Grotesk', sans-serif";
 const FONT_BODY = "'Inter', sans-serif";
 const FONT_MONO = "'IBM Plex Mono', monospace";
 
-function StatCard({ label, value, color }) {
+function StatCard({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string | number;
+  color?: string;
+}) {
   return (
     <div
       style={{
@@ -112,7 +120,7 @@ function ReportPreview() {
             </div>
           </div>
           <div style={{ fontFamily: FONT_BODY, fontSize: "12px", color: "#B9CCFA", marginTop: "8px" }}>
-            Entra Identity Security — sanitized assessment
+            Entra Identity Security â€” sanitized assessment
           </div>
         </div>
 
@@ -223,7 +231,7 @@ function Brand() {
     </a>
   );
 }
-function Nav({ onRequestAccess }) {
+function Nav({ onRequestAccess }: { onRequestAccess: () => void }) {
   return (
     <nav
       aria-label="Primary navigation"
@@ -252,7 +260,7 @@ function Nav({ onRequestAccess }) {
   );
 }
 
-function Hero({ onRequestAccess }) {
+function Hero({ onRequestAccess }: { onRequestAccess: () => void }) {
   return (
     <div id="top" style={{ background: COLORS.ink }}>
       <Nav onRequestAccess={onRequestAccess} />
@@ -357,7 +365,7 @@ function WhatTenantIQDoes() {
       n: "01",
       icon: Search,
       title: "Assessment",
-      body: "TenantIQ connects to a Microsoft 365 tenant with read-only, least-privilege access and pulls configuration data across the workloads it covers — identity, mail flow, device management, data protection, and collaboration settings.",
+      body: "TenantIQ connects to a Microsoft 365 tenant with read-only, least-privilege access and pulls configuration data across the workloads it covers â€” identity, mail flow, device management, data protection, and collaboration settings.",
     },
     {
       n: "02",
@@ -369,13 +377,13 @@ function WhatTenantIQDoes() {
       n: "03",
       icon: ListChecks,
       title: "Findings",
-      body: "Each issue is captured as a discrete finding: what was checked, what was found, the evidence behind it, and its PASS, WARN, or FAIL status — so nothing is a vague \u201cyou should probably look into this.\u201d",
+      body: "Each issue is captured as a discrete finding: what was checked, what was found, the evidence behind it, and its PASS, WARN, or FAIL status â€” so nothing is a vague \u201cyou should probably look into this.\u201d",
     },
     {
       n: "04",
       icon: Wrench,
       title: "Recommendations",
-      body: "Every finding ships with a specific, actionable next step — what to change, why it matters, and what the risk is if it's left alone. The recommendation is tied to the exact thing that was found.",
+      body: "Every finding ships with a specific, actionable next step â€” what to change, why it matters, and what the risk is if it's left alone. The recommendation is tied to the exact thing that was found.",
     },
   ];
 
@@ -510,7 +518,7 @@ function MicrosoftCoverage() {
         >
           TenantIQ evaluates identity, security, collaboration, messaging,
           device management, data protection, and governance across the
-          Microsoft 365 environment — bringing findings together into a
+          Microsoft 365 environment â€” bringing findings together into a
           consistent assessment experience.
         </p>
 
@@ -564,7 +572,7 @@ function MicrosoftCoverage() {
           <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: "14px", color: COLORS.textPrimary }}>
             8 Microsoft 365 workloads
           </span>
-          <span style={{ color: COLORS.textMuted }}>·</span>
+          <span style={{ color: COLORS.textMuted }}>Â·</span>
           <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: "14px", color: COLORS.textPrimary }}>
             350+ automated checks
           </span>
@@ -868,7 +876,7 @@ function SampleAssessment() {
                     fontWeight: 700,
                   }}
                 >
-                  {finding.status === "PASS" ? "✓" : finding.status === "WARN" ? "!" : "×"}
+                  {finding.status === "PASS" ? "âœ“" : finding.status === "WARN" ? "!" : "Ã—"}
                 </span>
 
                 <span
@@ -927,7 +935,7 @@ function SampleAssessment() {
           >
             SCORE
           </span>
-          <span style={{ color: COLORS.textMuted }}>→</span>
+          <span style={{ color: COLORS.textMuted }}>â†’</span>
           <span
             style={{
               fontFamily: FONT_MONO,
@@ -937,7 +945,7 @@ function SampleAssessment() {
           >
             CHECK
           </span>
-          <span style={{ color: COLORS.textMuted }}>→</span>
+          <span style={{ color: COLORS.textMuted }}>â†’</span>
           <span
             style={{
               fontFamily: FONT_MONO,
@@ -947,7 +955,7 @@ function SampleAssessment() {
           >
             EVIDENCE
           </span>
-          <span style={{ color: COLORS.textMuted }}>→</span>
+          <span style={{ color: COLORS.textMuted }}>â†’</span>
           <span
             style={{
               fontFamily: FONT_MONO,
@@ -1033,7 +1041,7 @@ function SecurityTrust() {
             marginBottom: "16px",
           }}
         >
-          Built to assess your tenant — not change it.
+          Built to assess your tenant â€” not change it.
         </h2>
         <p
           style={{
@@ -1168,7 +1176,7 @@ function HowTenantIQWorks() {
                 {word.toUpperCase()}
               </span>
               {i < 2 && (
-                <span style={{ color: COLORS.amber, fontFamily: FONT_MONO, fontSize: "12px" }}>→</span>
+                <span style={{ color: COLORS.amber, fontFamily: FONT_MONO, fontSize: "12px" }}>â†’</span>
               )}
             </React.Fragment>
           ))}
@@ -1246,7 +1254,7 @@ function WhoItsFor() {
   );
 }
 
-function ClosingCTA({ onRequestAccess }) {
+function ClosingCTA({ onRequestAccess }: { onRequestAccess: () => void }) {
   return (
     <div id="early-access" style={{ background: COLORS.card, padding: "88px 48px", borderTop: `1px solid ${COLORS.border}` }}>
       <div style={{ maxWidth: "820px", margin: "0 auto", textAlign: "center" }}>
@@ -1309,7 +1317,7 @@ function Footer() {
   );
 }
 
-function EarlyAccessModal({ open, onClose }) {
+function EarlyAccessModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [status, setStatus] = useState("idle");
   const [message, setMessage] = useState("");
 
@@ -1319,7 +1327,7 @@ function EarlyAccessModal({ open, onClose }) {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
-    const handleKeyDown = (event) => {
+    const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
 
@@ -1330,7 +1338,7 @@ function EarlyAccessModal({ open, onClose }) {
     };
   }, [open, onClose]);
 
-  async function handleSubmit(event) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setStatus("submitting");
     setMessage("");
@@ -1353,7 +1361,7 @@ function EarlyAccessModal({ open, onClose }) {
       }
 
       setStatus("success");
-      setMessage("Thanks — your early access request has been received.");
+      setMessage("Thanks â€” your early access request has been received.");
       form.reset();
     } catch (error) {
       setStatus("error");
@@ -1367,7 +1375,7 @@ function EarlyAccessModal({ open, onClose }) {
     <div
       className="modal-backdrop"
       role="presentation"
-      onMouseDown={(event) => {
+      onMouseDown={(event: React.MouseEvent<HTMLDivElement>) => {
         if (event.target === event.currentTarget) onClose();
       }}
     >
@@ -1449,10 +1457,10 @@ function EarlyAccessModal({ open, onClose }) {
                 Approximate Microsoft 365 users
                 <select className="field-input" name="tenantSize" defaultValue="" required>
                   <option value="" disabled>Select a range</option>
-                  <option>1–100</option>
-                  <option>101–500</option>
-                  <option>501–2,500</option>
-                  <option>2,501–10,000</option>
+                  <option>1â€“100</option>
+                  <option>101â€“500</option>
+                  <option>501â€“2,500</option>
+                  <option>2,501â€“10,000</option>
                   <option>10,001+</option>
                   <option>Multiple client tenants</option>
                 </select>

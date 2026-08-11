@@ -1,5 +1,5 @@
-import TenantIQLandingV2 from "../components/TenantIQLandingV2";
+import TenantIQPageShell from "../components/TenantIQPageShell";
 
 export default function Page() {
-  return <TenantIQLandingV2 />;
+  return <TenantIQPageShell mode="home" />;
 }

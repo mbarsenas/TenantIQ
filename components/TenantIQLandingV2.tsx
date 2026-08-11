@@ -125,26 +125,15 @@ function Nav({ onRequestAccess }: { onRequestAccess: () => void }) {
 }
 
 const workloadItems = [
-  { name: "Entra ID", kind: "entra" },
-  { name: "Exchange Online", kind: "exchange" },
-  { name: "SharePoint", kind: "sharepoint" },
-  { name: "Teams", kind: "teams" },
-  { name: "OneDrive", kind: "onedrive" },
-  { name: "Intune", kind: "intune" },
-  { name: "Defender", kind: "defender" },
-  { name: "Purview", kind: "purview" },
+  "Entra ID",
+  "Exchange Online",
+  "SharePoint",
+  "Teams",
+  "OneDrive",
+  "Intune",
+  "Defender",
+  "Purview",
 ] as const;
-
-function WorkloadLogo({ kind }: { kind: typeof workloadItems[number]["kind"] }) {
-  if (kind === "entra") return <svg viewBox="0 0 72 72"><path fill="#4FC3FF" d="M37 5 10 46l18 20 10-23 24 1L37 5Z"/><path fill="#2F7CFF" d="m10 46 28-3-10 23-18-20Z"/><path fill="#6DD8FF" opacity=".55" d="m37 5 25 39-24-1-1-38Z"/></svg>;
-  if (kind === "exchange") return <svg viewBox="0 0 72 72"><rect x="28" y="10" width="34" height="46" rx="6" fill="#1AA7FF"/><rect x="9" y="18" width="37" height="32" rx="6" fill="#1767D8"/><path d="M18 25h20v5H27l12 9v7L18 33v-8Z" fill="#FFFFFF"/><path d="M33 22h21v5H38zM33 31h21v5H38z" fill="#78C4FF" opacity=".55"/></svg>;
-  if (kind === "sharepoint") return <svg viewBox="0 0 72 72"><circle cx="28" cy="34" r="18" fill="#39C7B8"/><circle cx="46" cy="24" r="14" fill="#2AB8A4"/><circle cx="47" cy="47" r="15" fill="#0F756F"/><rect x="13" y="24" width="29" height="25" rx="6" fill="#11766F"/><path d="M21 30h13v5h-8v4h8v6H21v-5h8v-4h-8v-6Z" fill="#FFFFFF"/></svg>;
-  if (kind === "teams") return <svg viewBox="0 0 72 72"><circle cx="54" cy="17" r="8" fill="#8F8CFF"/><rect x="30" y="16" width="31" height="39" rx="7" fill="#6F6AE8"/><rect x="9" y="23" width="38" height="31" rx="6" fill="#4F4BC7"/><path d="M18 30h20v5h-7v13h-6V35h-7v-5Z" fill="#FFFFFF"/></svg>;
-  if (kind === "onedrive") return <svg viewBox="0 0 72 72"><path d="M14 44c2-7 8-11 15-11 6 0 11 3 14 7 3-3 8-5 12-5 8 0 14 6 14 14 0 2 0 4-1 6H14Z" fill="#4DB6FF"/><path d="M23 42c3-7 8-12 15-12 3-8 10-12 18-11 7 1 12 6 14 12-7 0-13 2-17 7-4-4-9-6-14-6-7 0-12 4-16 10Z" fill="#1989F5"/></svg>;
-  if (kind === "intune") return <svg viewBox="0 0 72 72"><rect x="10" y="12" width="52" height="35" rx="5" fill="#2D92FF"/><rect x="17" y="18" width="38" height="23" rx="3" fill="#08203D"/><path d="M27 58h18M36 47v11" stroke="#8BCBFF" strokeWidth="4" strokeLinecap="round"/><path d="M22 26h28M22 33h17" stroke="#3DA8FF" strokeWidth="3"/><rect x="42" y="22" width="8" height="14" rx="2" fill="#1A73E8"/></svg>;
-  if (kind === "defender") return <svg viewBox="0 0 72 72"><path d="M36 6 62 15v19c0 15-9 25-26 33C19 59 10 49 10 34V15l26-9Z" fill="#2A8DFF"/><path d="M36 11v47c11-6 18-14 18-24V19L36 11Z" fill="#1D6FE8"/><path d="M36 11v47c-11-6-18-14-18-24V19L36 11Z" fill="#4BC0FF" opacity=".45"/></svg>;
-  return <svg viewBox="0 0 72 72"><path d="M8 36c8-13 18-20 31-20 10 0 18 4 25 11-8-2-15 0-21 4-7 5-11 11-13 20-9-2-17-7-22-15Z" fill="#21D5FF"/><path d="M64 36c-8 13-18 20-31 20-10 0-18-4-25-11 8 2 15 0 21-4 7-5 11-11 13-20 9 2 17 7 22 15Z" fill="#3E59E8"/><circle cx="36" cy="36" r="8" fill="#06182B"/></svg>;
-}
 
 function Hero({ onRequestAccess }: { onRequestAccess: () => void }) {
   return (
@@ -168,16 +157,15 @@ function Hero({ onRequestAccess }: { onRequestAccess: () => void }) {
         #top .hero-network-badge.shield { left:55%; top:35px; }
         #top .hero-network-badge.lock { right:17%; top:102px; }
         #top .hero-network-badge.cloud { left:25%; top:138px; }
-        #top .hero-workloads { max-width:1320px; margin:-18px auto 0; padding:0 48px 32px; color:#F5F7FA; }
-        #top .hero-workload-title { display:flex; align-items:center; gap:16px; margin-bottom:14px; color:#3E98FF; font:600 12px 'Inter',sans-serif; text-align:center; }
+        #top .hero-workloads { max-width:1320px; margin:-18px auto 0; padding:0 48px 34px; color:#F5F7FA; }
+        #top .hero-workload-title { display:flex; align-items:center; gap:16px; margin-bottom:18px; color:#3E98FF; font:600 12px 'Inter',sans-serif; text-align:center; }
         #top .hero-workload-title::before, #top .hero-workload-title::after { content:""; flex:1; height:1px; background:rgba(76,141,255,.28); }
         #top .hero-workload-title span { white-space:nowrap; }
         #top .hero-workload-grid { display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); gap:12px; }
-        #top .hero-workload-item { display:flex; flex-direction:column; align-items:center; gap:8px; color:#F5F7FA; font:12px 'Inter',sans-serif; text-align:center; }
-        #top .hero-workload-logo, #top .hero-workload-logo svg { width:54px; height:54px; display:block; }
+        #top .hero-workload-item { display:flex; align-items:center; justify-content:center; min-height:34px; color:#DCE6F4; font:500 13px 'Inter',sans-serif; text-align:center; }
         @media (max-width:900px){
           #top .hero-trust-row { grid-template-columns:repeat(2,1fr); }
-          #top .hero-workload-grid { grid-template-columns:repeat(4,1fr); row-gap:18px; }
+          #top .hero-workload-grid { grid-template-columns:repeat(4,1fr); row-gap:12px; }
         }
       `}</style>
       <Nav onRequestAccess={onRequestAccess} />
@@ -219,7 +207,7 @@ function Hero({ onRequestAccess }: { onRequestAccess: () => void }) {
       <div className="hero-workloads">
         <div className="hero-workload-title"><span>Microsoft 365 workloads covered</span></div>
         <div className="hero-workload-grid">
-          {workloadItems.map((item) => <div className="hero-workload-item" key={item.name}><div className="hero-workload-logo"><WorkloadLogo kind={item.kind}/></div><div>{item.name}</div></div>)}
+          {workloadItems.map((item) => <div className="hero-workload-item" key={item}>{item}</div>)}
         </div>
       </div>
     </div>

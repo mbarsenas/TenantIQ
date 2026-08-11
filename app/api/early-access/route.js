@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
@@ -25,8 +25,8 @@ export async function POST(request) {
       return NextResponse.json({ error: "Please complete all required fields." }, { status: 400 });
     }
 
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(lead.email)) {
-      return NextResponse.json({ error: "Please enter a valid work email." }, { status: 400 });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lead.email)) {
+      return NextResponse.json({ error: "Please enter a valid email address." }, { status: 400 });
     }
 
     const apiKey = process.env.RESEND_API_KEY;
@@ -64,7 +64,7 @@ export async function POST(request) {
         from: fromEmail,
         to: [toEmail],
         reply_to: lead.email,
-        subject: `TenantIQ early access — ${lead.company}`,
+        subject: `TenantIQ early access â€” ${lead.company}`,
         text: emailText,
       }),
     });
@@ -80,3 +80,5 @@ export async function POST(request) {
     return NextResponse.json({ error: "Your request could not be submitted. Please try again." }, { status: 500 });
   }
 }
+
+

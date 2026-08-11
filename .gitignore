@@ -26,3 +26,4 @@ Cleanup-TenantIQEntraScripts.ps1
 01 Framework/Export-ExchangeAIHtmlReport-old.ps1
 
 TenantIQ-Startup.log
+node_modules/

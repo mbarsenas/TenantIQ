@@ -1,0 +1,7 @@
+{"timestamp":"00:00:02.192","source":"Server","level":"LOG","message":""}
+{"timestamp":"00:00:13.912","source":"Server","level":"LOG","message":"○ Compiling / ..."}
+{"timestamp":"00:00:15.602","source":"Browser","level":"INFO","message":"Download the React DevTools for a better development experience: https://react.dev/link/react-devtools"}
+{"timestamp":"00:00:24.274","source":"Server","level":"LOG","message":"[TenantIQ early access] {}"}
+{"timestamp":"00:01:02.587","source":"Server","level":"LOG","message":"✓ Compiled in 270ms"}
+{"timestamp":"00:04:10.930","source":"Browser","level":"INFO","message":"Download the React DevTools for a better development experience: https://react.dev/link/react-devtools"}
+{"timestamp":"00:04:22.291","source":"Server","level":"LOG","message":"[TenantIQ early access] {}"}

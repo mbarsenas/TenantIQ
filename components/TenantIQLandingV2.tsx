@@ -1361,7 +1361,7 @@ function EarlyAccessModal({ open, onClose }: { open: boolean; onClose: () => voi
       }
 
       setStatus("success");
-      setMessage("Thanks â€” your early access request has been received.");
+      setMessage("Thanks - your early access request has been received.");
       form.reset();
     } catch (error) {
       setStatus("error");
@@ -1457,10 +1457,10 @@ function EarlyAccessModal({ open, onClose }: { open: boolean; onClose: () => voi
                 Approximate Microsoft 365 users
                 <select className="field-input" name="tenantSize" defaultValue="" required>
                   <option value="" disabled>Select a range</option>
-                  <option>1â€“100</option>
-                  <option>101â€“500</option>
-                  <option>501â€“2,500</option>
-                  <option>2,501â€“10,000</option>
+                  <option>1-100</option>
+                  <option>101-500</option>
+                  <option>501-2,500</option>
+                  <option>2,501-10,000</option>
                   <option>10,001+</option>
                   <option>Multiple client tenants</option>
                 </select>
@@ -1680,3 +1680,5 @@ export default function TenantIQLandingV2() {
     </div>
   );
 }
+
+

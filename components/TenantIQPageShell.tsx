@@ -6,23 +6,154 @@ import TenantIQLandingV2 from "./TenantIQLandingV2";
 
 type PageMode = "home" | "product" | "details";
 
+type Workload = {
+  name: string;
+  kind: "entra" | "exchange" | "sharepoint" | "teams" | "onedrive" | "intune" | "defender" | "purview";
+};
+
 const TRUST_STATS = [
-  { value: "350+", label: "automated checks" },
-  { value: "8", label: "workloads" },
-  { value: "Read-only", label: "access" },
-  { value: "No", label: "configuration changes" },
+  { value: "350+", label: "Automated checks", icon: "shield" },
+  { value: "8", label: "Workloads", icon: "grid" },
+  { value: "Read-only", label: "Access", icon: "eye" },
+  { value: "No", label: "Configuration changes", icon: "lock" },
 ];
 
-const WORKLOADS = [
-  { name: "Entra ID", mark: "E", className: "entra" },
-  { name: "Exchange Online", mark: "X", className: "exchange" },
-  { name: "SharePoint", mark: "S", className: "sharepoint" },
-  { name: "Teams", mark: "T", className: "teams" },
-  { name: "OneDrive", mark: "☁", className: "onedrive" },
-  { name: "Intune", mark: "I", className: "intune" },
-  { name: "Defender", mark: "◆", className: "defender" },
-  { name: "Purview", mark: "P", className: "purview" },
+const WORKLOADS: Workload[] = [
+  { name: "Entra ID", kind: "entra" },
+  { name: "Exchange Online", kind: "exchange" },
+  { name: "SharePoint", kind: "sharepoint" },
+  { name: "Teams", kind: "teams" },
+  { name: "OneDrive", kind: "onedrive" },
+  { name: "Intune", kind: "intune" },
+  { name: "Defender", kind: "defender" },
+  { name: "Purview", kind: "purview" },
 ];
+
+function TrustIcon({ type }: { type: string }) {
+  if (type === "grid") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="3" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" />
+        <rect x="14" y="14" width="7" height="7" rx="1" />
+      </svg>
+    );
+  }
+
+  if (type === "eye") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M2.5 12s3.4-5.2 9.5-5.2S21.5 12 21.5 12s-3.4 5.2-9.5 5.2S2.5 12 2.5 12Z" />
+        <path d="M9.2 9.2a4 4 0 0 0 5.6 5.6" />
+        <path d="M3 3l18 18" />
+      </svg>
+    );
+  }
+
+  if (type === "lock") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="5" y="10" width="14" height="11" rx="2" />
+        <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 2.5 19 5v6.2c0 4.7-2.8 8-7 10.3-4.2-2.3-7-5.6-7-10.3V5l7-2.5Z" />
+      <path d="m8.8 12 2 2 4.4-4.5" />
+    </svg>
+  );
+}
+
+function WorkloadIcon({ kind }: { kind: Workload["kind"] }) {
+  switch (kind) {
+    case "entra":
+      return (
+        <svg viewBox="0 0 48 48" aria-hidden="true">
+          <defs>
+            <linearGradient id="entraA" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stopColor="#2A7BFF" />
+              <stop offset="1" stopColor="#54D8FF" />
+            </linearGradient>
+          </defs>
+          <path fill="url(#entraA)" d="M25 4 8 29l12 15 6-14 14 1L25 4Z" />
+          <path fill="#76BFFF" opacity=".75" d="m8 29 18 1-6 14-12-15Z" />
+        </svg>
+      );
+    case "exchange":
+      return (
+        <svg viewBox="0 0 48 48" aria-hidden="true">
+          <rect x="18" y="8" width="25" height="32" rx="4" fill="#1D8CFF" />
+          <rect x="6" y="13" width="24" height="22" rx="4" fill="#1267D6" />
+          <path d="M11 20h14v3H15l10 7v4L11 24v-4Z" fill="#fff" opacity=".95" />
+        </svg>
+      );
+    case "sharepoint":
+      return (
+        <svg viewBox="0 0 48 48" aria-hidden="true">
+          <circle cx="18" cy="22" r="12" fill="#16877C" />
+          <circle cx="30" cy="17" r="10" fill="#22A89D" opacity=".88" />
+          <circle cx="31" cy="30" r="11" fill="#2BC4B7" opacity=".75" />
+          <path d="M14 16h9v4h-5v3h5v9h-9v-4h5v-3h-5v-9Z" fill="#fff" />
+        </svg>
+      );
+    case "teams":
+      return (
+        <svg viewBox="0 0 48 48" aria-hidden="true">
+          <circle cx="35" cy="13" r="5" fill="#837EFF" />
+          <rect x="19" y="12" width="22" height="25" rx="5" fill="#6F6AE8" />
+          <rect x="7" y="16" width="24" height="20" rx="4" fill="#4D4BC2" />
+          <path d="M13 21h12v4h-4v8h-4v-8h-4v-4Z" fill="#fff" />
+        </svg>
+      );
+    case "onedrive":
+      return (
+        <svg viewBox="0 0 48 48" aria-hidden="true">
+          <path fill="#1998FF" d="M18 18c2-6 7-9 13-9 7 0 12 4 14 10 5 0 9 4 9 9s-4 9-9 9H13C7 37 3 33 3 28s4-10 10-10c2 0 3 0 5 1Z" transform="scale(.85) translate(4 4)" />
+          <path fill="#48B8FF" d="M11 30c1-5 5-8 10-8 4 0 7 2 9 5 2-2 5-3 8-3 5 0 9 4 9 9 0 1 0 2-1 3H11Z" opacity=".8" />
+        </svg>
+      );
+    case "intune":
+      return (
+        <svg viewBox="0 0 48 48" aria-hidden="true">
+          <rect x="7" y="10" width="34" height="24" rx="3" fill="#0AA6E8" />
+          <rect x="11" y="14" width="26" height="16" rx="2" fill="#082C4B" />
+          <path d="M20 39h8M24 34v5" stroke="#78D7FF" strokeWidth="3" strokeLinecap="round" />
+          <path d="M15 20h18M15 24h10" stroke="#35C4FF" strokeWidth="2" />
+        </svg>
+      );
+    case "defender":
+      return (
+        <svg viewBox="0 0 48 48" aria-hidden="true">
+          <defs>
+            <linearGradient id="defA" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stopColor="#31A8FF" />
+              <stop offset="1" stopColor="#1267D6" />
+            </linearGradient>
+          </defs>
+          <path d="M24 5 41 11v12c0 10-6 16-17 21C13 39 7 33 7 23V11l17-6Z" fill="url(#defA)" />
+          <path d="M24 9v30c8-4 12-9 12-16v-9L24 9Z" fill="#267FE6" opacity=".8" />
+        </svg>
+      );
+    case "purview":
+      return (
+        <svg viewBox="0 0 48 48" aria-hidden="true">
+          <defs>
+            <linearGradient id="purA" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stopColor="#17D2FF" />
+              <stop offset="1" stopColor="#386BFF" />
+            </linearGradient>
+          </defs>
+          <path d="M6 24c5-9 12-14 20-14 7 0 12 3 16 8-4-1-9 0-13 3-4 3-7 7-9 13-6-1-11-4-14-10Z" fill="url(#purA)" />
+          <path d="M42 24c-5 9-12 14-20 14-7 0-12-3-16-8 4 1 9 0 13-3 4-3 7-7 9-13 6 1 11 4 14 10Z" fill="#2085E8" opacity=".9" />
+          <circle cx="24" cy="24" r="5" fill="#08182A" />
+        </svg>
+      );
+  }
+}
 
 function HomeEnhancements() {
   return (
@@ -30,25 +161,31 @@ function HomeEnhancements() {
       <div className="home-network" aria-hidden="true">
         <svg viewBox="0 0 1600 330" preserveAspectRatio="none">
           <g className="network-lines">
-            <path d="M0 220 L150 175 L310 215 L470 155 L630 200 L790 140 L965 190 L1120 130 L1290 180 L1450 115 L1600 155" />
-            <path d="M20 300 L205 250 L370 280 L535 215 L720 265 L900 210 L1065 255 L1230 195 L1390 235 L1575 185" />
-            <path d="M150 175 L205 250 M310 215 L370 280 M470 155 L535 215 M630 200 L720 265 M790 140 L900 210 M965 190 L1065 255 M1120 130 L1230 195 M1290 180 L1390 235 M1450 115 L1575 185" />
-            <path d="M205 250 L310 215 M370 280 L470 155 M535 215 L630 200 M720 265 L790 140 M900 210 L965 190 M1065 255 L1120 130 M1230 195 L1290 180 M1390 235 L1450 115" />
+            <path d="M0 228 L90 194 L190 242 L300 188 L410 232 L520 174 L630 226 L745 168 L860 220 L980 158 L1100 216 L1220 158 L1340 211 L1460 150 L1600 190" />
+            <path d="M15 292 L120 254 L235 298 L350 236 L465 282 L585 226 L700 276 L820 218 L935 266 L1055 211 L1175 260 L1295 208 L1415 248 L1540 202" />
+            <path d="M90 194 L120 254 M190 242 L235 298 M300 188 L350 236 M410 232 L465 282 M520 174 L585 226 M630 226 L700 276 M745 168 L820 218 M860 220 L935 266 M980 158 L1055 211 M1100 216 L1175 260 M1220 158 L1295 208 M1340 211 L1415 248 M1460 150 L1540 202" />
+            <path d="M120 254 L190 242 M235 298 L300 188 M350 236 L410 232 M465 282 L520 174 M585 226 L630 226 M700 276 L745 168 M820 218 L860 220 M935 266 L980 158 M1055 211 L1100 216 M1175 260 L1220 158 M1295 208 L1340 211 M1415 248 L1460 150" />
           </g>
           <g className="network-nodes">
-            {[150, 205, 310, 370, 470, 535, 630, 720, 790, 900, 965, 1065, 1120, 1230, 1290, 1390, 1450, 1575].map((x, index) => {
-              const yValues = [175, 250, 215, 280, 155, 215, 200, 265, 140, 210, 190, 255, 130, 195, 180, 235, 115, 185];
-              return <circle key={x} cx={x} cy={yValues[index]} r={index % 4 === 0 ? 5 : 3} />;
-            })}
+            {[
+              [90,194,5],[120,254,3],[190,242,4],[235,298,3],[300,188,5],[350,236,3],[410,232,3],[465,282,3],
+              [520,174,5],[585,226,3],[630,226,3],[700,276,3],[745,168,5],[820,218,3],[860,220,3],[935,266,3],
+              [980,158,5],[1055,211,3],[1100,216,3],[1175,260,3],[1220,158,5],[1295,208,3],[1340,211,3],[1415,248,3],
+              [1460,150,5],[1540,202,3]
+            ].map(([cx,cy,r], i) => <circle key={i} cx={cx} cy={cy} r={r} />)}
           </g>
         </svg>
       </div>
+
+      <div className="network-badge badge-users" aria-hidden="true">👥</div>
+      <div className="network-badge badge-shield" aria-hidden="true">✓</div>
+      <div className="network-badge badge-lock" aria-hidden="true">🔒</div>
 
       <div className="home-enhancements-inner">
         <div className="trust-stat-row">
           {TRUST_STATS.map((stat) => (
             <div className="trust-stat" key={`${stat.value}-${stat.label}`}>
-              <span className="trust-stat-icon" aria-hidden="true" />
+              <span className="trust-stat-icon"><TrustIcon type={stat.icon} /></span>
               <div>
                 <div className="trust-stat-value">{stat.value}</div>
                 <div className="trust-stat-label">{stat.label}</div>
@@ -62,7 +199,7 @@ function HomeEnhancements() {
           <div className="workload-strip">
             {WORKLOADS.map((workload) => (
               <div className="workload-item" key={workload.name}>
-                <span className={`workload-logo ${workload.className}`} aria-hidden="true">{workload.mark}</span>
+                <span className="workload-logo"><WorkloadIcon kind={workload.kind} /></span>
                 <span className="workload-name">{workload.name}</span>
               </div>
             ))}
@@ -93,94 +230,85 @@ export default function TenantIQPageShell({ mode }: { mode: PageMode }) {
     const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>("button"));
     for (const button of buttons) {
       if (button.textContent?.trim() === "View sample assessment") {
-        button.onclick = () => {
-          window.location.href = "/details#sample";
-        };
+        button.onclick = () => { window.location.href = "/details#sample"; };
       }
     }
 
-    if (mode === "home") {
-      setHeroTarget(document.getElementById("top"));
-    }
+    if (mode === "home") setHeroTarget(document.getElementById("top"));
   }, [mode]);
 
   return (
     <>
       <style>{`
         ${mode === "home" ? `
-          #what, #coverage, #how, #sample, #trust, #audience, #early-access, footer {
-            display: none !important;
-          }
-
+          #what, #coverage, #how, #sample, #trust, #audience, #early-access, footer { display: none !important; }
           #top {
             position: relative;
             overflow: hidden;
-            min-height: 100vh;
-            padding-bottom: 292px;
+            min-height: 760px;
+            padding-bottom: 285px;
             background:
-              radial-gradient(circle at 20% 78%, rgba(37,99,235,.10), transparent 27%),
-              radial-gradient(circle at 82% 72%, rgba(76,141,255,.08), transparent 30%),
-              #0D1321 !important;
+              radial-gradient(circle at 15% 12%, rgba(13,89,170,.12), transparent 25%),
+              radial-gradient(circle at 74% 32%, rgba(36,111,255,.08), transparent 28%),
+              linear-gradient(180deg, #07111f 0%, #07121f 58%, #06111f 100%) !important;
           }
-
           #top .hero-grid {
             position: relative;
-            z-index: 3;
+            z-index: 4;
+            padding-top: 10px !important;
+            padding-bottom: 12px !important;
+            align-items: start !important;
           }
+          #top .hero-actions + p { margin-top: 12px !important; }
         ` : ""}
 
-        ${mode === "product" ? `
-          .hero-grid, #how, #sample, #trust, #audience, #early-access, footer {
-            display: none !important;
-          }
-        ` : ""}
-
-        ${mode === "details" ? `
-          .hero-grid, #what, #coverage {
-            display: none !important;
-          }
-        ` : ""}
+        ${mode === "product" ? `.hero-grid, #how, #sample, #trust, #audience, #early-access, footer { display: none !important; }` : ""}
+        ${mode === "details" ? `.hero-grid, #what, #coverage { display: none !important; }` : ""}
 
         .home-enhancements {
           position: absolute;
           left: 0;
           right: 0;
           bottom: 0;
-          height: 305px;
+          height: 315px;
           overflow: hidden;
-          z-index: 1;
+          z-index: 2;
           pointer-events: none;
         }
 
         .home-network {
           position: absolute;
-          inset: 30px 0 0;
-          opacity: .46;
-          mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,.78) 20%, #000 55%, rgba(0,0,0,.90) 100%);
+          inset: 48px 0 76px;
+          opacity: .72;
+          mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,.9) 20%, #000 68%, rgba(0,0,0,.75) 100%);
         }
+        .home-network svg { width: 100%; height: 100%; display: block; }
+        .network-lines { fill: none; stroke: rgba(37,114,255,.34); stroke-width: 1; vector-effect: non-scaling-stroke; }
+        .network-nodes { fill: #2F9FFF; filter: drop-shadow(0 0 8px rgba(47,159,255,.92)); }
 
-        .home-network svg {
-          width: 100%;
-          height: 100%;
-          display: block;
+        .network-badge {
+          position: absolute;
+          z-index: 2;
+          width: 44px;
+          height: 44px;
+          border: 1px solid rgba(38,127,255,.8);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #5EA7FF;
+          background: rgba(5,20,40,.72);
+          box-shadow: 0 0 24px rgba(27,104,255,.10);
+          font-size: 18px;
         }
-
-        .network-lines {
-          fill: none;
-          stroke: rgba(45,123,255,.27);
-          stroke-width: 1;
-          vector-effect: non-scaling-stroke;
-        }
-
-        .network-nodes {
-          fill: #33A1FF;
-          filter: drop-shadow(0 0 7px rgba(51,161,255,.8));
-        }
+        .badge-users { left: 13%; top: 118px; }
+        .badge-shield { left: 56%; top: 96px; font-weight: 800; }
+        .badge-lock { right: 14%; top: 132px; font-size: 16px; }
 
         .home-enhancements-inner {
           position: relative;
-          z-index: 2;
-          width: min(1100px, calc(100% - 48px));
+          z-index: 3;
+          width: min(1200px, calc(100% - 96px));
           height: 100%;
           margin: 0 auto;
         }
@@ -191,141 +319,98 @@ export default function TenantIQPageShell({ mode }: { mode: PageMode }) {
           left: 0;
           display: grid;
           grid-template-columns: repeat(4, minmax(0, 1fr));
-          width: min(700px, 64%);
-          border-top: 1px solid rgba(139,149,165,.13);
-          border-bottom: 1px solid rgba(139,149,165,.13);
-          background: rgba(13,19,33,.16);
-          backdrop-filter: blur(4px);
+          width: min(560px, 51%);
+          background: transparent;
         }
-
         .trust-stat {
           display: flex;
           align-items: center;
-          gap: 9px;
-          min-height: 64px;
-          padding: 10px 16px;
-          border-right: 1px solid rgba(139,149,165,.14);
+          gap: 10px;
+          min-height: 58px;
+          padding: 8px 14px 8px 0;
+          margin-right: 14px;
+          border-right: 1px solid rgba(139,149,165,.18);
         }
-
-        .trust-stat:last-child { border-right: 0; }
-
-        .trust-stat-icon {
-          width: 8px;
-          height: 8px;
-          flex: 0 0 auto;
-          border: 1px solid #4C8DFF;
-          border-radius: 50%;
-          box-shadow: 0 0 11px rgba(76,141,255,.45);
-        }
-
-        .trust-stat-value {
-          color: #F5F7FA;
-          font-family: 'Space Grotesk', sans-serif;
-          font-size: 14px;
-          font-weight: 700;
-          line-height: 1.1;
-        }
-
-        .trust-stat-label {
-          margin-top: 3px;
-          color: #7F899A;
-          font-family: 'Inter', sans-serif;
-          font-size: 10px;
-          line-height: 1.2;
-        }
+        .trust-stat:last-child { border-right: 0; margin-right: 0; }
+        .trust-stat-icon { width: 23px; height: 23px; flex: 0 0 auto; color: #2F8CFF; }
+        .trust-stat-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+        .trust-stat-value { color: #F5F7FA; font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 700; line-height: 1.05; }
+        .trust-stat-label { margin-top: 4px; color: #8B95A5; font-family: 'Inter', sans-serif; font-size: 9px; line-height: 1.15; }
 
         .workload-strip-wrap {
           position: absolute;
           left: 0;
           right: 0;
-          bottom: 18px;
-          padding-top: 17px;
-          border-top: 1px solid rgba(76,141,255,.17);
+          bottom: 14px;
+          padding-top: 14px;
+          border-top: 1px solid rgba(76,141,255,.28);
           text-align: center;
           pointer-events: auto;
         }
-
         .workload-strip-title {
           display: inline-block;
           position: relative;
-          top: -29px;
+          top: -26px;
           padding: 0 16px;
-          color: #4C8DFF;
-          background: #0D1321;
-          font-family: 'IBM Plex Mono', monospace;
-          font-size: 10px;
-          letter-spacing: .07em;
-          text-transform: uppercase;
+          color: #2F91FF;
+          background: #06111f;
+          font-family: 'Inter', sans-serif;
+          font-size: 11px;
+          font-weight: 600;
         }
-
         .workload-strip {
           display: grid;
           grid-template-columns: repeat(8, minmax(0, 1fr));
-          gap: 10px;
-          margin-top: -10px;
+          gap: 12px;
+          margin-top: -12px;
         }
-
         .workload-item {
+          position: relative;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 7px;
+          gap: 6px;
           min-width: 0;
-          color: #C5CCDA;
+          color: #E4E9F3;
           font-family: 'Inter', sans-serif;
-          font-size: 11px;
+          font-size: 10px;
           white-space: nowrap;
         }
-
-        .workload-logo {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 28px;
-          height: 28px;
-          border: 1px solid rgba(76,141,255,.32);
-          border-radius: 8px;
-          color: #8FC0FF;
-          background: linear-gradient(145deg, rgba(33,87,181,.30), rgba(16,31,58,.68));
-          box-shadow: inset 0 0 12px rgba(76,141,255,.08), 0 0 12px rgba(33,112,255,.08);
-          font-family: 'Space Grotesk', sans-serif;
-          font-size: 13px;
-          font-weight: 700;
+        .workload-item:not(:last-child)::after {
+          content: "";
+          position: absolute;
+          right: -7px;
+          top: 21px;
+          width: 4px;
+          height: 4px;
+          border-radius: 50%;
+          background: #678BFF;
+          opacity: .75;
         }
+        .workload-logo { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; }
+        .workload-logo svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 6px 10px rgba(0,0,0,.18)); }
+        .workload-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 
-        .workload-logo.entra { border-radius: 50% 35% 50% 35%; color: #64C7FF; }
-        .workload-logo.exchange { color: #56A7FF; }
-        .workload-logo.sharepoint { color: #63D4CE; }
-        .workload-logo.teams { color: #9E9BFF; }
-        .workload-logo.onedrive { color: #62B9FF; font-size: 15px; }
-        .workload-logo.intune { color: #67C9FF; }
-        .workload-logo.defender { color: #70B7FF; }
-        .workload-logo.purview { color: #A39CFF; }
-
-        .workload-name {
-          overflow: hidden;
-          text-overflow: ellipsis;
-          max-width: 100%;
-        }
-
-        @media (max-width: 900px) {
-          #top { padding-bottom: 370px; }
+        @media (max-width: 1000px) {
+          #top { min-height: 840px; padding-bottom: 350px; }
           .home-enhancements { height: 380px; }
-          .trust-stat-row { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-          .trust-stat:nth-child(2) { border-right: 0; }
-          .trust-stat:nth-child(-n+2) { border-bottom: 1px solid rgba(139,149,165,.14); }
-          .workload-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 15px; }
+          .home-enhancements-inner { width: min(100% - 40px, 1200px); }
+          .trust-stat-row { width: min(650px, 100%); }
+          .workload-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 14px; }
+          .workload-item:nth-child(4)::after { display: none; }
+          .network-badge { opacity: .65; }
         }
 
-        @media (max-width: 560px) {
-          #top { padding-bottom: 500px; }
-          .home-enhancements { height: 510px; }
-          .home-enhancements-inner { width: min(100% - 30px, 1100px); }
-          .trust-stat { padding: 10px 11px; }
-          .workload-strip-wrap { bottom: 18px; }
-          .workload-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-          .workload-item { font-size: 10px; }
+        @media (max-width: 620px) {
+          #top { min-height: 1080px; padding-bottom: 500px; }
+          .home-enhancements { height: 530px; }
+          .home-enhancements-inner { width: min(100% - 28px, 1200px); }
+          .trust-stat-row { grid-template-columns: repeat(2, minmax(0,1fr)); }
+          .trust-stat { border-right: 0; margin-right: 0; }
+          .workload-strip { grid-template-columns: repeat(2, minmax(0,1fr)); row-gap: 16px; }
+          .workload-item::after { display: none !important; }
+          .network-badge { display: none; }
         }
       `}</style>
 

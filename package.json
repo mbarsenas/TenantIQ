@@ -2,11 +2,10 @@
   "name": "tenantiq-landing",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
+	"scripts": {
     "dev": "next dev",
-	"build": "next build --no-turbo",
-    "start": "next start",
-    "lint": "eslint"
+	"build": "next build --webpack",
+	"start": "next start"
   },
   "dependencies": {
     "lucide-react": "^1.31.0",

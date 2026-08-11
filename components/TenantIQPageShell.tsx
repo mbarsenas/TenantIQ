@@ -5,20 +5,16 @@ import { createPortal } from "react-dom";
 import TenantIQLandingV2 from "./TenantIQLandingV2";
 
 type PageMode = "home" | "product" | "details";
-
-type Workload = {
-  name: string;
-  kind: "entra" | "exchange" | "sharepoint" | "teams" | "onedrive" | "intune" | "defender" | "purview";
-};
+type WorkloadKind = "entra" | "exchange" | "sharepoint" | "teams" | "onedrive" | "intune" | "defender" | "purview";
 
 const TRUST_STATS = [
-  { value: "350+", label: "Automated checks", icon: "shield" },
-  { value: "8", label: "Workloads", icon: "grid" },
-  { value: "Read-only", label: "Access", icon: "eye" },
-  { value: "No", label: "Configuration changes", icon: "lock" },
+  { value: "350+", label: "automated checks", icon: "shield" },
+  { value: "8", label: "workloads", icon: "grid" },
+  { value: "Read-only", label: "access", icon: "eye" },
+  { value: "No", label: "configuration changes", icon: "lock" },
 ];
 
-const WORKLOADS: Workload[] = [
+const WORKLOADS: { name: string; kind: WorkloadKind }[] = [
   { name: "Entra ID", kind: "entra" },
   { name: "Exchange Online", kind: "exchange" },
   { name: "SharePoint", kind: "sharepoint" },
@@ -31,179 +27,82 @@ const WORKLOADS: Workload[] = [
 
 function TrustIcon({ type }: { type: string }) {
   if (type === "grid") {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <rect x="3" y="3" width="7" height="7" rx="1" />
-        <rect x="14" y="3" width="7" height="7" rx="1" />
-        <rect x="3" y="14" width="7" height="7" rx="1" />
-        <rect x="14" y="14" width="7" height="7" rx="1" />
-      </svg>
-    );
+    return <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>;
   }
-
   if (type === "eye") {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M2.5 12s3.4-5.2 9.5-5.2S21.5 12 21.5 12s-3.4 5.2-9.5 5.2S2.5 12 2.5 12Z" />
-        <path d="M9.2 9.2a4 4 0 0 0 5.6 5.6" />
-        <path d="M3 3l18 18" />
-      </svg>
-    );
+    return <svg viewBox="0 0 24 24"><path d="M2.5 12s3.4-5.2 9.5-5.2S21.5 12 21.5 12s-3.4 5.2-9.5 5.2S2.5 12 2.5 12Z"/><path d="M9.2 9.2a4 4 0 0 0 5.6 5.6"/><path d="M3 3l18 18"/></svg>;
   }
-
   if (type === "lock") {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <rect x="5" y="10" width="14" height="11" rx="2" />
-        <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-      </svg>
-    );
+    return <svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>;
   }
-
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 2.5 19 5v6.2c0 4.7-2.8 8-7 10.3-4.2-2.3-7-5.6-7-10.3V5l7-2.5Z" />
-      <path d="m8.8 12 2 2 4.4-4.5" />
-    </svg>
-  );
+  return <svg viewBox="0 0 24 24"><path d="M12 2.5 19 5v6.2c0 4.7-2.8 8-7 10.3-4.2-2.3-7-5.6-7-10.3V5l7-2.5Z"/><path d="m8.8 12 2 2 4.4-4.5"/></svg>;
 }
 
-function WorkloadIcon({ kind }: { kind: Workload["kind"] }) {
-  switch (kind) {
-    case "entra":
-      return (
-        <svg viewBox="0 0 48 48" aria-hidden="true">
-          <defs>
-            <linearGradient id="entraA" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#2A7BFF" />
-              <stop offset="1" stopColor="#54D8FF" />
-            </linearGradient>
-          </defs>
-          <path fill="url(#entraA)" d="M25 4 8 29l12 15 6-14 14 1L25 4Z" />
-          <path fill="#76BFFF" opacity=".75" d="m8 29 18 1-6 14-12-15Z" />
-        </svg>
-      );
-    case "exchange":
-      return (
-        <svg viewBox="0 0 48 48" aria-hidden="true">
-          <rect x="18" y="8" width="25" height="32" rx="4" fill="#1D8CFF" />
-          <rect x="6" y="13" width="24" height="22" rx="4" fill="#1267D6" />
-          <path d="M11 20h14v3H15l10 7v4L11 24v-4Z" fill="#fff" opacity=".95" />
-        </svg>
-      );
-    case "sharepoint":
-      return (
-        <svg viewBox="0 0 48 48" aria-hidden="true">
-          <circle cx="18" cy="22" r="12" fill="#16877C" />
-          <circle cx="30" cy="17" r="10" fill="#22A89D" opacity=".88" />
-          <circle cx="31" cy="30" r="11" fill="#2BC4B7" opacity=".75" />
-          <path d="M14 16h9v4h-5v3h5v9h-9v-4h5v-3h-5v-9Z" fill="#fff" />
-        </svg>
-      );
-    case "teams":
-      return (
-        <svg viewBox="0 0 48 48" aria-hidden="true">
-          <circle cx="35" cy="13" r="5" fill="#837EFF" />
-          <rect x="19" y="12" width="22" height="25" rx="5" fill="#6F6AE8" />
-          <rect x="7" y="16" width="24" height="20" rx="4" fill="#4D4BC2" />
-          <path d="M13 21h12v4h-4v8h-4v-8h-4v-4Z" fill="#fff" />
-        </svg>
-      );
-    case "onedrive":
-      return (
-        <svg viewBox="0 0 48 48" aria-hidden="true">
-          <path fill="#1998FF" d="M18 18c2-6 7-9 13-9 7 0 12 4 14 10 5 0 9 4 9 9s-4 9-9 9H13C7 37 3 33 3 28s4-10 10-10c2 0 3 0 5 1Z" transform="scale(.85) translate(4 4)" />
-          <path fill="#48B8FF" d="M11 30c1-5 5-8 10-8 4 0 7 2 9 5 2-2 5-3 8-3 5 0 9 4 9 9 0 1 0 2-1 3H11Z" opacity=".8" />
-        </svg>
-      );
-    case "intune":
-      return (
-        <svg viewBox="0 0 48 48" aria-hidden="true">
-          <rect x="7" y="10" width="34" height="24" rx="3" fill="#0AA6E8" />
-          <rect x="11" y="14" width="26" height="16" rx="2" fill="#082C4B" />
-          <path d="M20 39h8M24 34v5" stroke="#78D7FF" strokeWidth="3" strokeLinecap="round" />
-          <path d="M15 20h18M15 24h10" stroke="#35C4FF" strokeWidth="2" />
-        </svg>
-      );
-    case "defender":
-      return (
-        <svg viewBox="0 0 48 48" aria-hidden="true">
-          <defs>
-            <linearGradient id="defA" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#31A8FF" />
-              <stop offset="1" stopColor="#1267D6" />
-            </linearGradient>
-          </defs>
-          <path d="M24 5 41 11v12c0 10-6 16-17 21C13 39 7 33 7 23V11l17-6Z" fill="url(#defA)" />
-          <path d="M24 9v30c8-4 12-9 12-16v-9L24 9Z" fill="#267FE6" opacity=".8" />
-        </svg>
-      );
-    case "purview":
-      return (
-        <svg viewBox="0 0 48 48" aria-hidden="true">
-          <defs>
-            <linearGradient id="purA" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#17D2FF" />
-              <stop offset="1" stopColor="#386BFF" />
-            </linearGradient>
-          </defs>
-          <path d="M6 24c5-9 12-14 20-14 7 0 12 3 16 8-4-1-9 0-13 3-4 3-7 7-9 13-6-1-11-4-14-10Z" fill="url(#purA)" />
-          <path d="M42 24c-5 9-12 14-20 14-7 0-12-3-16-8 4 1 9 0 13-3 4-3 7-7 9-13 6 1 11 4 14 10Z" fill="#2085E8" opacity=".9" />
-          <circle cx="24" cy="24" r="5" fill="#08182A" />
-        </svg>
-      );
+function WorkloadIcon({ kind }: { kind: WorkloadKind }) {
+  if (kind === "entra") {
+    return <svg viewBox="0 0 48 48"><defs><linearGradient id="e1" x1="5" y1="5" x2="43" y2="43"><stop stopColor="#20A4FF"/><stop offset="1" stopColor="#58D9FF"/></linearGradient></defs><path fill="url(#e1)" d="M24 4 7 29l13 15 6-14 15 1L24 4Z"/><path fill="#2F7CFF" opacity=".72" d="m7 29 19 1-6 14L7 29Z"/></svg>;
   }
+  if (kind === "exchange") {
+    return <svg viewBox="0 0 48 48"><rect x="17" y="7" width="27" height="34" rx="5" fill="#168FFF"/><rect x="5" y="13" width="25" height="22" rx="4" fill="#1267D6"/><path d="M11 18h13v4h-7l8 6v5l-14-10v-5Z" fill="#fff"/></svg>;
+  }
+  if (kind === "sharepoint") {
+    return <svg viewBox="0 0 48 48"><circle cx="18" cy="22" r="12" fill="#16877C"/><circle cx="30" cy="17" r="10" fill="#22A89D"/><circle cx="31" cy="30" r="11" fill="#2BC4B7" opacity=".85"/><path d="M14 16h9v4h-5v3h5v9h-9v-4h5v-3h-5v-9Z" fill="#fff"/></svg>;
+  }
+  if (kind === "teams") {
+    return <svg viewBox="0 0 48 48"><circle cx="35" cy="12" r="5" fill="#8B86FF"/><rect x="19" y="12" width="23" height="25" rx="5" fill="#6F6AE8"/><rect x="6" y="16" width="25" height="20" rx="4" fill="#4D4BC2"/><path d="M12 21h13v4h-4v8h-5v-8h-4v-4Z" fill="#fff"/></svg>;
+  }
+  if (kind === "onedrive") {
+    return <svg viewBox="0 0 48 48"><path fill="#138AF5" d="M11 31c1-6 5-10 11-10 3-7 9-11 16-9 6 1 10 5 11 11 5 0 8 4 8 9 0 6-4 10-10 10H13C7 42 3 38 3 33c0-5 3-9 8-10Z" transform="scale(.82) translate(3 1)"/><path fill="#50B7FF" d="M10 31c2-5 6-8 11-8 4 0 8 2 10 5 2-2 5-3 8-3 5 0 9 4 9 9 0 2 0 3-1 4H10Z"/></svg>;
+  }
+  if (kind === "intune") {
+    return <svg viewBox="0 0 48 48"><rect x="7" y="9" width="34" height="25" rx="3" fill="#12A8E8"/><rect x="11" y="13" width="26" height="17" rx="2" fill="#082C4B"/><path d="M19 39h10M24 34v5" stroke="#7DDAFF" strokeWidth="3" strokeLinecap="round"/><path d="M15 19h18M15 24h12" stroke="#2CC3FF" strokeWidth="2"/></svg>;
+  }
+  if (kind === "defender") {
+    return <svg viewBox="0 0 48 48"><defs><linearGradient id="d1" x1="7" y1="5" x2="40" y2="43"><stop stopColor="#34ADFF"/><stop offset="1" stopColor="#1267D6"/></linearGradient></defs><path d="M24 5 41 11v12c0 10-6 16-17 21C13 39 7 33 7 23V11l17-6Z" fill="url(#d1)"/><path d="M24 9v30c8-4 12-9 12-16v-9L24 9Z" fill="#287EE5" opacity=".78"/></svg>;
+  }
+  return <svg viewBox="0 0 48 48"><defs><linearGradient id="p1" x1="4" y1="8" x2="44" y2="40"><stop stopColor="#19D3FF"/><stop offset="1" stopColor="#386BFF"/></linearGradient></defs><path d="M6 24c5-9 12-14 20-14 7 0 12 3 16 8-5-1-10 0-14 3-4 3-7 7-8 13-6-1-11-4-14-10Z" fill="url(#p1)"/><path d="M42 24c-5 9-12 14-20 14-7 0-12-3-16-8 5 1 10 0 14-3 4-3 7-7 8-13 6 1 11 4 14 10Z" fill="#2085E8" opacity=".9"/><circle cx="24" cy="24" r="5" fill="#071726"/></svg>;
 }
 
 function HomeEnhancements() {
   return (
     <div className="home-enhancements" aria-label="TenantIQ platform highlights">
-      <div className="home-network" aria-hidden="true">
-        <svg viewBox="0 0 1600 330" preserveAspectRatio="none">
-          <g className="network-lines">
-            <path d="M0 228 L90 194 L190 242 L300 188 L410 232 L520 174 L630 226 L745 168 L860 220 L980 158 L1100 216 L1220 158 L1340 211 L1460 150 L1600 190" />
-            <path d="M15 292 L120 254 L235 298 L350 236 L465 282 L585 226 L700 276 L820 218 L935 266 L1055 211 L1175 260 L1295 208 L1415 248 L1540 202" />
-            <path d="M90 194 L120 254 M190 242 L235 298 M300 188 L350 236 M410 232 L465 282 M520 174 L585 226 M630 226 L700 276 M745 168 L820 218 M860 220 L935 266 M980 158 L1055 211 M1100 216 L1175 260 M1220 158 L1295 208 M1340 211 L1415 248 M1460 150 L1540 202" />
-            <path d="M120 254 L190 242 M235 298 L300 188 M350 236 L410 232 M465 282 L520 174 M585 226 L630 226 M700 276 L745 168 M820 218 L860 220 M935 266 L980 158 M1055 211 L1100 216 M1175 260 L1220 158 M1295 208 L1340 211 M1415 248 L1460 150" />
-          </g>
-          <g className="network-nodes">
-            {[
-              [90,194,5],[120,254,3],[190,242,4],[235,298,3],[300,188,5],[350,236,3],[410,232,3],[465,282,3],
-              [520,174,5],[585,226,3],[630,226,3],[700,276,3],[745,168,5],[820,218,3],[860,220,3],[935,266,3],
-              [980,158,5],[1055,211,3],[1100,216,3],[1175,260,3],[1220,158,5],[1295,208,3],[1340,211,3],[1415,248,3],
-              [1460,150,5],[1540,202,3]
-            ].map(([cx,cy,r], i) => <circle key={i} cx={cx} cy={cy} r={r} />)}
-          </g>
-        </svg>
-      </div>
-
-      <div className="network-badge badge-users" aria-hidden="true">👥</div>
-      <div className="network-badge badge-shield" aria-hidden="true">✓</div>
-      <div className="network-badge badge-lock" aria-hidden="true">🔒</div>
-
       <div className="home-enhancements-inner">
         <div className="trust-stat-row">
           {TRUST_STATS.map((stat) => (
-            <div className="trust-stat" key={`${stat.value}-${stat.label}`}>
-              <span className="trust-stat-icon"><TrustIcon type={stat.icon} /></span>
-              <div>
-                <div className="trust-stat-value">{stat.value}</div>
-                <div className="trust-stat-label">{stat.label}</div>
-              </div>
+            <div className="trust-stat" key={stat.value + stat.label}>
+              <span className="trust-stat-icon"><TrustIcon type={stat.icon}/></span>
+              <div><div className="trust-stat-value">{stat.value}</div><div className="trust-stat-label">{stat.label}</div></div>
             </div>
           ))}
         </div>
+      </div>
 
-        <div className="workload-strip-wrap">
-          <div className="workload-strip-title">Microsoft 365 workloads covered</div>
-          <div className="workload-strip">
-            {WORKLOADS.map((workload) => (
-              <div className="workload-item" key={workload.name}>
-                <span className="workload-logo"><WorkloadIcon kind={workload.kind} /></span>
-                <span className="workload-name">{workload.name}</span>
-              </div>
-            ))}
-          </div>
+      <div className="home-network" aria-hidden="true">
+        <svg viewBox="0 0 1600 260" preserveAspectRatio="none">
+          <g className="network-lines">
+            <path d="M0 185 L95 150 L190 195 L300 138 L405 184 L520 128 L630 177 L745 122 L860 172 L975 112 L1090 168 L1210 116 L1330 166 L1450 108 L1600 150"/>
+            <path d="M20 235 L120 202 L235 242 L350 190 L465 229 L585 182 L700 224 L820 176 L935 216 L1055 170 L1175 211 L1295 166 L1415 203 L1540 163"/>
+            <path d="M95 150L120 202M190 195L235 242M300 138L350 190M405 184L465 229M520 128L585 182M630 177L700 224M745 122L820 176M860 172L935 216M975 112L1055 170M1090 168L1175 211M1210 116L1295 166M1330 166L1415 203M1450 108L1540 163"/>
+            <path d="M120 202L190 195M235 242L300 138M350 190L405 184M465 229L520 128M585 182L630 177M700 224L745 122M820 176L860 172M935 216L975 112M1055 170L1090 168M1175 211L1210 116M1295 166L1330 166M1415 203L1450 108"/>
+          </g>
+          <g className="network-nodes">
+            {[[95,150],[120,202],[190,195],[235,242],[300,138],[350,190],[405,184],[465,229],[520,128],[585,182],[630,177],[700,224],[745,122],[820,176],[860,172],[935,216],[975,112],[1055,170],[1090,168],[1175,211],[1210,116],[1295,166],[1330,166],[1415,203],[1450,108],[1540,163]].map(([x,y],i)=><circle key={i} cx={x} cy={y} r={i%4===0?5:3}/>) }
+          </g>
+        </svg>
+        <span className="network-badge users">👥</span>
+        <span className="network-badge shield">✓</span>
+        <span className="network-badge lock">🔒</span>
+      </div>
+
+      <div className="home-enhancements-inner workload-area">
+        <div className="workload-strip-title">Microsoft 365 workloads covered</div>
+        <div className="workload-strip">
+          {WORKLOADS.map((workload) => (
+            <div className="workload-item" key={workload.name}>
+              <div className="workload-logo"><WorkloadIcon kind={workload.kind}/></div>
+              <div className="workload-name">{workload.name}</div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -227,12 +126,11 @@ export default function TenantIQPageShell({ mode }: { mode: PageMode }) {
       if (nextHref) link.setAttribute("href", nextHref);
     });
 
-    const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>("button"));
-    for (const button of buttons) {
+    document.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
       if (button.textContent?.trim() === "View sample assessment") {
         button.onclick = () => { window.location.href = "/details#sample"; };
       }
-    }
+    });
 
     if (mode === "home") setHeroTarget(document.getElementById("top"));
   }, [mode]);
@@ -241,177 +139,35 @@ export default function TenantIQPageShell({ mode }: { mode: PageMode }) {
     <>
       <style>{`
         ${mode === "home" ? `
-          #what, #coverage, #how, #sample, #trust, #audience, #early-access, footer { display: none !important; }
-          #top {
-            position: relative;
-            overflow: hidden;
-            min-height: 760px;
-            padding-bottom: 285px;
-            background:
-              radial-gradient(circle at 15% 12%, rgba(13,89,170,.12), transparent 25%),
-              radial-gradient(circle at 74% 32%, rgba(36,111,255,.08), transparent 28%),
-              linear-gradient(180deg, #07111f 0%, #07121f 58%, #06111f 100%) !important;
-          }
-          #top .hero-grid {
-            position: relative;
-            z-index: 4;
-            padding-top: 10px !important;
-            padding-bottom: 12px !important;
-            align-items: start !important;
-          }
-          #top .hero-actions + p { margin-top: 12px !important; }
+          #what, #coverage, #how, #sample, #trust, #audience, #early-access, footer { display:none !important; }
+          #top { position:relative; overflow:hidden; min-height:100vh; background:#0D1321 !important; }
+          #top .hero-grid { position:relative; z-index:3; padding-bottom:10px !important; }
+          #top .hero-grid > div:first-child > p:last-of-type { display:none !important; }
         ` : ""}
+        ${mode === "product" ? `.hero-grid, #how, #sample, #trust, #audience, #early-access, footer { display:none !important; }` : ""}
+        ${mode === "details" ? `.hero-grid, #what, #coverage { display:none !important; }` : ""}
 
-        ${mode === "product" ? `.hero-grid, #how, #sample, #trust, #audience, #early-access, footer { display: none !important; }` : ""}
-        ${mode === "details" ? `.hero-grid, #what, #coverage { display: none !important; }` : ""}
+        .home-enhancements { position:relative; z-index:2; margin-top:-2px; padding:0 0 28px; background:linear-gradient(180deg,#0D1321 0%,#081321 100%); }
+        .home-enhancements-inner { width:min(1100px,calc(100% - 48px)); margin:0 auto; position:relative; z-index:2; }
 
-        .home-enhancements {
-          position: absolute;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          height: 315px;
-          overflow: hidden;
-          z-index: 2;
-          pointer-events: none;
-        }
+        .trust-stat-row { width:min(650px,62%); display:grid; grid-template-columns:repeat(4,1fr); border-top:1px solid rgba(139,149,165,.16); border-bottom:1px solid rgba(139,149,165,.16); background:rgba(13,19,33,.22); }
+        .trust-stat { min-height:68px; display:flex; align-items:center; gap:10px; padding:10px 15px; border-right:1px solid rgba(139,149,165,.14); }
+        .trust-stat:last-child{border-right:0}.trust-stat-icon{width:22px;height:22px;display:inline-flex;color:#4C8DFF;flex:0 0 auto}.trust-stat-icon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.trust-stat-value{font:700 14px 'Space Grotesk',sans-serif;color:#F5F7FA}.trust-stat-label{margin-top:3px;font:11px 'Inter',sans-serif;color:#7F899A}
 
-        .home-network {
-          position: absolute;
-          inset: 48px 0 76px;
-          opacity: .72;
-          mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,.9) 20%, #000 68%, rgba(0,0,0,.75) 100%);
-        }
-        .home-network svg { width: 100%; height: 100%; display: block; }
-        .network-lines { fill: none; stroke: rgba(37,114,255,.34); stroke-width: 1; vector-effect: non-scaling-stroke; }
-        .network-nodes { fill: #2F9FFF; filter: drop-shadow(0 0 8px rgba(47,159,255,.92)); }
+        .home-network { position:relative; height:170px; margin-top:14px; overflow:visible; opacity:.72; }
+        .home-network svg{width:100%;height:100%;display:block}.network-lines{fill:none;stroke:rgba(45,123,255,.34);stroke-width:1;vector-effect:non-scaling-stroke}.network-nodes{fill:#35A5FF;filter:drop-shadow(0 0 7px rgba(53,165,255,.8))}
+        .network-badge{position:absolute;width:46px;height:46px;border:1px solid rgba(46,139,255,.65);border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(6,19,35,.7);box-shadow:0 0 20px rgba(37,99,235,.12);font-size:17px}.network-badge.users{left:13%;top:66px}.network-badge.shield{left:55%;top:26px;color:#4C8DFF;font:bold 26px 'Space Grotesk'}.network-badge.lock{right:12%;top:65px;font-size:15px}
 
-        .network-badge {
-          position: absolute;
-          z-index: 2;
-          width: 44px;
-          height: 44px;
-          border: 1px solid rgba(38,127,255,.8);
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #5EA7FF;
-          background: rgba(5,20,40,.72);
-          box-shadow: 0 0 24px rgba(27,104,255,.10);
-          font-size: 18px;
-        }
-        .badge-users { left: 13%; top: 118px; }
-        .badge-shield { left: 56%; top: 96px; font-weight: 800; }
-        .badge-lock { right: 14%; top: 132px; font-size: 16px; }
+        .workload-area { margin-top:-8px; padding-top:0; border-top:1px solid rgba(76,141,255,.20); }
+        .workload-strip-title { width:max-content; margin:-8px auto 16px; padding:0 16px; background:#081321; color:#4C8DFF; font:600 11px 'IBM Plex Mono',monospace; letter-spacing:.05em; text-transform:uppercase; }
+        .workload-strip { display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); align-items:start; gap:12px; }
+        .workload-item { display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:7px; min-width:0; text-align:center; }
+        .workload-logo { width:44px; height:44px; display:flex; align-items:center; justify-content:center; flex:0 0 44px; }
+        .workload-logo svg { width:44px; height:44px; display:block; }
+        .workload-name { color:#E8EEF7; font:12px 'Inter',sans-serif; line-height:1.25; white-space:nowrap; }
 
-        .home-enhancements-inner {
-          position: relative;
-          z-index: 3;
-          width: min(1200px, calc(100% - 96px));
-          height: 100%;
-          margin: 0 auto;
-        }
-
-        .trust-stat-row {
-          position: absolute;
-          top: 0;
-          left: 0;
-          display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
-          width: min(560px, 51%);
-          background: transparent;
-        }
-        .trust-stat {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          min-height: 58px;
-          padding: 8px 14px 8px 0;
-          margin-right: 14px;
-          border-right: 1px solid rgba(139,149,165,.18);
-        }
-        .trust-stat:last-child { border-right: 0; margin-right: 0; }
-        .trust-stat-icon { width: 23px; height: 23px; flex: 0 0 auto; color: #2F8CFF; }
-        .trust-stat-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-        .trust-stat-value { color: #F5F7FA; font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 700; line-height: 1.05; }
-        .trust-stat-label { margin-top: 4px; color: #8B95A5; font-family: 'Inter', sans-serif; font-size: 9px; line-height: 1.15; }
-
-        .workload-strip-wrap {
-          position: absolute;
-          left: 0;
-          right: 0;
-          bottom: 14px;
-          padding-top: 14px;
-          border-top: 1px solid rgba(76,141,255,.28);
-          text-align: center;
-          pointer-events: auto;
-        }
-        .workload-strip-title {
-          display: inline-block;
-          position: relative;
-          top: -26px;
-          padding: 0 16px;
-          color: #2F91FF;
-          background: #06111f;
-          font-family: 'Inter', sans-serif;
-          font-size: 11px;
-          font-weight: 600;
-        }
-        .workload-strip {
-          display: grid;
-          grid-template-columns: repeat(8, minmax(0, 1fr));
-          gap: 12px;
-          margin-top: -12px;
-        }
-        .workload-item {
-          position: relative;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 6px;
-          min-width: 0;
-          color: #E4E9F3;
-          font-family: 'Inter', sans-serif;
-          font-size: 10px;
-          white-space: nowrap;
-        }
-        .workload-item:not(:last-child)::after {
-          content: "";
-          position: absolute;
-          right: -7px;
-          top: 21px;
-          width: 4px;
-          height: 4px;
-          border-radius: 50%;
-          background: #678BFF;
-          opacity: .75;
-        }
-        .workload-logo { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; }
-        .workload-logo svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 6px 10px rgba(0,0,0,.18)); }
-        .workload-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-
-        @media (max-width: 1000px) {
-          #top { min-height: 840px; padding-bottom: 350px; }
-          .home-enhancements { height: 380px; }
-          .home-enhancements-inner { width: min(100% - 40px, 1200px); }
-          .trust-stat-row { width: min(650px, 100%); }
-          .workload-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 14px; }
-          .workload-item:nth-child(4)::after { display: none; }
-          .network-badge { opacity: .65; }
-        }
-
-        @media (max-width: 620px) {
-          #top { min-height: 1080px; padding-bottom: 500px; }
-          .home-enhancements { height: 530px; }
-          .home-enhancements-inner { width: min(100% - 28px, 1200px); }
-          .trust-stat-row { grid-template-columns: repeat(2, minmax(0,1fr)); }
-          .trust-stat { border-right: 0; margin-right: 0; }
-          .workload-strip { grid-template-columns: repeat(2, minmax(0,1fr)); row-gap: 16px; }
-          .workload-item::after { display: none !important; }
-          .network-badge { display: none; }
-        }
+        @media(max-width:900px){.trust-stat-row{width:100%;grid-template-columns:repeat(2,1fr)}.trust-stat:nth-child(2){border-right:0}.trust-stat:nth-child(-n+2){border-bottom:1px solid rgba(139,149,165,.14)}.workload-strip{grid-template-columns:repeat(4,1fr);row-gap:18px}.home-network{height:150px}.workload-name{font-size:11px}}
+        @media(max-width:560px){.home-enhancements-inner{width:min(100% - 30px,1100px)}.trust-stat{padding:10px}.workload-strip{grid-template-columns:repeat(2,1fr)}.home-network{height:130px}.network-badge{display:none}.workload-logo,.workload-logo svg{width:38px;height:38px}.workload-name{font-size:11px}}
       `}</style>
 
       <TenantIQLandingV2 />

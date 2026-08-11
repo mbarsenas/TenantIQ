@@ -136,19 +136,50 @@ const workloadItems = [
 ] as const;
 
 function WorkloadLogo({ kind }: { kind: typeof workloadItems[number]["kind"] }) {
-  if (kind === "entra") return <svg viewBox="0 0 72 72"><defs><linearGradient id="entraA" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#77D0FF"/><stop offset=".55" stopColor="#2D8CFF"/><stop offset="1" stopColor="#3457FF"/></linearGradient><linearGradient id="entraB" x1="0" y1="1" x2="1" y2="0"><stop stopColor="#0F6EDB"/><stop offset="1" stopColor="#56C8FF"/></linearGradient></defs><path fill="url(#entraA)" d="M37 5 10 46l18 20 10-23 24 1L37 5Z"/><path fill="url(#entraB)" d="m10 46 28-3-10 23-18-20Z" opacity=".95"/><path fill="#D6F3FF" d="m37 5 25 39-24-1-1-38Z" opacity=".18"/></svg>;
-  if (kind === "exchange") return <svg viewBox="0 0 72 72"><defs><linearGradient id="exoBack" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#1AA7FF"/><stop offset="1" stopColor="#0766D8"/></linearGradient><linearGradient id="exoFront" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#2B8CFF"/><stop offset="1" stopColor="#1950C8"/></linearGradient></defs><rect x="28" y="10" width="34" height="46" rx="6" fill="url(#exoBack)"/><rect x="9" y="18" width="37" height="32" rx="6" fill="url(#exoFront)"/><path d="M18 25h20v5H27l12 9v7L18 33v-8Z" fill="#fff"/><path d="M33 22h21v5H38zM33 31h21v5H38z" fill="#78C4FF" opacity=".55"/></svg>;
-  if (kind === "sharepoint") return <svg viewBox="0 0 72 72"><defs><linearGradient id="spA" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#39C7B8"/><stop offset="1" stopColor="#0F756F"/></linearGradient><linearGradient id="spB" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#2AB8A4"/><stop offset="1" stopColor="#0B645F"/></linearGradient></defs><circle cx="28" cy="34" r="18" fill="url(#spA)"/><circle cx="46" cy="24" r="14" fill="#2AB8A4" opacity=".92"/><circle cx="47" cy="47" r="15" fill="url(#spB)" opacity=".9"/><rect x="13" y="24" width="29" height="25" rx="6" fill="#11766F"/><path d="M21 30h13v5h-8v4h8v6H21v-5h8v-4h-8v-6Z" fill="#fff"/></svg>;
-  if (kind === "teams") return <svg viewBox="0 0 72 72"><defs><linearGradient id="teamsA" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#8E8BFF"/><stop offset="1" stopColor="#5752D6"/></linearGradient><linearGradient id="teamsB" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#6A66EA"/><stop offset="1" stopColor="#4340B8"/></linearGradient></defs><circle cx="54" cy="17" r="8" fill="#8F8CFF"/><rect x="30" y="16" width="31" height="39" rx="7" fill="url(#teamsA)"/><rect x="9" y="23" width="38" height="31" rx="6" fill="url(#teamsB)"/><path d="M18 30h20v5h-7v13h-6V35h-7v-5Z" fill="#fff"/></svg>;
-  if (kind === "onedrive") return <svg viewBox="0 0 72 72"><defs><linearGradient id="odA" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#2A8BFF"/><stop offset="1" stopColor="#1769D2"/></linearGradient><linearGradient id="odB" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#59BFFF"/><stop offset="1" stopColor="#2A8BFF"/></linearGradient></defs><path d="M20 45c2-8 8-13 16-13 4-10 13-15 22-12 8 2 13 8 14 16 7 0 12 5 12 12 0 8-6 13-14 13H23C14 61 8 56 8 49c0-6 5-11 12-12Z" fill="url(#odA)" transform="scale(.76) translate(5 2)"/><path d="M14 44c2-7 8-11 15-11 6 0 11 3 14 7 3-3 8-5 12-5 8 0 14 6 14 14 0 2 0 4-1 6H14Z" fill="url(#odB)"/></svg>;
-  if (kind === "intune") return <svg viewBox="0 0 72 72"><defs><linearGradient id="inA" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#2D92FF"/><stop offset="1" stopColor="#1763DD"/></linearGradient></defs><rect x="10" y="12" width="52" height="35" rx="5" fill="url(#inA)"/><rect x="17" y="18" width="38" height="23" rx="3" fill="#08203D"/><path d="M27 58h18M36 47v11" stroke="#8BCBFF" strokeWidth="4" strokeLinecap="round"/><path d="M22 26h28M22 33h17" stroke="#3DA8FF" strokeWidth="3"/><rect x="42" y="22" width="8" height="14" rx="2" fill="#1A73E8"/></svg>;
-  if (kind === "defender") return <svg viewBox="0 0 72 72"><defs><linearGradient id="defA" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#3BB8FF"/><stop offset=".55" stopColor="#2A8DFF"/><stop offset="1" stopColor="#185AC9"/></linearGradient></defs><path d="M36 6 62 15v19c0 15-9 25-26 33C19 59 10 49 10 34V15l26-9Z" fill="url(#defA)"/><path d="M36 11v47c11-6 18-14 18-24V19L36 11Z" fill="#1D6FE8" opacity=".86"/><path d="M36 11v47c-11-6-18-14-18-24V19L36 11Z" fill="#4BC0FF" opacity=".35"/></svg>;
-  return <svg viewBox="0 0 72 72"><defs><linearGradient id="pvA" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#21D5FF"/><stop offset=".55" stopColor="#2F9EFF"/><stop offset="1" stopColor="#3E59E8"/></linearGradient><linearGradient id="pvB" x1="1" y1="0" x2="0" y2="1"><stop stopColor="#4F86FF"/><stop offset="1" stopColor="#1CA2E8"/></linearGradient></defs><path d="M8 36c8-13 18-20 31-20 10 0 18 4 25 11-8-2-15 0-21 4-7 5-11 11-13 20-9-2-17-7-22-15Z" fill="url(#pvA)"/><path d="M64 36c-8 13-18 20-31 20-10 0-18-4-25-11 8 2 15 0 21-4 7-5 11-11 13-20 9 2 17 7 22 15Z" fill="url(#pvB)" opacity=".95"/><circle cx="36" cy="36" r="8" fill="#06182B"/></svg>;
+  if (kind === "entra") return <svg viewBox="0 0 72 72"><path fill="#4FC3FF" d="M37 5 10 46l18 20 10-23 24 1L37 5Z"/><path fill="#2F7CFF" d="m10 46 28-3-10 23-18-20Z"/><path fill="#6DD8FF" opacity=".55" d="m37 5 25 39-24-1-1-38Z"/></svg>;
+  if (kind === "exchange") return <svg viewBox="0 0 72 72"><rect x="28" y="10" width="34" height="46" rx="6" fill="#1AA7FF"/><rect x="9" y="18" width="37" height="32" rx="6" fill="#1767D8"/><path d="M18 25h20v5H27l12 9v7L18 33v-8Z" fill="#FFFFFF"/><path d="M33 22h21v5H38zM33 31h21v5H38z" fill="#78C4FF" opacity=".55"/></svg>;
+  if (kind === "sharepoint") return <svg viewBox="0 0 72 72"><circle cx="28" cy="34" r="18" fill="#39C7B8"/><circle cx="46" cy="24" r="14" fill="#2AB8A4"/><circle cx="47" cy="47" r="15" fill="#0F756F"/><rect x="13" y="24" width="29" height="25" rx="6" fill="#11766F"/><path d="M21 30h13v5h-8v4h8v6H21v-5h8v-4h-8v-6Z" fill="#FFFFFF"/></svg>;
+  if (kind === "teams") return <svg viewBox="0 0 72 72"><circle cx="54" cy="17" r="8" fill="#8F8CFF"/><rect x="30" y="16" width="31" height="39" rx="7" fill="#6F6AE8"/><rect x="9" y="23" width="38" height="31" rx="6" fill="#4F4BC7"/><path d="M18 30h20v5h-7v13h-6V35h-7v-5Z" fill="#FFFFFF"/></svg>;
+  if (kind === "onedrive") return <svg viewBox="0 0 72 72"><path d="M14 44c2-7 8-11 15-11 6 0 11 3 14 7 3-3 8-5 12-5 8 0 14 6 14 14 0 2 0 4-1 6H14Z" fill="#4DB6FF"/><path d="M23 42c3-7 8-12 15-12 3-8 10-12 18-11 7 1 12 6 14 12-7 0-13 2-17 7-4-4-9-6-14-6-7 0-12 4-16 10Z" fill="#1989F5"/></svg>;
+  if (kind === "intune") return <svg viewBox="0 0 72 72"><rect x="10" y="12" width="52" height="35" rx="5" fill="#2D92FF"/><rect x="17" y="18" width="38" height="23" rx="3" fill="#08203D"/><path d="M27 58h18M36 47v11" stroke="#8BCBFF" strokeWidth="4" strokeLinecap="round"/><path d="M22 26h28M22 33h17" stroke="#3DA8FF" strokeWidth="3"/><rect x="42" y="22" width="8" height="14" rx="2" fill="#1A73E8"/></svg>;
+  if (kind === "defender") return <svg viewBox="0 0 72 72"><path d="M36 6 62 15v19c0 15-9 25-26 33C19 59 10 49 10 34V15l26-9Z" fill="#2A8DFF"/><path d="M36 11v47c11-6 18-14 18-24V19L36 11Z" fill="#1D6FE8"/><path d="M36 11v47c-11-6-18-14-18-24V19L36 11Z" fill="#4BC0FF" opacity=".45"/></svg>;
+  return <svg viewBox="0 0 72 72"><path d="M8 36c8-13 18-20 31-20 10 0 18 4 25 11-8-2-15 0-21 4-7 5-11 11-13 20-9-2-17-7-22-15Z" fill="#21D5FF"/><path d="M64 36c-8 13-18 20-31 20-10 0-18-4-25-11 8 2 15 0 21-4 7-5 11-11 13-20 9 2 17 7 22 15Z" fill="#3E59E8"/><circle cx="36" cy="36" r="8" fill="#06182B"/></svg>;
 }
 
 function Hero({ onRequestAccess }: { onRequestAccess: () => void }) {
   return (
     <div id="top" style={{ background: COLORS.ink }}>
+      <style>{`
+        #top .nav-link { color:#E7ECF5 !important; text-decoration:none !important; }
+        #top .primary-button { background:#4C8DFF !important; color:#07111f !important; border:1px solid #4C8DFF !important; border-radius:7px; padding:13px 22px; font-weight:700; cursor:pointer; }
+        #top .secondary-button { background:transparent !important; color:#F5F7FA !important; border:1px solid #344057 !important; border-radius:7px; padding:13px 22px; font-weight:700; cursor:pointer; }
+        #top .hero-trust-row { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); margin-top:34px; border-top:1px solid rgba(139,149,165,.2); border-bottom:1px solid rgba(139,149,165,.2); }
+        #top .hero-trust-row > div { min-height:70px; display:flex; align-items:center; gap:10px; padding:10px 14px; border-right:1px solid rgba(139,149,165,.18); color:#3E95FF; }
+        #top .hero-trust-row > div:last-child { border-right:0; }
+        #top .hero-trust-row span { display:flex; flex-direction:column; color:#F5F7FA; }
+        #top .hero-trust-row strong { font:700 14px 'Space Grotesk',sans-serif; line-height:1.05; }
+        #top .hero-trust-row small { color:#8B95A5; font:11px 'Inter',sans-serif; margin-top:4px; line-height:1.15; }
+        #top .hero-network { position:relative; height:220px; margin-top:4px; overflow:hidden; }
+        #top .hero-network > svg { width:100%; height:100%; display:block; }
+        #top .hero-network-lines { fill:none; stroke:rgba(53,135,255,.46); stroke-width:1; vector-effect:non-scaling-stroke; }
+        #top .hero-network-nodes { fill:#3AA7FF; }
+        #top .hero-network-badge { position:absolute; width:48px; height:48px; border:1px solid rgba(65,145,255,.9); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#58A7FF; background:rgba(6,18,34,.9); }
+        #top .hero-network-badge.users { left:12%; top:72px; }
+        #top .hero-network-badge.shield { left:55%; top:35px; }
+        #top .hero-network-badge.lock { right:17%; top:102px; }
+        #top .hero-network-badge.cloud { left:25%; top:138px; }
+        #top .hero-workloads { max-width:1320px; margin:-18px auto 0; padding:0 48px 32px; color:#F5F7FA; }
+        #top .hero-workload-title { display:flex; align-items:center; gap:16px; margin-bottom:14px; color:#3E98FF; font:600 12px 'Inter',sans-serif; text-align:center; }
+        #top .hero-workload-title::before, #top .hero-workload-title::after { content:""; flex:1; height:1px; background:rgba(76,141,255,.28); }
+        #top .hero-workload-title span { white-space:nowrap; }
+        #top .hero-workload-grid { display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); gap:12px; }
+        #top .hero-workload-item { display:flex; flex-direction:column; align-items:center; gap:8px; color:#F5F7FA; font:12px 'Inter',sans-serif; text-align:center; }
+        #top .hero-workload-logo, #top .hero-workload-logo svg { width:54px; height:54px; display:block; }
+        @media (max-width:900px){
+          #top .hero-trust-row { grid-template-columns:repeat(2,1fr); }
+          #top .hero-workload-grid { grid-template-columns:repeat(4,1fr); row-gap:18px; }
+        }
+      `}</style>
       <Nav onRequestAccess={onRequestAccess} />
       <div className="hero-grid" style={{ maxWidth: "1200px", margin: "0 auto", padding: "20px 48px 18px", display: "grid", gridTemplateColumns: "1fr 1.08fr", gap: "52px", alignItems: "center" }}>
         <div>

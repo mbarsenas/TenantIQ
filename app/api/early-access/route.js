@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-function clean(value: unknown, max = 1000) {
+function clean(value, max = 1000) {
   return String(value ?? "").trim().slice(0, max);
 }
 
-export async function POST(request: Request) {
+export async function POST(request) {
   try {
     const body = await request.json();
 
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Please complete all required fields." }, { status: 400 });
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lead.email)) {
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(lead.email)) {
       return NextResponse.json({ error: "Please enter a valid work email." }, { status: 400 });
     }
 
@@ -33,13 +33,9 @@ export async function POST(request: Request) {
     const toEmail = process.env.EARLY_ACCESS_TO_EMAIL;
     const fromEmail = process.env.EARLY_ACCESS_FROM_EMAIL;
 
-    // Local/dev mode: the form still works and prints the lead in the terminal.
     if (!apiKey || !toEmail || !fromEmail) {
       console.log("[TenantIQ early access]", lead);
-      return NextResponse.json({
-        ok: true,
-        delivery: "development",
-      });
+      return NextResponse.json({ ok: true, delivery: "development" });
     }
 
     const emailText = [
@@ -56,7 +52,7 @@ export async function POST(request: Request) {
       lead.notes || "(none)",
       "",
       `Submitted: ${lead.submittedAt}`,
-    ].join("\n");
+    ].join("\\n");
 
     const resendResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -75,18 +71,12 @@ export async function POST(request: Request) {
 
     if (!resendResponse.ok) {
       console.error("[TenantIQ early access] Resend error:", await resendResponse.text());
-      return NextResponse.json(
-        { error: "Your request could not be delivered. Please try again." },
-        { status: 502 }
-      );
+      return NextResponse.json({ error: "Your request could not be delivered. Please try again." }, { status: 502 });
     }
 
     return NextResponse.json({ ok: true, delivery: "email" });
   } catch (error) {
     console.error("[TenantIQ early access] route error:", error);
-    return NextResponse.json(
-      { error: "Your request could not be submitted. Please try again." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Your request could not be submitted. Please try again." }, { status: 500 });
   }
 }

@@ -1,6 +1,9 @@
 function Start-TenantIQOneDriveAssessment {
     Clear-Host
     $Global:ExchangeAIResults = @()
+    $Global:TenantIQOneDrivePurviewCache = $null
+    $Global:TenantIQOneDrivePurviewAttempted = $false
+    $Global:TenantIQOneDrivePurviewError = $null
 
     $Checks = @($TenantIQOneDriveHealthChecks | Where-Object { $_.Enabled -ne $false })
     $Total = $Checks.Count
@@ -12,6 +15,21 @@ function Start-TenantIQOneDriveAssessment {
     Write-Host '              TenantIQ OneDrive Assessment' -ForegroundColor Cyan
     Write-Host '============================================================' -ForegroundColor Cyan
     Write-Host ''
+
+    # Collect Purview evidence once before individual health-check scripts run.
+    # If collection fails, remember that failure so compliance checks do not
+    # repeatedly launch authentication prompts.
+    if (Get-Command Get-TenantIQOneDrivePurviewCache -ErrorAction SilentlyContinue) {
+        try {
+            $null = Get-TenantIQOneDrivePurviewCache
+        }
+        catch {
+            Write-Host '[WARNING] Purview enrichment was not collected for this OneDrive assessment.' -ForegroundColor Yellow
+            Write-Host $_.Exception.Message -ForegroundColor DarkYellow
+            Write-Host 'Purview-dependent checks will continue without retrying authentication.' -ForegroundColor DarkGray
+            Write-Host ''
+        }
+    }
 
     foreach ($Check in $Checks) {
         Write-Host ("[{0:D2}/{1:D2}] {2}" -f $i, $Total, $Check.Name) -ForegroundColor Cyan

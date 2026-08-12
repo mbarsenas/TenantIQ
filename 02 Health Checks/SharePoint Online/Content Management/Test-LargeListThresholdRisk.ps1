@@ -10,13 +10,19 @@ $scope=Get-TenantIQBusinessSites
 $inventory=@(); $errors=@(); $coverage='Full list-level coverage requires PnP.PowerShell.'
 if (Get-Command Connect-PnPOnline -ErrorAction SilentlyContinue) {
     foreach($s in $scope.Business){
+        $PnPConnected=$false
         try {
             Connect-PnPOnline -Url $s.Url -Interactive -ErrorAction Stop | Out-Null
+            $PnPConnected=$true
             foreach($l in @(Get-PnPList -Includes Title,Hidden,ItemCount,BaseType -ErrorAction Stop | Where-Object {$_.Hidden -ne $true})){
                 $inventory += [pscustomobject]@{SiteUrl=$s.Url;ListTitle=$l.Title;BaseType=$l.BaseType;ItemCount=[int64]$l.ItemCount;Risk=if($l.ItemCount -ge 5000){'At/Over 5000'}elseif($l.ItemCount -ge 4000){'Near 5000'}else{'Normal'}}
             }
         } catch { $errors += [pscustomobject]@{Url=$s.Url;Reason=$_.Exception.Message} }
-        finally { if(Get-Command Disconnect-PnPOnline -ErrorAction SilentlyContinue){Disconnect-PnPOnline -ErrorAction SilentlyContinue} }
+        finally {
+            if($PnPConnected -and (Get-Command Disconnect-PnPOnline -ErrorAction SilentlyContinue)){
+                try { Disconnect-PnPOnline -ErrorAction Stop } catch { }
+            }
+        }
     }
     $coverage='PnP list-level enumeration completed where authentication succeeded.'
 }

@@ -24,16 +24,19 @@ if (Get-Command Invoke-TenantIQExchangeHardenedCheck -CommandType Function -Erro
 
         $SW = [Diagnostics.Stopwatch]::StartNew()
         try {
-            $Folders = @(Get-PublicFolder -Recurse -ResultSize Unlimited -ErrorAction Stop)
+            # Get-PublicFolder can require an explicit Organization in delegated
+            # or REST-backed EXO sessions. Public-folder mailbox inventory is a
+            # stable tenant-level signal and avoids that session-context issue.
+            $Mailboxes = @(Get-Mailbox -PublicFolder -ResultSize Unlimited -ErrorAction Stop)
             $SW.Stop()
 
-            if ($Folders.Count -eq 0) {
+            if ($Mailboxes.Count -eq 0) {
                 Add-TenantIQExchangeResult `
                     $CheckName `
                     $Category `
                     'PASS' `
                     'None' `
-                    'No public folders were returned.' `
+                    'No public-folder mailboxes were returned.' `
                     'No action required.' `
                     $SW.Elapsed.TotalSeconds
             }
@@ -43,8 +46,8 @@ if (Get-Command Invoke-TenantIQExchangeHardenedCheck -CommandType Function -Erro
                     $Category `
                     'INFO' `
                     'None' `
-                    "$($Folders.Count) public folder(s) detected." `
-                    'Confirm that public folders remain required and that permissions, quotas, mail enablement, migration posture, and legacy dependencies are governed.' `
+                    "$($Mailboxes.Count) public-folder mailbox(es) detected." `
+                    'Confirm that public folders remain required and review hierarchy, permissions, ownership, quotas, mail enablement, migration posture, and legacy dependencies.' `
                     $SW.Elapsed.TotalSeconds
             }
         }
@@ -55,7 +58,7 @@ if (Get-Command Invoke-TenantIQExchangeHardenedCheck -CommandType Function -Erro
                 $Category `
                 'INFO' `
                 'None' `
-                "Public Folders could not be authoritatively evaluated: $($_.Exception.Message)" `
+                "Public-folder mailbox inventory could not be authoritatively evaluated: $($_.Exception.Message)" `
                 'Review Exchange Online permissions and Public Folder cmdlet availability before scoring this control.' `
                 $SW.Elapsed.TotalSeconds
         }

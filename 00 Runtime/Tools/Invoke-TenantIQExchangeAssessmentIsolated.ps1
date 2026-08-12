@@ -33,14 +33,14 @@ try {
     Get-ChildItem $FrameworkPath -Filter '*.ps1' |
         Where-Object {
             $_.Name -notin @(
-                'Invoke-TenantIQGraphIsolatedCache.ps1'
+                'Invoke-TenantIQGraphIsolatedCache.ps1',
+                'ZZ-TenantIQExchangeCompatibility.ps1'
             )
         } |
         Sort-Object Name |
         ForEach-Object { . $_.FullName }
 
-    # Ensure the Exchange compatibility override is applied after the base
-    # hardened evaluator regardless of filesystem enumeration behavior.
+    # Apply compatibility overrides only after the base hardened evaluator.
     $CompatibilityPath = Join-Path $FrameworkPath 'ZZ-TenantIQExchangeCompatibility.ps1'
     if (Test-Path $CompatibilityPath) { . $CompatibilityPath }
 

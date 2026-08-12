@@ -10,6 +10,9 @@ if ((Test-Path $TeamsHardenedPath) -and -not (Get-Command Invoke-TenantIQTeamsHa
 $TeamsPurviewBridgePath = Join-Path $PSScriptRoot "TenantIQ-TeamsPurviewBridge.ps1"
 if (Test-Path $TeamsPurviewBridgePath) { . $TeamsPurviewBridgePath }
 
+$IntuneHardenedPath = Join-Path $PSScriptRoot "Invoke-TenantIQIntuneHardenedCheck.ps1"
+if ((Test-Path $IntuneHardenedPath) -and -not (Get-Command Invoke-TenantIQIntuneHardenedCheck -ErrorAction SilentlyContinue)) { . $IntuneHardenedPath }
+
 $PurviewHardenedPath = Join-Path $PSScriptRoot "Invoke-TenantIQPurviewHardenedCheck.ps1"
 if ((Test-Path $PurviewHardenedPath) -and -not (Get-Command Invoke-TenantIQPurviewHardenedCheck -ErrorAction SilentlyContinue)) { . $PurviewHardenedPath }
 
@@ -26,5 +29,6 @@ function Invoke-TenantIQBulkCheck {
  }
  if($Workload -eq 'Microsoft Teams' -and (Get-Command Invoke-TenantIQTeamsHardenedCheck -ErrorAction SilentlyContinue)){Invoke-TenantIQTeamsHardenedCheck -CheckName $CheckName -Category $Category -DeclaredSeverity $Severity;return}
  if($Workload -eq 'OneDrive' -and (Get-Command Invoke-TenantIQOneDriveHardenedCheck -ErrorAction SilentlyContinue)){Invoke-TenantIQOneDriveHardenedCheck -CheckName $CheckName -Category $Category -DeclaredSeverity $Severity;return}
+ if($Workload -eq 'Microsoft Intune' -and (Get-Command Invoke-TenantIQIntuneHardenedCheck -ErrorAction SilentlyContinue)){Invoke-TenantIQIntuneHardenedCheck -CheckName $CheckName -Category $Category -DeclaredSeverity $Severity;return}
  $sw=[Diagnostics.Stopwatch]::StartNew();$sw.Stop();Add-TenantIQBulkResult -Check $CheckName -Category $Category -Status 'NOT EVALUATED' -Severity 'None' -Finding "$Workload $CheckName is not routed to a hardened workload evaluator in this runtime." -Recommendation 'Use the workload-specific hardened evaluator before scoring this control.' -Duration $sw.Elapsed.TotalSeconds
 }

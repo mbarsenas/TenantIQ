@@ -62,6 +62,12 @@ function Ensure-TenantIQSharePointConnection {
     }
 }
 
+# Backward-compatible connection name used by the OneDrive hardened evaluator.
+# Keep the implementation centralized in Ensure-TenantIQSharePointConnection.
+function Ensure-TenantIQSPOConnection {
+    return (Ensure-TenantIQSharePointConnection)
+}
+
 function Get-TenantIQProperty {
     param([Parameter(Mandatory)]$Object,[Parameter(Mandatory)][string[]]$Names)
     foreach ($n in $Names) { $p=$Object.PSObject.Properties[$n]; if ($null -ne $p) { return $p.Value } }

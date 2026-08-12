@@ -194,17 +194,66 @@ function Start-TenantIQEntraAssessment {
 }
 function Start-TenantIQEntraModule { while($true){Show-Banner;Write-Host 'Entra ID' -ForegroundColor Cyan;Write-Host '[1] Full Entra ID Assessment';Write-Host '[2] Health Checks';Write-Host '[0] Back to Modules';switch(Read-Host 'Select'){'1'{Start-TenantIQEntraAssessment;Wait-TenantIQ}'2'{foreach($Check in $TenantIQEntraHealthChecks){Write-Host $Check.Name};Wait-TenantIQ}'0'{return}}} }
 
+function Get-TenantIQTenantStem {
+    param([string]$InputValue)
+    if ([string]::IsNullOrWhiteSpace($InputValue)) { return $null }
+    $Value=$InputValue.Trim().ToLowerInvariant()
+    if ($Value -match '^https?://([^/]+)') { $Value=$Matches[1] }
+    if ($Value -match '^([^.]+)-admin\.sharepoint\.com$') { return $Matches[1] }
+    if ($Value -match '^([^.]+)\.sharepoint\.com$') { return $Matches[1] }
+    if ($Value -match '^([^.]+)\.onmicrosoft\.com$') { return $Matches[1] }
+    if ($Value -match '^([^.]+)$') { return $Matches[1] }
+    return $null
+}
+
 function Get-TenantIQSharePointStatus { try{$null=Get-SPOTenant -ErrorAction Stop;[pscustomobject]@{Connected=$true;Status='[OK] Connected';Color='Green'}}catch{[pscustomobject]@{Connected=$false;Status='[NOT CONNECTED]';Color='Yellow'}} }
-function Ensure-TenantIQSharePointConnection { try{if(-not(Get-Command Connect-SPOService -ErrorAction SilentlyContinue)){Import-Module Microsoft.Online.SharePoint.PowerShell -ErrorAction Stop};$s=Get-TenantIQSharePointStatus;if($s.Connected){return $true};$TenantName=Read-Host 'Enter the SharePoint tenant name (example: contoso)';Connect-SPOService -Url ("https://{0}-admin.sharepoint.com" -f $TenantName) -ErrorAction Stop;return $true}catch{Write-Host $_.Exception.Message -ForegroundColor Red;return $false} }
+function Ensure-TenantIQSharePointConnection {
+    try {
+        if(-not(Get-Command Connect-SPOService -ErrorAction SilentlyContinue)){Import-Module Microsoft.Online.SharePoint.PowerShell -ErrorAction Stop}
+        $s=Get-TenantIQSharePointStatus
+        if($s.Connected){return $true}
+        $TenantInput=Read-Host 'Enter the SharePoint tenant name (example: contoso or contoso.onmicrosoft.com)'
+        $TenantName=Get-TenantIQTenantStem -InputValue $TenantInput
+        if([string]::IsNullOrWhiteSpace($TenantName)){throw 'Tenant name could not be determined from the value entered.'}
+        $AdminUrl=("https://{0}-admin.sharepoint.com" -f $TenantName)
+        Connect-SPOService -Url $AdminUrl -ErrorAction Stop
+        $s=Get-TenantIQSharePointStatus
+        if(-not $s.Connected){throw "Connected command completed but SharePoint tenant status is still unavailable for $AdminUrl."}
+        return $true
+    } catch { Write-Host '';Write-Host 'Could not connect to SharePoint Online.' -ForegroundColor Red;Write-Host $_.Exception.Message -ForegroundColor Red;return $false }
+}
 function Start-TenantIQSharePointAssessment { Clear-Host;$Global:ExchangeAIResults=@();$runnable=@($TenantIQSharePointHealthChecks|Where-Object{$_.Enabled -eq $true -or -not $_.ContainsKey('Enabled')});$i=1;foreach($Check in $runnable){Write-Host ("[{0}/{1}] {2}" -f $i,$runnable.Count,$Check.Name) -ForegroundColor Cyan;try{& $Check.Script}catch{New-HealthCheckResult -Check $Check.Name -Category $Check.Category -Status 'FAIL' -Severity 'High' -Finding $_.Exception.Message -Recommendation 'Review SharePoint dependencies.'|Out-Null};$i++};Show-TenantIQAssessmentResults -Title 'SharePoint Online Assessment Summary';if(@($Global:ExchangeAIResults).Count -gt 0){$r=Export-ExchangeAIHtmlReport -Workload 'SharePoint Online';if($r.HtmlPath){Start-Process $r.HtmlPath}} }
 function Start-TenantIQSharePointModule { if(-not(Ensure-TenantIQSharePointConnection)){Wait-TenantIQ;return};while($true){Show-Banner;Write-Host 'SharePoint Online' -ForegroundColor Cyan;Write-Host '[1] Full SharePoint Online Assessment';Write-Host '[2] Health Checks';Write-Host '[0] Back to Modules';switch(Read-Host 'Select'){'1'{Start-TenantIQSharePointAssessment;Wait-TenantIQ}'2'{foreach($Check in $TenantIQSharePointHealthChecks){Write-Host $Check.Name};Wait-TenantIQ}'0'{return}}} }
 
 function Get-TenantIQTeamsStatus { try{$t=Get-CsTenant -ErrorAction Stop;[pscustomobject]@{Connected=$true;Status='[OK] Connected';Color='Green';Tenant=$t.DisplayName}}catch{[pscustomobject]@{Connected=$false;Status='[X] Not Connected';Color='Yellow';Tenant='Unknown'}} }
-function Ensure-TenantIQTeamsConnection { try{if(-not(Get-Command Connect-MicrosoftTeams -ErrorAction SilentlyContinue)){Import-Module MicrosoftTeams -ErrorAction Stop};$s=Get-TenantIQTeamsStatus;if($s.Connected){return $true};Connect-MicrosoftTeams -ErrorAction Stop|Out-Null;return $true}catch{Write-Host $_.Exception.Message -ForegroundColor Red;return $false} }
+function Ensure-TenantIQTeamsConnection {
+    try {
+        if(-not(Get-Command Connect-MicrosoftTeams -ErrorAction SilentlyContinue)){Import-Module MicrosoftTeams -ErrorAction Stop}
+        $s=Get-TenantIQTeamsStatus
+        if($s.Connected){return $true}
+        Write-Host '';Write-Host 'Microsoft Teams is not connected.' -ForegroundColor Yellow;Write-Host 'Launching Microsoft Teams sign-in...' -ForegroundColor Cyan
+        try { Connect-MicrosoftTeams -ErrorAction Stop | Out-Null }
+        catch { throw $_.Exception }
+        $s=Get-TenantIQTeamsStatus
+        if(-not $s.Connected){throw 'Microsoft Teams sign-in completed, but Get-CsTenant could not confirm the connection.'}
+        return $true
+    } catch { Write-Host '';Write-Host 'Could not connect to Microsoft Teams.' -ForegroundColor Red;Write-Host $_.Exception.Message -ForegroundColor Red;return $false }
+}
 function Start-TenantIQTeamsAssessment { Clear-Host;$Global:ExchangeAIResults=@();if(-not(Ensure-TenantIQTeamsConnection)){return};$runnable=@($TenantIQTeamsHealthChecks|Where-Object{$_.Enabled -eq $true -or $_.Status -eq 'Implemented'}|Sort-Object Number);$i=1;foreach($Check in $runnable){Write-Host ("[{0}/{1}] {2}" -f $i,$runnable.Count,$Check.Name)-ForegroundColor Cyan;try{& $Check.Script}catch{New-HealthCheckResult -Check $Check.Name -Category $Check.Category -Status 'FAIL' -Severity 'High' -Finding $_.Exception.Message -Recommendation 'Review Teams dependencies.'|Out-Null};$i++};Show-TenantIQAssessmentResults -Title 'Microsoft Teams Assessment Results';if(@($Global:ExchangeAIResults).Count -gt 0){$r=Export-ExchangeAIHtmlReport -Workload 'Microsoft Teams';if($r.HtmlPath){Start-Process $r.HtmlPath}} }
 function Start-TenantIQTeamsModule { if(-not(Ensure-TenantIQTeamsConnection)){Wait-TenantIQ;return};while($true){Show-Banner;Write-Host 'Microsoft Teams' -ForegroundColor Cyan;Write-Host '[1] Full Microsoft Teams Assessment';Write-Host '[2] Health Checks';Write-Host '[0] Back to Modules';switch(Read-Host 'Select'){'1'{Start-TenantIQTeamsAssessment;Wait-TenantIQ}'2'{foreach($Check in $TenantIQTeamsHealthChecks){Write-Host $Check.Name};Wait-TenantIQ}'0'{return}}} }
 
-function Ensure-TenantIQOneDriveConnection { try{if(-not(Get-Command Connect-SPOService -ErrorAction SilentlyContinue)){Import-Module Microsoft.Online.SharePoint.PowerShell -ErrorAction Stop};try{$null=Get-SPOTenant -ErrorAction Stop;return $true}catch{};$TenantName=Read-Host 'Enter the Microsoft 365 tenant name (example: contoso)';Connect-SPOService -Url ("https://{0}-admin.sharepoint.com" -f $TenantName) -ErrorAction Stop;return $true}catch{Write-Host $_.Exception.Message -ForegroundColor Red;return $false} }
+function Ensure-TenantIQOneDriveConnection {
+    try {
+        if(-not(Get-Command Connect-SPOService -ErrorAction SilentlyContinue)){Import-Module Microsoft.Online.SharePoint.PowerShell -ErrorAction Stop}
+        try{$null=Get-SPOTenant -ErrorAction Stop;return $true}catch{}
+        $TenantInput=Read-Host 'Enter the Microsoft 365 tenant name (example: contoso or contoso.onmicrosoft.com)'
+        $TenantName=Get-TenantIQTenantStem -InputValue $TenantInput
+        if([string]::IsNullOrWhiteSpace($TenantName)){throw 'Tenant name could not be determined from the value entered.'}
+        $AdminUrl=("https://{0}-admin.sharepoint.com" -f $TenantName)
+        Connect-SPOService -Url $AdminUrl -ErrorAction Stop
+        try{$null=Get-SPOTenant -ErrorAction Stop;return $true}catch{throw "SharePoint admin connection could not be verified for $AdminUrl."}
+    } catch { Write-Host '';Write-Host 'Could not connect to SharePoint Online.' -ForegroundColor Red;Write-Host $_.Exception.Message -ForegroundColor Red;return $false }
+}
 function Start-TenantIQOneDriveAssessment { Clear-Host;$Global:ExchangeAIResults=@();if(-not(Ensure-TenantIQOneDriveConnection)){return};$runnable=@($TenantIQOneDriveHealthChecks|Where-Object{$_.Enabled -eq $true -or $_.Status -eq 'Implemented'}|Sort-Object Number);$i=1;foreach($Check in $runnable){Write-Host ("[{0}/{1}] {2}" -f $i,$runnable.Count,$Check.Name)-ForegroundColor Cyan;try{& $Check.Script}catch{New-HealthCheckResult -Check $Check.Name -Category $Check.Category -Status 'FAIL' -Severity 'High' -Finding $_.Exception.Message -Recommendation 'Review OneDrive dependencies.'|Out-Null};$i++};Show-TenantIQAssessmentResults -Title 'OneDrive Assessment Results';if(@($Global:ExchangeAIResults).Count -gt 0){$r=Export-ExchangeAIHtmlReport -Workload 'OneDrive';if($r.HtmlPath){Start-Process $r.HtmlPath}} }
 function Start-TenantIQOneDriveModule { if(-not(Ensure-TenantIQOneDriveConnection)){Wait-TenantIQ;return};while($true){Show-Banner;Write-Host 'OneDrive' -ForegroundColor Cyan;Write-Host '[1] Full OneDrive Assessment';Write-Host '[2] Health Checks';Write-Host '[0] Back to Modules';switch(Read-Host 'Select'){'1'{Start-TenantIQOneDriveAssessment;Wait-TenantIQ}'2'{foreach($Check in $TenantIQOneDriveHealthChecks){Write-Host $Check.Name};Wait-TenantIQ}'0'{return}}} }
 

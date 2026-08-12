@@ -1,8 +1,10 @@
 # TenantIQ SharePoint Online launcher isolation.
-# Loaded late from 01 Framework so it overrides the monolithic launcher without
-# changing the validated SharePoint health-check engine.
+# The monolithic TenantIQ.ps1 defines Start-TenantIQSharePointModule after the
+# framework is loaded. An alias has higher PowerShell command precedence than a
+# function, so use a distinct implementation and bind the public command name
+# to it. This preserves the validated SharePoint 50-check engine unchanged.
 
-function Start-TenantIQSharePointModule {
+function Invoke-TenantIQSharePointIsolatedModule {
     $TenantInput = Read-Host 'Enter the SharePoint tenant name (example: contoso or contoso.onmicrosoft.com)'
     $TenantName = Get-TenantIQTenantStem -InputValue $TenantInput
     if ([string]::IsNullOrWhiteSpace($TenantName)) {
@@ -42,3 +44,5 @@ function Start-TenantIQSharePointModule {
     }
     Wait-TenantIQ
 }
+
+Set-Alias -Name Start-TenantIQSharePointModule -Value Invoke-TenantIQSharePointIsolatedModule -Scope Global -Force

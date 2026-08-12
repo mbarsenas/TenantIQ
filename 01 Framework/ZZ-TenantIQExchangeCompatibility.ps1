@@ -2,7 +2,10 @@
 # Loaded after the primary hardened Exchange evaluator.
 
 if (Get-Command Invoke-TenantIQExchangeHardenedCheck -CommandType Function -ErrorAction SilentlyContinue) {
-    $script:TenantIQExchangeHardenedCheckBase = ${function:Invoke-TenantIQExchangeHardenedCheck}
+    # Preserve the original evaluator in global scope so the compatibility
+    # wrapper remains callable from the isolated Exchange child process.
+    $Global:TenantIQExchangeHardenedCheckBase =
+        (Get-Command Invoke-TenantIQExchangeHardenedCheck -CommandType Function).ScriptBlock
 
     function Invoke-TenantIQExchangeHardenedCheck {
         param(
@@ -12,24 +15,38 @@ if (Get-Command Invoke-TenantIQExchangeHardenedCheck -CommandType Function -Erro
         )
 
         if ($CheckName -ne 'Public Folders') {
-            & $script:TenantIQExchangeHardenedCheckBase @PSBoundParameters
+            if (-not $Global:TenantIQExchangeHardenedCheckBase) {
+                throw 'The base Exchange hardened evaluator is unavailable.'
+            }
+            & $Global:TenantIQExchangeHardenedCheckBase @PSBoundParameters
             return
         }
 
         $SW = [Diagnostics.Stopwatch]::StartNew()
         try {
-            $Folders = @(Get-PublicFolder -ResultSize Unlimited -ErrorAction Stop)
-            $Mailboxes = @(Get-Mailbox -PublicFolder -ResultSize Unlimited -ErrorAction Stop)
+            $Folders = @(Get-PublicFolder -Recurse -ResultSize Unlimited -ErrorAction Stop)
             $SW.Stop()
 
-            Add-TenantIQExchangeResult `
-                $CheckName `
-                $Category `
-                'INFO' `
-                'None' `
-                "$($Folders.Count) public folder(s) and $($Mailboxes.Count) public-folder mailbox(es) detected." `
-                'Confirm that public folders remain required and that permissions, quotas, mail enablement, migration posture, and legacy dependencies are governed.' `
-                $SW.Elapsed.TotalSeconds
+            if ($Folders.Count -eq 0) {
+                Add-TenantIQExchangeResult `
+                    $CheckName `
+                    $Category `
+                    'PASS' `
+                    'None' `
+                    'No public folders were returned.' `
+                    'No action required.' `
+                    $SW.Elapsed.TotalSeconds
+            }
+            else {
+                Add-TenantIQExchangeResult `
+                    $CheckName `
+                    $Category `
+                    'INFO' `
+                    'None' `
+                    "$($Folders.Count) public folder(s) detected." `
+                    'Confirm that public folders remain required and that permissions, quotas, mail enablement, migration posture, and legacy dependencies are governed.' `
+                    $SW.Elapsed.TotalSeconds
+            }
         }
         catch {
             $SW.Stop()

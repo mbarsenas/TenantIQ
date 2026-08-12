@@ -74,9 +74,12 @@ function Get-TenantIQOneDrivePurviewCache {
             throw "The isolated Purview collector did not create its evidence cache. Exit code: $($Process.ExitCode)"
         }
 
-        $Cache = Get-Content $CachePath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
-        if ($Cache.Success -ne $true) {
-            throw "Isolated Purview collection failed. $($Cache.Error)"
+        # Purview cmdlet objects can serialize properties whose names differ only
+        # by case (for example Value/value). PowerShell's default PSCustomObject
+        # conversion rejects those documents. -AsHashtable preserves the keys.
+        $Cache = Get-Content $CachePath -Raw -ErrorAction Stop | ConvertFrom-Json -AsHashtable -ErrorAction Stop
+        if ($Cache['Success'] -ne $true) {
+            throw "Isolated Purview collection failed. $($Cache['Error'])"
         }
 
         $Global:TenantIQOneDrivePurviewCache = $Cache
@@ -101,16 +104,16 @@ function Get-TenantIQOneDrivePurviewData {
     )
 
     $Cache = Get-TenantIQOneDrivePurviewCache
-    $Bucket = $Cache.$Type
+    $Bucket = $Cache[$Type]
 
     if ($null -eq $Bucket) {
         throw "Purview evidence bucket '$Type' was not returned by the isolated collector."
     }
 
-    if ($Bucket.Available -ne $true) {
-        $Detail = if ($Bucket.Error) { $Bucket.Error } else { 'The required Purview command was unavailable.' }
+    if ($Bucket['Available'] -ne $true) {
+        $Detail = if ($Bucket['Error']) { $Bucket['Error'] } else { 'The required Purview command was unavailable.' }
         throw "Purview $Type evidence is unavailable. $Detail"
     }
 
-    return @($Bucket.Data)
+    return @($Bucket['Data'])
 }

@@ -23,6 +23,7 @@ function Show-TenantIQPortfolioMenu {
         Write-Host ""
         Write-Host "[1] Generate Consolidated Portfolio Report"
         Write-Host "[2] Customer / Branding Configuration"
+        Write-Host "[3] Assessment Data Freshness"
         Write-Host "[0] Back"
         Write-Host ""
         Write-Host "============================================================" -ForegroundColor DarkGray
@@ -55,6 +56,9 @@ function Show-TenantIQPortfolioMenu {
             }
             "2" {
                 Show-TenantIQConfigurationWizard
+            }
+            "3" {
+                Show-TenantIQAssessmentFreshness
             }
             "0" { return }
             default {

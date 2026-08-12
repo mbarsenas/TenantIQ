@@ -133,11 +133,61 @@ function Ensure-TenantIQExchangeConnection {
 }
 
 function Show-TenantIQHelpArticle { param([Parameter(Mandatory)][string]$Article); $HelpPath=Join-Path $PSScriptRoot "07 Assets\Help\$Article"; Clear-Host; if(Test-Path $HelpPath){Get-Content $HelpPath|ForEach-Object{Write-Host $_}}else{Write-Host '[ERROR] Help article not found.' -ForegroundColor Red}; Wait-TenantIQ }
-function Show-TenantIQHelpCenter { while($true){ Clear-Host; Show-Banner; Write-Host '[1] Getting Started';Write-Host '[2] Prerequisites';Write-Host '[3] Connecting to Microsoft 365';Write-Host '[4] Running Assessments';Write-Host '[5] Understanding Results';Write-Host '[6] Reports';Write-Host '[7] Troubleshooting';Write-Host '[0] Back'; switch(Read-Host 'Select'){'1'{Show-TenantIQHelpArticle 'GettingStarted.txt'}'2'{Show-TenantIQHelpArticle 'Prerequisites.txt'}'3'{Show-TenantIQHelpArticle 'Connections.txt'}'4'{Show-TenantIQHelpArticle 'Assessments.txt'}'5'{Show-TenantIQHelpArticle 'Results.txt'}'6'{Show-TenantIQHelpArticle 'Reports.txt'}'7'{Show-TenantIQHelpArticle 'Troubleshooting.txt'}'0'{return}} } }
+function Show-TenantIQHelpCenter { while($true){ Clear-Host; Show-Banner; Write-Host '[1] Getting Started';Write-Host '[2] Prerequisites';Write-Host '[3] Connecting to Microsoft 365';Write-Host '[4] Running Assessments';Write-Host '[5] Understanding Results';Write-Host '[6] Reports';Write-Host '[7] Troubleshooting';Write-Host '[0] Back'; switch(Read-Host 'Select'){'1'{Show-TenantIQHelpArticle 'GettingStarted.txt'}'2'{Show-TenantIQHelpArticle 'Prerequisites.txt'}'3'{Show-TenantIQHelpArticle 'Connections.txt'}'4'{Show-TenantIQHelpArticle 'Assessments.txt'}'5'{Show-TenantIQHelpArticle 'Understanding Results.txt'}'6'{Show-TenantIQHelpArticle 'Reports.txt'}'7'{Show-TenantIQHelpArticle 'Troubleshooting.txt'}'0'{return}} } }
 
 function Start-TenantIQExchangeModule {
-    if (-not (Ensure-TenantIQExchangeConnection)) { Wait-TenantIQ; return }
-    while($true){ Show-Banner; Write-Host 'Exchange Online' -ForegroundColor Cyan; Write-Host '[1] Full Exchange Online Assessment';Write-Host '[2] Health Checks';Write-Host '[0] Back to Modules'; switch(Read-Host 'Select'){'1'{Start-ExchangeAIHealth;Wait-TenantIQ}'2'{foreach($Check in $ExchangeAIHealthChecks){Write-Host $Check.Name};Wait-TenantIQ}'0'{return}} }
+    while ($true) {
+        Show-Banner
+        Write-Host 'Exchange Online' -ForegroundColor Cyan
+        Write-Host '[1] Full Exchange Online Assessment'
+        Write-Host '[2] Health Checks'
+        Write-Host '[0] Back to Modules'
+        Write-Host ''
+
+        switch (Read-Host 'Select') {
+            '1' {
+                $Runner = Join-Path $PSScriptRoot '00 Runtime\Tools\Invoke-TenantIQExchangeAssessmentIsolated.ps1'
+                $ShellCommand = Get-Command pwsh.exe -ErrorAction SilentlyContinue
+
+                if (-not (Test-Path $Runner)) {
+                    Write-Host ''
+                    Write-Host '[ERROR] Isolated Exchange Online runner was not found.' -ForegroundColor Red
+                    Write-Host $Runner -ForegroundColor DarkGray
+                    Wait-TenantIQ
+                    continue
+                }
+
+                if (-not $ShellCommand) {
+                    Write-Host ''
+                    Write-Host '[ERROR] PowerShell 7 (pwsh.exe) is required for the isolated Exchange Online assessment.' -ForegroundColor Red
+                    Wait-TenantIQ
+                    continue
+                }
+
+                Write-Host ''
+                Write-Host 'Starting Exchange Online in an isolated PowerShell process...' -ForegroundColor Cyan
+                Write-Host 'This keeps Exchange Online MSAL assemblies separate from Microsoft Graph.' -ForegroundColor DarkGray
+                Write-Host ''
+
+                & $ShellCommand.Source -NoProfile -ExecutionPolicy Bypass -File $Runner
+                $ExitCode = $LASTEXITCODE
+
+                if ($ExitCode -ne 0) {
+                    Write-Host ''
+                    Write-Host ("[ERROR] Isolated Exchange Online assessment exited with code {0}." -f $ExitCode) -ForegroundColor Red
+                }
+
+                Wait-TenantIQ
+            }
+            '2' {
+                foreach ($Check in ($TenantIQExchangeHealthChecks | Sort-Object { [int]$_.Number })) {
+                    Write-Host ("[{0}] {1}" -f $Check.Number,$Check.Name)
+                }
+                Wait-TenantIQ
+            }
+            '0' { return }
+        }
+    }
 }
 
 function Get-TenantIQGraphStatus { if(-not(Get-Command Get-MgContext -ErrorAction SilentlyContinue)){return [pscustomobject]@{Connected=$false;Status='[MODULE NOT LOADED]';Color='Yellow';Account='N/A'}};$c=Get-MgContext -ErrorAction SilentlyContinue;if($c){[pscustomobject]@{Connected=$true;Status='[OK] Connected';Color='Green';Account=$c.Account}}else{[pscustomobject]@{Connected=$false;Status='[NOT CONNECTED]';Color='Yellow';Account='N/A'}} }

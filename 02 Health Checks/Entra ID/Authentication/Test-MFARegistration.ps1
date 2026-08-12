@@ -7,8 +7,9 @@ Write-ExchangeAILog `
 try {
 
     if (-not (Get-Command Get-MgReportAuthenticationMethodUserRegistrationDetail -ErrorAction SilentlyContinue)) {
-
-        throw "Microsoft.Graph.Reports is not installed. Run: Install-Module Microsoft.Graph.Reports -Scope CurrentUser"
+        if (-not (Get-Command Ensure-TenantIQGraphReports -ErrorAction SilentlyContinue) -or -not (Ensure-TenantIQGraphReports)) {
+            throw "Microsoft.Graph.Reports could not be prepared automatically."
+        }
     }
 
     $GraphContext = Get-MgContext -ErrorAction SilentlyContinue
@@ -203,6 +204,6 @@ catch {
         -Status "FAIL" `
         -Severity "High" `
         -Finding $ErrorMessage `
-        -Recommendation "Verify Microsoft.Graph.Reports is installed, AuditLog.Read.All consent is granted, and the signed-in account has a supported Entra role." `
+        -Recommendation "Verify Microsoft Graph reporting access, AuditLog.Read.All consent, and the signed-in account's Entra reporting permissions." `
         -Duration $Stopwatch.Elapsed.TotalSeconds
 }

@@ -2133,8 +2133,9 @@ while ($true) {
 	Write-Host "[8] Microsoft Purview" -ForegroundColor White
 	Write-TenantIQModuleCountLine -ModuleFile (Join-Path $PSScriptRoot "10 Modules\MicrosoftPurview.ps1")
 	Write-Host ""
-	Write-Host "[9] Help / Documentation" -ForegroundColor White
-	Write-Host "[10] About TenantIQ" -ForegroundColor White
+	Write-Host "[9] Portfolio Report" -ForegroundColor White
+	Write-Host "[10] Help / Documentation" -ForegroundColor White
+	Write-Host "[11] About TenantIQ" -ForegroundColor White
 	Write-Host "[0] Exit"
 
 	Write-Host ""
@@ -2179,10 +2180,14 @@ while ($true) {
         }
 
         "9" {
-            Show-TenantIQHelpCenter
+            Show-TenantIQPortfolioMenu
         }
 
         "10" {
+            Show-TenantIQHelpCenter
+        }
+
+        "11" {
             Show-TenantIQAbout
         }
 

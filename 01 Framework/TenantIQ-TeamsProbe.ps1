@@ -34,7 +34,7 @@ function Invoke-TenantIQTeamsProbe {
             }
         }
         catch {
-            $Errors += "$CommandName: $($_.Exception.Message)"
+            $Errors += "${CommandName}: $($_.Exception.Message)"
         }
     }
 

@@ -7,9 +7,6 @@ $ModulesPath   = Join-Path $PSScriptRoot "10 Modules"
 
 Get-ChildItem $FrameworkPath -Filter "*.ps1" |
     Where-Object {
-        # Safety: runtime/worker scripts with mandatory parameters must never
-        # be dot-sourced as TenantIQ framework modules. This also protects
-        # upgrades where an older collector file may still exist in 01 Framework.
         $_.Name -notin @(
             "Invoke-TenantIQGraphIsolatedCache.ps1"
         )
@@ -20,34 +17,26 @@ Get-ChildItem $FrameworkPath -Filter "*.ps1" |
 
 $Config = Get-ExchangeAIConfig
 
-# Exchange Online registry
 . "$FrameworkPath\HealthChecks.ps1"
 
-# Entra ID registry
 $EntraRegistryPath = Join-Path $ModulesPath "EntraID.ps1"
 if (Test-Path $EntraRegistryPath) { . $EntraRegistryPath } else { $TenantIQEntraHealthChecks = @() }
 
-# SharePoint Online registry
 $SharePointRegistryPath = Join-Path $ModulesPath "SharePointOnline.ps1"
 if (Test-Path $SharePointRegistryPath) { . $SharePointRegistryPath } else { $TenantIQSharePointHealthChecks = @() }
 
-# Microsoft Teams registry
 $TeamsRegistryPath = Join-Path $ModulesPath "MicrosoftTeams.ps1"
 if (Test-Path $TeamsRegistryPath) { . $TeamsRegistryPath } else { $TenantIQTeamsHealthChecks = @() }
 
-# OneDrive registry
 $OneDriveRegistryPath = Join-Path $ModulesPath "OneDrive.ps1"
 if (Test-Path $OneDriveRegistryPath) { . $OneDriveRegistryPath } else { $TenantIQOneDriveHealthChecks = @() }
 
-# Microsoft Intune registry
 $IntuneRegistryPath = Join-Path $ModulesPath "MicrosoftIntune.ps1"
 if (Test-Path $IntuneRegistryPath) { . $IntuneRegistryPath } else { $TenantIQIntuneHealthChecks = @() }
 
-# Microsoft Defender registry
 $DefenderRegistryPath = Join-Path $ModulesPath "MicrosoftDefender.ps1"
 if (Test-Path $DefenderRegistryPath) { . $DefenderRegistryPath } else { $TenantIQDefenderHealthChecks = @() }
 
-# Microsoft Purview registry
 $PurviewRegistryPath = Join-Path $ModulesPath "MicrosoftPurview.ps1"
 if (Test-Path $PurviewRegistryPath) { . $PurviewRegistryPath } else { $TenantIQPurviewHealthChecks = @() }
 
@@ -147,12 +136,8 @@ function Start-TenantIQEntraAssessment {
 
     foreach($Check in $Checks){
         Write-Host ("[{0:D2}/{1:D2}] {2}" -f $i,$Total,$Check.Name) -ForegroundColor Cyan
-        try{
-            & $Check.Script *>$null
-        }
-        catch{
-            New-HealthCheckResult -Check $Check.Name -Category $Check.Category -Status 'FAIL' -Severity 'High' -Finding $_.Exception.Message -Recommendation 'Review Entra ID dependencies.'|Out-Null
-        }
+        try{ & $Check.Script *>$null }
+        catch{ New-HealthCheckResult -Check $Check.Name -Category $Check.Category -Status 'FAIL' -Severity 'High' -Finding $_.Exception.Message -Recommendation 'Review Entra ID dependencies.'|Out-Null }
         $i++
     }
 
@@ -182,14 +167,8 @@ function Start-TenantIQEntraAssessment {
     Write-Host ''
 
     if($Results.Count -gt 0){
-        try{
-            $r=Export-ExchangeAIHtmlReport -Workload 'Entra ID'
-            if($r.HtmlPath){Start-Process $r.HtmlPath}
-        }
-        catch{
-            Write-Host 'Unable to generate Entra ID HTML report.' -ForegroundColor Red
-            Write-Host $_.Exception.Message -ForegroundColor Red
-        }
+        try{ $r=Export-ExchangeAIHtmlReport -Workload 'Entra ID'; if($r.HtmlPath){Start-Process $r.HtmlPath} }
+        catch{ Write-Host 'Unable to generate Entra ID HTML report.' -ForegroundColor Red; Write-Host $_.Exception.Message -ForegroundColor Red }
     }
 }
 function Start-TenantIQEntraModule { while($true){Show-Banner;Write-Host 'Entra ID' -ForegroundColor Cyan;Write-Host '[1] Full Entra ID Assessment';Write-Host '[2] Health Checks';Write-Host '[0] Back to Modules';switch(Read-Host 'Select'){'1'{Start-TenantIQEntraAssessment;Wait-TenantIQ}'2'{foreach($Check in $TenantIQEntraHealthChecks){Write-Host $Check.Name};Wait-TenantIQ}'0'{return}}} }
@@ -222,7 +201,58 @@ function Ensure-TenantIQSharePointConnection {
         return $true
     } catch { Write-Host '';Write-Host 'Could not connect to SharePoint Online.' -ForegroundColor Red;Write-Host $_.Exception.Message -ForegroundColor Red;return $false }
 }
-function Start-TenantIQSharePointAssessment { Clear-Host;$Global:ExchangeAIResults=@();$runnable=@($TenantIQSharePointHealthChecks|Where-Object{$_.Enabled -eq $true -or -not $_.ContainsKey('Enabled')});$i=1;foreach($Check in $runnable){Write-Host ("[{0}/{1}] {2}" -f $i,$runnable.Count,$Check.Name) -ForegroundColor Cyan;try{& $Check.Script}catch{New-HealthCheckResult -Check $Check.Name -Category $Check.Category -Status 'FAIL' -Severity 'High' -Finding $_.Exception.Message -Recommendation 'Review SharePoint dependencies.'|Out-Null};$i++};Show-TenantIQAssessmentResults -Title 'SharePoint Online Assessment Summary';if(@($Global:ExchangeAIResults).Count -gt 0){$r=Export-ExchangeAIHtmlReport -Workload 'SharePoint Online';if($r.HtmlPath){Start-Process $r.HtmlPath}} }
+
+function Start-TenantIQSharePointAssessment {
+    Clear-Host
+    $Global:ExchangeAIResults=@()
+    $Checks=@($TenantIQSharePointHealthChecks | Where-Object { $_.Enabled -eq $true -or -not $_.ContainsKey('Enabled') } | Sort-Object { if($_.ContainsKey('Number')){[int]$_.Number}else{0} })
+    $Total=$Checks.Count
+    $i=1
+    $AssessmentStopwatch=[Diagnostics.Stopwatch]::StartNew()
+
+    Write-Host ''
+    Write-Host '============================================================' -ForegroundColor Cyan
+    Write-Host '         TenantIQ SharePoint Online Assessment' -ForegroundColor Cyan
+    Write-Host '============================================================' -ForegroundColor Cyan
+    Write-Host ''
+
+    foreach($Check in $Checks){
+        Write-Host ("[{0:D2}/{1:D2}] {2}" -f $i,$Total,$Check.Name) -ForegroundColor Cyan
+        try{ & $Check.Script *>$null }
+        catch{ New-HealthCheckResult -Check $Check.Name -Category $Check.Category -Status 'FAIL' -Severity 'High' -Finding $_.Exception.Message -Recommendation 'Review SharePoint dependencies.'|Out-Null }
+        $i++
+    }
+
+    $AssessmentStopwatch.Stop()
+    $Results=@($Global:ExchangeAIResults)
+    $Passed=@($Results|Where-Object Status -eq 'PASS').Count
+    $Warnings=@($Results|Where-Object Status -eq 'WARNING').Count
+    $Failed=@($Results|Where-Object Status -eq 'FAIL').Count
+    $Info=@($Results|Where-Object Status -eq 'INFO').Count
+    $NotEvaluated=@($Results|Where-Object Status -eq 'NOT EVALUATED').Count
+    $Scored=$Passed+$Warnings+$Failed
+    $Score=if($Scored -gt 0){[math]::Round((($Passed+(0.5*$Warnings))/$Scored)*100)}else{$null}
+
+    Write-Host ''
+    Write-Host '============================================================' -ForegroundColor Cyan
+    Write-Host '        SharePoint Online Assessment Complete' -ForegroundColor Cyan
+    Write-Host '============================================================' -ForegroundColor Cyan
+    Write-Host ''
+    Write-Host "Checks Run     : $($Results.Count)"
+    Write-Host "Passed         : $Passed" -ForegroundColor Green
+    Write-Host "Warnings       : $Warnings" -ForegroundColor Yellow
+    Write-Host "Failed         : $Failed" -ForegroundColor Red
+    Write-Host "Info           : $Info" -ForegroundColor Cyan
+    Write-Host "Not Evaluated  : $NotEvaluated" -ForegroundColor DarkYellow
+    if($null -ne $Score){Write-Host "Score          : $Score%" -ForegroundColor Cyan}else{Write-Host 'Score          : N/A' -ForegroundColor DarkYellow}
+    Write-Host "Duration       : $([math]::Round($AssessmentStopwatch.Elapsed.TotalSeconds,2)) sec"
+    Write-Host ''
+
+    if($Results.Count -gt 0){
+        try{ $r=Export-ExchangeAIHtmlReport -Workload 'SharePoint Online'; if($r.HtmlPath){Start-Process $r.HtmlPath} }
+        catch{ Write-Host 'Unable to generate SharePoint Online HTML report.' -ForegroundColor Red; Write-Host $_.Exception.Message -ForegroundColor Red }
+    }
+}
 function Start-TenantIQSharePointModule { if(-not(Ensure-TenantIQSharePointConnection)){Wait-TenantIQ;return};while($true){Show-Banner;Write-Host 'SharePoint Online' -ForegroundColor Cyan;Write-Host '[1] Full SharePoint Online Assessment';Write-Host '[2] Health Checks';Write-Host '[0] Back to Modules';switch(Read-Host 'Select'){'1'{Start-TenantIQSharePointAssessment;Wait-TenantIQ}'2'{foreach($Check in $TenantIQSharePointHealthChecks){Write-Host $Check.Name};Wait-TenantIQ}'0'{return}}} }
 
 function Get-TenantIQTeamsStatus { try{$t=Get-CsTenant -ErrorAction Stop;[pscustomobject]@{Connected=$true;Status='[OK] Connected';Color='Green';Tenant=$t.DisplayName}}catch{[pscustomobject]@{Connected=$false;Status='[X] Not Connected';Color='Yellow';Tenant='Unknown'}} }
@@ -232,8 +262,7 @@ function Ensure-TenantIQTeamsConnection {
         $s=Get-TenantIQTeamsStatus
         if($s.Connected){return $true}
         Write-Host '';Write-Host 'Microsoft Teams is not connected.' -ForegroundColor Yellow;Write-Host 'Launching Microsoft Teams sign-in...' -ForegroundColor Cyan
-        try { Connect-MicrosoftTeams -ErrorAction Stop | Out-Null }
-        catch { throw $_.Exception }
+        Connect-MicrosoftTeams -ErrorAction Stop | Out-Null
         $s=Get-TenantIQTeamsStatus
         if(-not $s.Connected){throw 'Microsoft Teams sign-in completed, but Get-CsTenant could not confirm the connection.'}
         return $true
@@ -251,7 +280,8 @@ function Ensure-TenantIQOneDriveConnection {
         if([string]::IsNullOrWhiteSpace($TenantName)){throw 'Tenant name could not be determined from the value entered.'}
         $AdminUrl=("https://{0}-admin.sharepoint.com" -f $TenantName)
         Connect-SPOService -Url $AdminUrl -ErrorAction Stop
-        try{$null=Get-SPOTenant -ErrorAction Stop;return $true}catch{throw "SharePoint admin connection could not be verified for $AdminUrl."}
+        $null=Get-SPOTenant -ErrorAction Stop
+        return $true
     } catch { Write-Host '';Write-Host 'Could not connect to SharePoint Online.' -ForegroundColor Red;Write-Host $_.Exception.Message -ForegroundColor Red;return $false }
 }
 function Start-TenantIQOneDriveAssessment { Clear-Host;$Global:ExchangeAIResults=@();if(-not(Ensure-TenantIQOneDriveConnection)){return};$runnable=@($TenantIQOneDriveHealthChecks|Where-Object{$_.Enabled -eq $true -or $_.Status -eq 'Implemented'}|Sort-Object Number);$i=1;foreach($Check in $runnable){Write-Host ("[{0}/{1}] {2}" -f $i,$runnable.Count,$Check.Name)-ForegroundColor Cyan;try{& $Check.Script}catch{New-HealthCheckResult -Check $Check.Name -Category $Check.Category -Status 'FAIL' -Severity 'High' -Finding $_.Exception.Message -Recommendation 'Review OneDrive dependencies.'|Out-Null};$i++};Show-TenantIQAssessmentResults -Title 'OneDrive Assessment Results';if(@($Global:ExchangeAIResults).Count -gt 0){$r=Export-ExchangeAIHtmlReport -Workload 'OneDrive';if($r.HtmlPath){Start-Process $r.HtmlPath}} }

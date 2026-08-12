@@ -393,18 +393,38 @@ function Show-TenantIQAbout { Clear-Host;Show-Banner;Write-Host "$($Config.Name)
 
 while($true){
     Show-Banner
-    Write-Host 'Available Modules' -ForegroundColor Cyan
-    Write-Host '================='
+    Write-Host 'Microsoft 365 Workloads' -ForegroundColor Cyan
+    Write-Host '============================================================' -ForegroundColor DarkGray
     Write-Host ''
-    Write-Host '[1] Exchange Online';Write-TenantIQModuleCountLine -ModuleFile (Join-Path $PSScriptRoot '01 Framework\HealthChecks.ps1') -CountHint $ExchangeAIHealthChecks.Count
-    Write-Host '[2] Entra ID';Write-TenantIQModuleCountLine -ModuleFile (Join-Path $PSScriptRoot '10 Modules\EntraID.ps1') -CountHint 66
-    Write-Host '[3] SharePoint Online';Write-TenantIQModuleCountLine -ModuleFile (Join-Path $PSScriptRoot '10 Modules\SharePointOnline.ps1')
-    Write-Host '[4] Microsoft Teams';Write-TenantIQModuleCountLine -ModuleFile (Join-Path $PSScriptRoot '10 Modules\MicrosoftTeams.ps1')
-    Write-Host '[5] OneDrive';Write-TenantIQModuleCountLine -ModuleFile (Join-Path $PSScriptRoot '10 Modules\OneDrive.ps1')
-    Write-Host '[6] Microsoft Intune';Write-TenantIQModuleCountLine -ModuleFile (Join-Path $PSScriptRoot '10 Modules\MicrosoftIntune.ps1')
-    Write-Host '[7] Microsoft Defender';Write-TenantIQModuleCountLine -ModuleFile (Join-Path $PSScriptRoot '10 Modules\MicrosoftDefender.ps1')
-    Write-Host '[8] Microsoft Purview';Write-TenantIQModuleCountLine -ModuleFile (Join-Path $PSScriptRoot '10 Modules\MicrosoftPurview.ps1')
-    Write-Host '[9] Portfolio Report';Write-Host '[10] Help / Documentation';Write-Host '[11] About TenantIQ';Write-Host '[0] Exit';Write-Host ''
+
+    Write-Host '  [1] Exchange Online' -ForegroundColor White
+    Write-TenantIQModuleCountLine -ModuleFile (Join-Path $PSScriptRoot '01 Framework\HealthChecks.ps1') -CountHint $ExchangeAIHealthChecks.Count
+    Write-Host '  [2] Entra ID' -ForegroundColor White
+    Write-TenantIQModuleCountLine -ModuleFile (Join-Path $PSScriptRoot '10 Modules\EntraID.ps1') -CountHint 66
+    Write-Host '  [3] SharePoint Online' -ForegroundColor White
+    Write-TenantIQModuleCountLine -ModuleFile (Join-Path $PSScriptRoot '10 Modules\SharePointOnline.ps1')
+    Write-Host '  [4] Microsoft Teams' -ForegroundColor White
+    Write-TenantIQModuleCountLine -ModuleFile (Join-Path $PSScriptRoot '10 Modules\MicrosoftTeams.ps1')
+    Write-Host '  [5] OneDrive' -ForegroundColor White
+    Write-TenantIQModuleCountLine -ModuleFile (Join-Path $PSScriptRoot '10 Modules\OneDrive.ps1')
+    Write-Host '  [6] Microsoft Intune' -ForegroundColor White
+    Write-TenantIQModuleCountLine -ModuleFile (Join-Path $PSScriptRoot '10 Modules\MicrosoftIntune.ps1')
+    Write-Host '  [7] Microsoft Defender' -ForegroundColor White
+    Write-TenantIQModuleCountLine -ModuleFile (Join-Path $PSScriptRoot '10 Modules\MicrosoftDefender.ps1')
+    Write-Host '  [8] Microsoft Purview' -ForegroundColor White
+    Write-TenantIQModuleCountLine -ModuleFile (Join-Path $PSScriptRoot '10 Modules\MicrosoftPurview.ps1')
+
+    Write-Host ''
+    Write-Host 'Reports & Support' -ForegroundColor Cyan
+    Write-Host '============================================================' -ForegroundColor DarkGray
+    Write-Host '  [9]  Portfolio Report'
+    Write-Host '  [10] Help / Documentation'
+    Write-Host '  [11] About TenantIQ'
+    Write-Host ''
+    Write-Host '  [0]  Exit' -ForegroundColor DarkGray
+    Write-Host ''
+    Write-Host '------------------------------------------------------------' -ForegroundColor DarkGray
+
     switch(Read-Host 'Select'){
         '1'{Start-TenantIQExchangeModule}
         '2'{Start-TenantIQEntraModule}
@@ -418,6 +438,6 @@ while($true){
         '10'{Show-TenantIQHelpCenter}
         '11'{Show-TenantIQAbout}
         '0'{Clear-Host;Write-Host 'TenantIQ session complete.' -ForegroundColor Cyan;return}
-        default{Write-Host 'Invalid selection.' -ForegroundColor Red;Start-Sleep -Seconds 1}
+        default{Write-Host '';Write-Host 'Invalid selection. Choose an option from the menu.' -ForegroundColor Red;Start-Sleep -Seconds 1}
     }
 }

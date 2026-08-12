@@ -101,6 +101,10 @@ function Start-TenantIQIntuneModule {
     }
 }
 
+function Start-TenantIQDefenderAssessment {
+    Invoke-TenantIQRegisteredAssessment -Workload 'Microsoft Defender' -HealthChecks $TenantIQDefenderHealthChecks
+}
+
 function Start-TenantIQDefenderModule {
     while ($true) {
         Show-Banner

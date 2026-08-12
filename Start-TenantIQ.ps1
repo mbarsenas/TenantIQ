@@ -7,10 +7,12 @@ $Main = Join-Path $Root 'TenantIQ.ps1'
 $Prereq = Join-Path $Root '01 Framework\Test-TenantIQPrerequisites.ps1'
 $ConfigPath = Join-Path $Root 'TenantIQ.json'
 
+try { $Host.UI.RawUI.WindowTitle = 'TenantIQ M365 Assessment Tool' } catch {}
+
 Clear-Host
 Write-Host '============================================================' -ForegroundColor Cyan
 Write-Host '                       TenantIQ' -ForegroundColor Cyan
-Write-Host '                 Microsoft 365 Assessment' -ForegroundColor Cyan
+Write-Host '             Microsoft 365 Assessment Platform' -ForegroundColor Cyan
 Write-Host '============================================================' -ForegroundColor Cyan
 Write-Host ''
 

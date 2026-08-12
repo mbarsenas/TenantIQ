@@ -19,6 +19,9 @@ $Config = Get-ExchangeAIConfig
 
 . "$FrameworkPath\HealthChecks.ps1"
 
+$ExchangeRegistryPath = Join-Path $ModulesPath "ExchangeOnline.ps1"
+if (Test-Path $ExchangeRegistryPath) { . $ExchangeRegistryPath } else { $TenantIQExchangeHealthChecks = @() }
+
 $EntraRegistryPath = Join-Path $ModulesPath "EntraID.ps1"
 if (Test-Path $EntraRegistryPath) { . $EntraRegistryPath } else { $TenantIQEntraHealthChecks = @() }
 
@@ -46,8 +49,8 @@ function Get-TenantIQModuleCheckCounts {
     if (-not (Test-Path $ModuleFile)) { return [pscustomobject]$Result }
     try {
         $Content = Get-Content -Path $ModuleFile -Raw -ErrorAction Stop
-        $Result.Implemented = ([regex]::Matches($Content, 'Status\s*=\s*"Implemented"')).Count
-        $Result.Planned = ([regex]::Matches($Content, 'Status\s*=\s*"Planned"')).Count
+        $Result.Implemented = ([regex]::Matches($Content, 'Status\s*=\s*["'']Implemented["'']')).Count
+        $Result.Planned = ([regex]::Matches($Content, 'Status\s*=\s*["'']Planned["'']')).Count
         $Result.Total = $Result.Implemented + $Result.Planned
     } catch {}
     [pscustomobject]$Result
@@ -401,14 +404,14 @@ while($true){
     Write-Host '  WORKLOADS' -ForegroundColor Yellow
     Write-Host '  --------------------------------------------------------' -ForegroundColor DarkGray
 
-    Write-TenantIQMenuRow -Number 1 -Name 'Exchange Online'   -Checks (Get-TenantIQMenuCount -ModuleFile (Join-Path $PSScriptRoot '01 Framework\HealthChecks.ps1') -CountHint $ExchangeAIHealthChecks.Count) -Accent 'Cyan'
-    Write-TenantIQMenuRow -Number 2 -Name 'Entra ID'          -Checks (Get-TenantIQMenuCount -ModuleFile (Join-Path $PSScriptRoot '10 Modules\EntraID.ps1') -CountHint 66) -Accent 'Green'
-    Write-TenantIQMenuRow -Number 3 -Name 'SharePoint Online' -Checks (Get-TenantIQMenuCount -ModuleFile (Join-Path $PSScriptRoot '10 Modules\SharePointOnline.ps1')) -Accent 'Green'
-    Write-TenantIQMenuRow -Number 4 -Name 'Microsoft Teams'   -Checks (Get-TenantIQMenuCount -ModuleFile (Join-Path $PSScriptRoot '10 Modules\MicrosoftTeams.ps1')) -Accent 'Cyan'
-    Write-TenantIQMenuRow -Number 5 -Name 'OneDrive'          -Checks (Get-TenantIQMenuCount -ModuleFile (Join-Path $PSScriptRoot '10 Modules\OneDrive.ps1')) -Accent 'Cyan'
-    Write-TenantIQMenuRow -Number 6 -Name 'Microsoft Intune'  -Checks (Get-TenantIQMenuCount -ModuleFile (Join-Path $PSScriptRoot '10 Modules\MicrosoftIntune.ps1')) -Accent 'Green'
-    Write-TenantIQMenuRow -Number 7 -Name 'Microsoft Defender'-Checks (Get-TenantIQMenuCount -ModuleFile (Join-Path $PSScriptRoot '10 Modules\MicrosoftDefender.ps1')) -Accent 'Yellow'
-    Write-TenantIQMenuRow -Number 8 -Name 'Microsoft Purview' -Checks (Get-TenantIQMenuCount -ModuleFile (Join-Path $PSScriptRoot '10 Modules\MicrosoftPurview.ps1')) -Accent 'Magenta'
+    Write-TenantIQMenuRow -Number 1 -Name 'Exchange Online'   -Checks (Get-TenantIQMenuCount -ModuleFile $ExchangeRegistryPath -CountHint @($TenantIQExchangeHealthChecks).Count) -Accent 'Cyan'
+    Write-TenantIQMenuRow -Number 2 -Name 'Entra ID'          -Checks (Get-TenantIQMenuCount -ModuleFile $EntraRegistryPath -CountHint 66) -Accent 'Green'
+    Write-TenantIQMenuRow -Number 3 -Name 'SharePoint Online' -Checks (Get-TenantIQMenuCount -ModuleFile $SharePointRegistryPath) -Accent 'Green'
+    Write-TenantIQMenuRow -Number 4 -Name 'Microsoft Teams'   -Checks (Get-TenantIQMenuCount -ModuleFile $TeamsRegistryPath) -Accent 'Cyan'
+    Write-TenantIQMenuRow -Number 5 -Name 'OneDrive'          -Checks (Get-TenantIQMenuCount -ModuleFile $OneDriveRegistryPath) -Accent 'Cyan'
+    Write-TenantIQMenuRow -Number 6 -Name 'Microsoft Intune'  -Checks (Get-TenantIQMenuCount -ModuleFile $IntuneRegistryPath) -Accent 'Green'
+    Write-TenantIQMenuRow -Number 7 -Name 'Microsoft Defender'-Checks (Get-TenantIQMenuCount -ModuleFile $DefenderRegistryPath) -Accent 'Yellow'
+    Write-TenantIQMenuRow -Number 8 -Name 'Microsoft Purview' -Checks (Get-TenantIQMenuCount -ModuleFile $PurviewRegistryPath) -Accent 'Magenta'
 
     Write-Host ''
     Write-Host '  REPORTS & SUPPORT' -ForegroundColor Yellow

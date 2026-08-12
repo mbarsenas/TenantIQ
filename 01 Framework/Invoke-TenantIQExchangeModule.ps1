@@ -23,10 +23,9 @@ function Start-TenantIQExchange50Assessment {
         return
     }
 
-    Write-Host ''
-    Write-Host '============================================================' -ForegroundColor Cyan
-    Write-Host '             TenantIQ Exchange Online Assessment' -ForegroundColor Cyan
-    Write-Host '============================================================' -ForegroundColor Cyan
+    Show-Banner
+    Write-Host 'TenantIQ Exchange Online Assessment' -ForegroundColor Cyan
+    Write-Host '===================================' -ForegroundColor Cyan
     Write-Host ''
 
     $Checks = @($TenantIQExchangeHealthChecks | Where-Object { $_.Enabled -eq $true -or $_.Status -eq 'Implemented' } | Sort-Object { [int]$_.Number })
@@ -35,29 +34,15 @@ function Start-TenantIQExchange50Assessment {
     $AssessmentStopwatch = [Diagnostics.Stopwatch]::StartNew()
 
     foreach ($Check in $Checks) {
-        Write-Host ''
-        Write-Host '------------------------------------------------------------' -ForegroundColor DarkGray
         Write-Host ("[{0:D2}/{1:D2}] {2}" -f $Current,$Total,$Check.Name) -ForegroundColor Cyan
-        Write-Host '------------------------------------------------------------' -ForegroundColor DarkGray
-        Write-Host "Category    : $($Check.Category)"
-        Write-Host "Severity    : $($Check.Severity)"
-        Write-Host "Description : $($Check.Description)"
-        Write-Host ''
 
         $Before = @($Global:ExchangeAIResults).Count
         $Global:TenantIQCurrentExchangeCheck = $Check
         try {
             if (-not (Test-Path $Check.Script)) { throw "Health check script not found: $($Check.Script)" }
-            if ([int]$Check.Number -le 13) {
-                & $Check.Script
-            }
-            else {
-                & $Check.Script
-            }
+            & $Check.Script *> $null
         }
         catch {
-            Write-Host "[ERROR] $($Check.Name) could not execute." -ForegroundColor Red
-            Write-Host $_.Exception.Message -ForegroundColor Red
             if (Get-Command New-HealthCheckResult -ErrorAction SilentlyContinue) {
                 $null = New-HealthCheckResult -Check $Check.Name -Category $Check.Category -Status 'NOT EVALUATED' -Severity 'None' -Finding $_.Exception.Message -Recommendation 'Review Exchange Online connectivity, permissions, or check dependencies.'
             }
@@ -99,10 +84,11 @@ function Start-TenantIQExchange50Assessment {
     Write-Host "Duration       : $([math]::Round($AssessmentStopwatch.Elapsed.TotalSeconds,2)) sec"
     Write-Host ''
 
-    Show-TenantIQAssessmentResults -Title 'Exchange Online Assessment Results'
-
     if ($Results.Count -gt 0) {
-        try { Export-ExchangeAIHtmlReport -Workload 'Exchange Online' }
+        try {
+            $Report = Export-ExchangeAIHtmlReport -Workload 'Exchange Online'
+            if ($Report -and $Report.HtmlPath) { Start-Process $Report.HtmlPath }
+        }
         catch {
             Write-Host 'Unable to generate Exchange Online HTML report.' -ForegroundColor Red
             Write-Host $_.Exception.Message -ForegroundColor Red

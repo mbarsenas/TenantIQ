@@ -142,9 +142,52 @@ function Start-TenantIQExchangeModule {
 
 function Get-TenantIQGraphStatus { if(-not(Get-Command Get-MgContext -ErrorAction SilentlyContinue)){return [pscustomobject]@{Connected=$false;Status='[MODULE NOT LOADED]';Color='Yellow';Account='N/A'}};$c=Get-MgContext -ErrorAction SilentlyContinue;if($c){[pscustomobject]@{Connected=$true;Status='[OK] Connected';Color='Green';Account=$c.Account}}else{[pscustomobject]@{Connected=$false;Status='[NOT CONNECTED]';Color='Yellow';Account='N/A'}} }
 
+function Ensure-TenantIQEntraConnection {
+    try {
+        if (Get-Command Ensure-TenantIQGraphCore -ErrorAction SilentlyContinue) {
+            if (-not (Ensure-TenantIQGraphCore)) { throw 'Microsoft Graph Authentication could not be prepared.' }
+        }
+        elseif (-not (Get-Command Connect-MgGraph -ErrorAction SilentlyContinue)) {
+            Import-Module Microsoft.Graph.Authentication -Force -Global -ErrorAction Stop
+        }
+
+        if (Get-Command Ensure-TenantIQGraphReports -ErrorAction SilentlyContinue) {
+            if (-not (Ensure-TenantIQGraphReports)) { throw 'Microsoft Graph Reports could not be prepared.' }
+        }
+
+        $Context = Get-MgContext -ErrorAction SilentlyContinue
+        if (-not $Context) {
+            Write-Host ''
+            Write-Host 'Microsoft Graph is not connected.' -ForegroundColor Yellow
+            Write-Host 'Launching Microsoft Graph sign-in for Entra ID assessment...' -ForegroundColor Cyan
+            Connect-MgGraph -Scopes @(
+                'Directory.Read.All',
+                'Policy.Read.All',
+                'AuditLog.Read.All',
+                'RoleManagement.Read.Directory',
+                'Application.Read.All',
+                'Group.Read.All',
+                'User.Read.All',
+                'Reports.Read.All'
+            ) -NoWelcome -ErrorAction Stop
+            $Context = Get-MgContext -ErrorAction SilentlyContinue
+        }
+
+        if (-not $Context) { throw 'Microsoft Graph sign-in did not produce an active context.' }
+        return $true
+    }
+    catch {
+        Write-Host ''
+        Write-Host 'Could not connect to Microsoft Graph for Entra ID.' -ForegroundColor Red
+        Write-Host $_.Exception.Message -ForegroundColor Red
+        return $false
+    }
+}
+
 function Start-TenantIQEntraAssessment {
     Clear-Host
     $Global:ExchangeAIResults=@()
+    if (-not (Ensure-TenantIQEntraConnection)) { return }
     $Checks=@($TenantIQEntraHealthChecks)
     $Total=$Checks.Count
     $i=1
@@ -156,8 +199,18 @@ function Start-TenantIQEntraAssessment {
     Write-Host ''
     foreach($Check in $Checks){
         Write-Host ("[{0:D2}/{1:D2}] {2}" -f $i,$Total,$Check.Name) -ForegroundColor Cyan
-        try{ & $Check.Script *>$null }
-        catch{ New-HealthCheckResult -Check $Check.Name -Category $Check.Category -Status 'FAIL' -Severity 'High' -Finding $_.Exception.Message -Recommendation 'Review Entra ID dependencies.'|Out-Null }
+        $Before=@($Global:ExchangeAIResults).Count
+        try {
+            if (-not (Test-Path $Check.Script)) { throw "Health check script not found: $($Check.Script)" }
+            & $Check.Script *>$null
+        }
+        catch {
+            New-HealthCheckResult -Check $Check.Name -Category $Check.Category -Status 'NOT EVALUATED' -Severity 'None' -Finding $_.Exception.Message -Recommendation 'Review Entra ID connectivity, permissions, licensing, or check dependencies.' | Out-Null
+        }
+        $After=@($Global:ExchangeAIResults).Count
+        if ($After -eq $Before) {
+            New-HealthCheckResult -Check $Check.Name -Category $Check.Category -Status 'NOT EVALUATED' -Severity 'None' -Finding 'The Entra ID check executed but did not return a standardized TenantIQ result.' -Recommendation 'Validate this control and its Microsoft Graph dependency before using it as a scored production finding.' | Out-Null
+        }
         $i++
     }
     $AssessmentStopwatch.Stop()

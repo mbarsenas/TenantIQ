@@ -237,6 +237,7 @@
 
     $AssessmentDate = Get-Date -Format "MMMM dd, yyyy hh:mm tt"
     $EncodedTenant = [System.Net.WebUtility]::HtmlEncode([string]$Tenant)
+    $EncodedCsvName = [System.Net.WebUtility]::HtmlEncode([string]$CsvFileName)
 
     $Html = @"
 <!DOCTYPE html>
@@ -246,19 +247,37 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TenantIQ - $Workload Assessment Report</title>
 <style>
-*{box-sizing:border-box}body{margin:0;background:#f4f7fb;color:#1f2937;font-family:"Segoe UI",Arial,sans-serif}.header{background:#0078d4;color:white;padding:30px 50px}.header-inner{max-width:1300px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:20px}.brand{font-size:32px;font-weight:700}.subtitle{margin-top:5px;opacity:.9;font-size:16px}.report-subtitle{margin-top:7px;opacity:.78;font-size:13px}.risk-badge{display:inline-block;margin-top:8px;padding:5px 10px;border-radius:999px;background:rgba(255,255,255,.16);font-size:13px;font-weight:600}.header-score{text-align:right}.header-score-label{font-size:13px;opacity:.8}.header-score-value{font-size:32px;font-weight:700}.container{max-width:1300px;margin:30px auto;padding:0 25px 50px}.tenant-info,.executive-summary{background:white;border-radius:16px;padding:22px;margin-bottom:25px;box-shadow:0 6px 18px rgba(0,0,0,.08)}.executive-summary{border-left:5px solid #0078d4}.executive-title{font-size:22px;font-weight:700;margin-bottom:14px}.priority-box{background:#f8fafc;border-radius:8px;padding:16px;margin-top:18px}.category-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin:20px 0}.category-card{background:white;border-radius:12px;padding:18px;box-shadow:0 4px 12px rgba(0,0,0,.07)}.category-name{font-weight:600}.category-score{font-size:26px;font-weight:700;margin-top:8px}.good,.status-pass{color:#15803d}.warning,.status-warning{color:#b45309}.critical,.status-fail{color:#b91c1c}.status-info{color:#0369a1}.finding{background:white;border-radius:12px;padding:18px;margin:12px 0;box-shadow:0 4px 12px rgba(0,0,0,.06)}.finding-fail{border-left:5px solid #b91c1c}.finding-warning{border-left:5px solid #b45309}.finding-title{font-weight:700}.finding-text{margin-top:8px}.finding-recommendation{margin-top:10px;color:#334155}.success-message{background:#ecfdf5;color:#166534;border-radius:10px;padding:16px}.table-wrap{overflow-x:auto;background:white;border-radius:16px;box-shadow:0 6px 18px rgba(0,0,0,.08)}table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:11px;border-bottom:1px solid #e2e8f0;vertical-align:top}th{background:#f8fafc}.footer{text-align:center;color:#64748b;font-size:12px;padding:24px}@media print{body{background:white}.header{padding:20px}.container{padding:0}.tenant-info,.executive-summary,.table-wrap{box-shadow:none}}
+*{box-sizing:border-box}body{margin:0;background:#f4f7fb;color:#1f2937;font-family:"Segoe UI",Arial,sans-serif}.header{background:#0078d4;color:white;padding:30px 50px}.header-inner{max-width:1300px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:20px}.brand{font-size:32px;font-weight:700}.subtitle{margin-top:5px;opacity:.9;font-size:16px}.report-subtitle{margin-top:7px;opacity:.78;font-size:13px}.risk-badge{display:inline-block;margin-top:8px;padding:5px 10px;border-radius:999px;background:rgba(255,255,255,.16);font-size:13px;font-weight:600}.header-score{text-align:right}.header-score-label{font-size:13px;opacity:.8}.header-score-value{font-size:32px;font-weight:700}.container{max-width:1300px;margin:30px auto;padding:0 25px 50px}.report-actions{max-width:1300px;margin:18px auto 0;padding:0 25px;display:flex;gap:10px;flex-wrap:wrap}.report-action{appearance:none;border:1px solid #cbd5e1;background:white;color:#0f172a;border-radius:8px;padding:9px 14px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.05)}.report-action:hover{background:#f8fafc}.tenant-info,.executive-summary{background:white;border-radius:16px;padding:22px;margin-bottom:25px;box-shadow:0 6px 18px rgba(0,0,0,.08)}.executive-summary{border-left:5px solid #0078d4}.executive-title{font-size:22px;font-weight:700;margin-bottom:14px}.priority-box{background:#f8fafc;border-radius:8px;padding:16px;margin-top:18px}.category-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin:20px 0}.category-card{background:white;border-radius:12px;padding:18px;box-shadow:0 4px 12px rgba(0,0,0,.07)}.category-name{font-weight:600}.category-score{font-size:26px;font-weight:700;margin-top:8px}.good,.status-pass{color:#15803d}.warning,.status-warning{color:#b45309}.critical,.status-fail{color:#b91c1c}.status-info{color:#0369a1}.finding{background:white;border-radius:12px;padding:18px;margin:12px 0;box-shadow:0 4px 12px rgba(0,0,0,.06)}.finding-fail{border-left:5px solid #b91c1c}.finding-warning{border-left:5px solid #b45309}.finding-title{font-weight:700}.finding-text{margin-top:8px}.finding-recommendation{margin-top:10px;color:#334155}.success-message{background:#ecfdf5;color:#166534;border-radius:10px;padding:16px}.table-wrap{overflow-x:auto;background:white;border-radius:16px;box-shadow:0 6px 18px rgba(0,0,0,.08)}table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:11px;border-bottom:1px solid #e2e8f0;vertical-align:top}th{background:#f8fafc}.footer{text-align:center;color:#64748b;font-size:12px;padding:24px}@media print{body{background:white}.header{padding:20px}.container{padding:0}.tenant-info,.executive-summary,.table-wrap{box-shadow:none}.report-actions{display:none}}
 </style>
 </head>
 <body>
 <div class="header"><div class="header-inner"><div><div class="brand">$ProductName</div><div class="subtitle">$Workload Assessment</div><div class="report-subtitle">$ProductDescription v$ProductVersion</div><div class="risk-badge">$RiskLevel</div></div><div class="header-score"><div class="header-score-label">Health Score</div><div class="header-score-value">$Score%</div></div></div></div>
+<div class="report-actions"><button class="report-action" type="button" onclick="window.print()">Print Report</button><button class="report-action" type="button" onclick="downloadAssessmentCsv()">Export to CSV</button></div>
 <div class="container">
 <div class="tenant-info"><strong>Tenant:</strong> $EncodedTenant<br><strong>Assessment Date:</strong> $AssessmentDate<br><strong>Posture:</strong> $Posture</div>
 <div class="executive-summary"><div class="executive-title">Executive Summary</div><div>TenantIQ evaluated $Total controls for $Workload. $Passed passed, $Warnings produced warnings, $Failed failed, and $Info returned informational context.</div><div class="priority-box"><strong>Highest Priority:</strong> $PriorityCheck<br><br>$PriorityFinding<br><br><strong>Recommendation:</strong> $PriorityRecommendation</div></div>
 <div class="category-grid">$CategoryCards</div>
 <h2>Priority Findings</h2>$PriorityFindings
-<h2>All Findings</h2><div class="table-wrap"><table><thead><tr><th>Check</th><th>Category</th><th>Status</th><th>Severity</th><th>Finding</th><th>Recommendation</th></tr></thead><tbody>$FindingRows</tbody></table></div>
+<h2>All Findings</h2><div class="table-wrap"><table id="tenantIqFindings"><thead><tr><th>Check</th><th>Category</th><th>Status</th><th>Severity</th><th>Finding</th><th>Recommendation</th></tr></thead><tbody>$FindingRows</tbody></table></div>
 </div>
 <div class="footer">Generated by $ProductName v$ProductVersion</div>
+<script>
+function csvEscape(value){const text=(value??'').toString();return '"'+text.replace(/"/g,'""')+'"';}
+function downloadAssessmentCsv(){
+  const table=document.getElementById('tenantIqFindings');
+  if(!table)return;
+  const rows=Array.from(table.querySelectorAll('tr')).map(row=>Array.from(row.querySelectorAll('th,td')).map(cell=>csvEscape(cell.innerText.trim())).join(','));
+  const blob=new Blob(['\ufeff'+rows.join('\r\n')],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement('a');
+  link.href=url;
+  link.download='$EncodedCsvName';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+</script>
 </body>
 </html>
 "@

@@ -1,11 +1,16 @@
 function Start-TenantIQTeamsAssessment {
     Clear-Host
     $Global:ExchangeAIResults = @()
+    $Global:TenantIQTeamsPurviewCache = $null
+    $Global:TenantIQTeamsPurviewAttempted = $false
+    $Global:TenantIQTeamsPurviewError = $null
 
     $Checks = @($TenantIQTeamsHealthChecks | Where-Object { $_.Enabled -ne $false })
     $Total = $Checks.Count
     $i = 1
     $AssessmentStopwatch = [Diagnostics.Stopwatch]::StartNew()
+    $PreviousProgressPreference = $ProgressPreference
+    $ProgressPreference = 'SilentlyContinue'
 
     Write-Host ''
     Write-Host '============================================================' -ForegroundColor Cyan
@@ -13,14 +18,22 @@ function Start-TenantIQTeamsAssessment {
     Write-Host '============================================================' -ForegroundColor Cyan
     Write-Host ''
 
+    if (Get-Command Get-TenantIQTeamsPurviewCache -ErrorAction SilentlyContinue) {
+        try { $null = Get-TenantIQTeamsPurviewCache }
+        catch {
+            Write-Host '[WARNING] Purview enrichment was not collected for this Teams assessment.' -ForegroundColor Yellow
+            Write-Host $_.Exception.Message -ForegroundColor DarkYellow
+            Write-Host 'Purview-dependent checks will continue without retrying authentication.' -ForegroundColor DarkGray
+            Write-Host ''
+        }
+    }
+
     foreach ($Check in $Checks) {
         Write-Host ("[{0:D2}/{1:D2}] {2}" -f $i, $Total, $Check.Name) -ForegroundColor Cyan
         $Before = @($Global:ExchangeAIResults).Count
 
         try {
-            if (-not (Test-Path $Check.Script)) {
-                throw "Health check script not found: $($Check.Script)"
-            }
+            if (-not (Test-Path $Check.Script)) { throw "Health check script not found: $($Check.Script)" }
             & $Check.Script *>$null
         }
         catch {
@@ -34,6 +47,7 @@ function Start-TenantIQTeamsAssessment {
         $i++
     }
 
+    $ProgressPreference = $PreviousProgressPreference
     $AssessmentStopwatch.Stop()
     $Results = @($Global:ExchangeAIResults)
     $Passed = @($Results | Where-Object Status -eq 'PASS').Count

@@ -1,13 +1,19 @@
-function Remove-TenantIQGraphModules {
-    Get-Module -Name 'Microsoft.Graph*' -ErrorAction SilentlyContinue |
-        Sort-Object Name -Descending |
-        ForEach-Object {
-            try { Remove-Module $_.Name -Force -ErrorAction SilentlyContinue } catch {}
-        }
-}
-
 function Get-TenantIQGraphStableVersion {
     return '2.33.0'
+}
+
+function Test-TenantIQPowerShell7 {
+    return ($PSVersionTable.PSEdition -eq 'Core' -and $PSVersionTable.PSVersion.Major -ge 7)
+}
+
+function Get-TenantIQPowerShell7Path {
+    $Candidates = @(
+        (Get-Command pwsh.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -First 1),
+        "$env:ProgramFiles\PowerShell\7\pwsh.exe",
+        "$env:ProgramFiles\PowerShell\7-preview\pwsh.exe"
+    ) | Where-Object { $_ -and (Test-Path $_) }
+
+    return ($Candidates | Select-Object -First 1)
 }
 
 function Ensure-TenantIQGraphDependency {
@@ -16,6 +22,10 @@ function Ensure-TenantIQGraphDependency {
         [Parameter(Mandatory)][string]$CommandName,
         [string]$RequiredVersion = (Get-TenantIQGraphStableVersion)
     )
+
+    if (-not (Test-TenantIQPowerShell7)) {
+        throw 'Microsoft Graph dependencies must be loaded in PowerShell 7 for TenantIQ Entra ID assessments.'
+    }
 
     try {
         $Installed = Get-Module -ListAvailable -Name $ModuleName |
@@ -57,9 +67,22 @@ function Ensure-TenantIQGraphDependency {
 function Ensure-TenantIQGraphCore {
     $RequiredVersion = Get-TenantIQGraphStableVersion
 
-    try {
-        Remove-TenantIQGraphModules
+    if (-not (Test-TenantIQPowerShell7)) {
+        $Pwsh = Get-TenantIQPowerShell7Path
+        if ($Pwsh) {
+            Write-Host ''
+            Write-Host '[INFO] Entra ID requires PowerShell 7 because Microsoft Graph authentication is incompatible with this Windows PowerShell 5.1 process.' -ForegroundColor Yellow
+            Write-Host '[INFO] TenantIQ will relaunch in PowerShell 7.' -ForegroundColor Cyan
+            return $false
+        }
 
+        Write-Host ''
+        Write-Host '[ERROR] PowerShell 7 is required for the Entra ID assessment on this system.' -ForegroundColor Red
+        Write-Host 'Install PowerShell 7, then launch TenantIQ with pwsh.exe.' -ForegroundColor Yellow
+        return $false
+    }
+
+    try {
         $CoreModule = Get-Module -ListAvailable -Name 'Microsoft.Graph.Authentication' |
             Where-Object { $_.Version -eq [version]$RequiredVersion } |
             Select-Object -First 1

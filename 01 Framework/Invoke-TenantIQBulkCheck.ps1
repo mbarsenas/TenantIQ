@@ -1,15 +1,15 @@
 
 $OneDriveHardenedPath = Join-Path $PSScriptRoot "Invoke-TenantIQOneDriveHardenedCheck.ps1"
 if ((Test-Path $OneDriveHardenedPath) -and -not (Get-Command Invoke-TenantIQOneDriveHardenedCheck -ErrorAction SilentlyContinue)) { . $OneDriveHardenedPath }
-
-# Always load the OneDrive Purview bridge after the hardened evaluator so the
-# isolated/cache-backed Get-TenantIQOneDrivePurviewData definition wins even
-# when framework file enumeration order changes between hosts/processes.
 $OneDrivePurviewBridgePath = Join-Path $PSScriptRoot "TenantIQ-OneDrivePurviewBridge.ps1"
 if (Test-Path $OneDrivePurviewBridgePath) { . $OneDrivePurviewBridgePath }
 
 $TeamsHardenedPath = Join-Path $PSScriptRoot "Invoke-TenantIQTeamsHardenedCheck.ps1"
 if ((Test-Path $TeamsHardenedPath) -and -not (Get-Command Invoke-TenantIQTeamsHardenedCheck -ErrorAction SilentlyContinue)) { . $TeamsHardenedPath }
+# Load Teams bridge after hardened evaluator so isolated Purview definition wins.
+$TeamsPurviewBridgePath = Join-Path $PSScriptRoot "TenantIQ-TeamsPurviewBridge.ps1"
+if (Test-Path $TeamsPurviewBridgePath) { . $TeamsPurviewBridgePath }
+
 $PurviewHardenedPath = Join-Path $PSScriptRoot "Invoke-TenantIQPurviewHardenedCheck.ps1"
 if ((Test-Path $PurviewHardenedPath) -and -not (Get-Command Invoke-TenantIQPurviewHardenedCheck -ErrorAction SilentlyContinue)) { . $PurviewHardenedPath }
 

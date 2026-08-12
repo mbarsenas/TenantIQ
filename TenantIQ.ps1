@@ -63,6 +63,25 @@ function Write-TenantIQModuleCountLine {
     else { Write-Host "    Health Checks: 0" -ForegroundColor DarkGray }
 }
 
+function Get-TenantIQMenuCount {
+    param([Parameter(Mandatory)][string]$ModuleFile,[int]$CountHint=0)
+    $Counts=Get-TenantIQModuleCheckCounts -ModuleFile $ModuleFile
+    if($Counts.Total -gt 0){ return $Counts.Implemented }
+    return $CountHint
+}
+
+function Write-TenantIQMenuRow {
+    param(
+        [int]$Number,
+        [string]$Name,
+        [int]$Checks,
+        [string]$Accent='Cyan'
+    )
+    Write-Host ("  [{0}] " -f $Number) -NoNewline -ForegroundColor DarkGray
+    Write-Host ($Name.PadRight(25)) -NoNewline -ForegroundColor $Accent
+    Write-Host ("{0,3} checks" -f $Checks) -ForegroundColor Gray
+}
+
 function Wait-TenantIQ { Write-Host ""; Read-Host "Press Enter to continue" }
 
 function Show-TenantIQAssessmentResults {
@@ -127,20 +146,17 @@ function Start-TenantIQEntraAssessment {
     $Total=$Checks.Count
     $i=1
     $AssessmentStopwatch=[Diagnostics.Stopwatch]::StartNew()
-
     Write-Host ''
     Write-Host '============================================================' -ForegroundColor Cyan
     Write-Host '              TenantIQ Entra ID Assessment' -ForegroundColor Cyan
     Write-Host '============================================================' -ForegroundColor Cyan
     Write-Host ''
-
     foreach($Check in $Checks){
         Write-Host ("[{0:D2}/{1:D2}] {2}" -f $i,$Total,$Check.Name) -ForegroundColor Cyan
         try{ & $Check.Script *>$null }
         catch{ New-HealthCheckResult -Check $Check.Name -Category $Check.Category -Status 'FAIL' -Severity 'High' -Finding $_.Exception.Message -Recommendation 'Review Entra ID dependencies.'|Out-Null }
         $i++
     }
-
     $AssessmentStopwatch.Stop()
     $Results=@($Global:ExchangeAIResults)
     $Passed=@($Results|Where-Object Status -eq 'PASS').Count
@@ -150,7 +166,6 @@ function Start-TenantIQEntraAssessment {
     $NotEvaluated=@($Results|Where-Object Status -eq 'NOT EVALUATED').Count
     $Scored=$Passed+$Warnings+$Failed
     $Score=if($Scored -gt 0){[math]::Round((($Passed+(0.5*$Warnings))/$Scored)*100)}else{$null}
-
     Write-Host ''
     Write-Host '============================================================' -ForegroundColor Cyan
     Write-Host '              Entra ID Assessment Complete' -ForegroundColor Cyan
@@ -165,7 +180,6 @@ function Start-TenantIQEntraAssessment {
     if($null -ne $Score){Write-Host "Score          : $Score%" -ForegroundColor Cyan}else{Write-Host 'Score          : N/A' -ForegroundColor DarkYellow}
     Write-Host "Duration       : $([math]::Round($AssessmentStopwatch.Elapsed.TotalSeconds,2)) sec"
     Write-Host ''
-
     if($Results.Count -gt 0){
         try{ $r=Export-ExchangeAIHtmlReport -Workload 'Entra ID'; if($r.HtmlPath){Start-Process $r.HtmlPath} }
         catch{ Write-Host 'Unable to generate Entra ID HTML report.' -ForegroundColor Red; Write-Host $_.Exception.Message -ForegroundColor Red }
@@ -209,20 +223,17 @@ function Start-TenantIQSharePointAssessment {
     $Total=$Checks.Count
     $i=1
     $AssessmentStopwatch=[Diagnostics.Stopwatch]::StartNew()
-
     Write-Host ''
     Write-Host '============================================================' -ForegroundColor Cyan
     Write-Host '         TenantIQ SharePoint Online Assessment' -ForegroundColor Cyan
     Write-Host '============================================================' -ForegroundColor Cyan
     Write-Host ''
-
     foreach($Check in $Checks){
         Write-Host ("[{0:D2}/{1:D2}] {2}" -f $i,$Total,$Check.Name) -ForegroundColor Cyan
         try{ & $Check.Script *>$null }
         catch{ New-HealthCheckResult -Check $Check.Name -Category $Check.Category -Status 'FAIL' -Severity 'High' -Finding $_.Exception.Message -Recommendation 'Review SharePoint dependencies.'|Out-Null }
         $i++
     }
-
     $AssessmentStopwatch.Stop()
     $Results=@($Global:ExchangeAIResults)
     $Passed=@($Results|Where-Object Status -eq 'PASS').Count
@@ -232,7 +243,6 @@ function Start-TenantIQSharePointAssessment {
     $NotEvaluated=@($Results|Where-Object Status -eq 'NOT EVALUATED').Count
     $Scored=$Passed+$Warnings+$Failed
     $Score=if($Scored -gt 0){[math]::Round((($Passed+(0.5*$Warnings))/$Scored)*100)}else{$null}
-
     Write-Host ''
     Write-Host '============================================================' -ForegroundColor Cyan
     Write-Host '        SharePoint Online Assessment Complete' -ForegroundColor Cyan
@@ -247,7 +257,6 @@ function Start-TenantIQSharePointAssessment {
     if($null -ne $Score){Write-Host "Score          : $Score%" -ForegroundColor Cyan}else{Write-Host 'Score          : N/A' -ForegroundColor DarkYellow}
     Write-Host "Duration       : $([math]::Round($AssessmentStopwatch.Elapsed.TotalSeconds,2)) sec"
     Write-Host ''
-
     if($Results.Count -gt 0){
         try{ $r=Export-ExchangeAIHtmlReport -Workload 'SharePoint Online'; if($r.HtmlPath){Start-Process $r.HtmlPath} }
         catch{ Write-Host 'Unable to generate SharePoint Online HTML report.' -ForegroundColor Red; Write-Host $_.Exception.Message -ForegroundColor Red }
@@ -276,20 +285,17 @@ function Start-TenantIQTeamsAssessment {
     $Total=$Checks.Count
     $i=1
     $AssessmentStopwatch=[Diagnostics.Stopwatch]::StartNew()
-
     Write-Host ''
     Write-Host '============================================================' -ForegroundColor Cyan
     Write-Host '          TenantIQ Microsoft Teams Assessment' -ForegroundColor Cyan
     Write-Host '============================================================' -ForegroundColor Cyan
     Write-Host ''
-
     foreach($Check in $Checks){
         Write-Host ("[{0:D2}/{1:D2}] {2}" -f $i,$Total,$Check.Name) -ForegroundColor Cyan
         try{ & $Check.Script *>$null }
         catch{ New-HealthCheckResult -Check $Check.Name -Category $Check.Category -Status 'FAIL' -Severity 'High' -Finding $_.Exception.Message -Recommendation 'Review Teams dependencies.'|Out-Null }
         $i++
     }
-
     $AssessmentStopwatch.Stop()
     $Results=@($Global:ExchangeAIResults)
     $Passed=@($Results|Where-Object Status -eq 'PASS').Count
@@ -299,7 +305,6 @@ function Start-TenantIQTeamsAssessment {
     $NotEvaluated=@($Results|Where-Object Status -eq 'NOT EVALUATED').Count
     $Scored=$Passed+$Warnings+$Failed
     $Score=if($Scored -gt 0){[math]::Round((($Passed+(0.5*$Warnings))/$Scored)*100)}else{$null}
-
     Write-Host ''
     Write-Host '============================================================' -ForegroundColor Cyan
     Write-Host '          Microsoft Teams Assessment Complete' -ForegroundColor Cyan
@@ -314,7 +319,6 @@ function Start-TenantIQTeamsAssessment {
     if($null -ne $Score){Write-Host "Score          : $Score%" -ForegroundColor Cyan}else{Write-Host 'Score          : N/A' -ForegroundColor DarkYellow}
     Write-Host "Duration       : $([math]::Round($AssessmentStopwatch.Elapsed.TotalSeconds,2)) sec"
     Write-Host ''
-
     if($Results.Count -gt 0){
         try{ $r=Export-ExchangeAIHtmlReport -Workload 'Microsoft Teams'; if($r.HtmlPath){Start-Process $r.HtmlPath} }
         catch{ Write-Host 'Unable to generate Microsoft Teams HTML report.' -ForegroundColor Red; Write-Host $_.Exception.Message -ForegroundColor Red }
@@ -343,20 +347,17 @@ function Start-TenantIQOneDriveAssessment {
     $Total=$Checks.Count
     $i=1
     $AssessmentStopwatch=[Diagnostics.Stopwatch]::StartNew()
-
     Write-Host ''
     Write-Host '============================================================' -ForegroundColor Cyan
     Write-Host '             TenantIQ OneDrive Assessment' -ForegroundColor Cyan
     Write-Host '============================================================' -ForegroundColor Cyan
     Write-Host ''
-
     foreach($Check in $Checks){
         Write-Host ("[{0:D2}/{1:D2}] {2}" -f $i,$Total,$Check.Name) -ForegroundColor Cyan
         try{ & $Check.Script *>$null }
         catch{ New-HealthCheckResult -Check $Check.Name -Category $Check.Category -Status 'FAIL' -Severity 'High' -Finding $_.Exception.Message -Recommendation 'Review OneDrive dependencies.'|Out-Null }
         $i++
     }
-
     $AssessmentStopwatch.Stop()
     $Results=@($Global:ExchangeAIResults)
     $Passed=@($Results|Where-Object Status -eq 'PASS').Count
@@ -366,7 +367,6 @@ function Start-TenantIQOneDriveAssessment {
     $NotEvaluated=@($Results|Where-Object Status -eq 'NOT EVALUATED').Count
     $Scored=$Passed+$Warnings+$Failed
     $Score=if($Scored -gt 0){[math]::Round((($Passed+(0.5*$Warnings))/$Scored)*100)}else{$null}
-
     Write-Host ''
     Write-Host '============================================================' -ForegroundColor Cyan
     Write-Host '             OneDrive Assessment Complete' -ForegroundColor Cyan
@@ -381,7 +381,6 @@ function Start-TenantIQOneDriveAssessment {
     if($null -ne $Score){Write-Host "Score          : $Score%" -ForegroundColor Cyan}else{Write-Host 'Score          : N/A' -ForegroundColor DarkYellow}
     Write-Host "Duration       : $([math]::Round($AssessmentStopwatch.Elapsed.TotalSeconds,2)) sec"
     Write-Host ''
-
     if($Results.Count -gt 0){
         try{ $r=Export-ExchangeAIHtmlReport -Workload 'OneDrive'; if($r.HtmlPath){Start-Process $r.HtmlPath} }
         catch{ Write-Host 'Unable to generate OneDrive HTML report.' -ForegroundColor Red; Write-Host $_.Exception.Message -ForegroundColor Red }
@@ -392,40 +391,37 @@ function Start-TenantIQOneDriveModule { if(-not(Ensure-TenantIQOneDriveConnectio
 function Show-TenantIQAbout { Clear-Host;Show-Banner;Write-Host "$($Config.Name) v$($Config.Version)" -ForegroundColor Cyan;Write-Host $Config.Description;Write-Host '';Write-Host '[OK] Exchange Online';Write-Host '[OK] Entra ID';Write-Host '[OK] SharePoint Online';Write-Host '[OK] Microsoft Teams';Write-Host '[OK] OneDrive';Write-Host '[OK] Microsoft Intune';Write-Host '[OK] Microsoft Defender';Write-Host '[OK] Microsoft Purview';Wait-TenantIQ }
 
 while($true){
-    Show-Banner
-    Write-Host 'Microsoft 365 Workloads' -ForegroundColor Cyan
-    Write-Host '============================================================' -ForegroundColor DarkGray
+    Clear-Host
+    Write-Host '┌──────────────────────────────────────────────────────────┐' -ForegroundColor Cyan
+    Write-Host '│              TenantIQ - M365 Assessment Tool           │' -ForegroundColor Cyan
+    Write-Host '└──────────────────────────────────────────────────────────┘' -ForegroundColor Cyan
     Write-Host ''
+    Write-Host ('  Version : {0}' -f $Config.Version) -ForegroundColor DarkGray
+    Write-Host ''
+    Write-Host '  WORKLOADS' -ForegroundColor Yellow
+    Write-Host '  --------------------------------------------------------' -ForegroundColor DarkGray
 
-    Write-Host '  [1] Exchange Online' -ForegroundColor White
-    Write-TenantIQModuleCountLine -ModuleFile (Join-Path $PSScriptRoot '01 Framework\HealthChecks.ps1') -CountHint $ExchangeAIHealthChecks.Count
-    Write-Host '  [2] Entra ID' -ForegroundColor White
-    Write-TenantIQModuleCountLine -ModuleFile (Join-Path $PSScriptRoot '10 Modules\EntraID.ps1') -CountHint 66
-    Write-Host '  [3] SharePoint Online' -ForegroundColor White
-    Write-TenantIQModuleCountLine -ModuleFile (Join-Path $PSScriptRoot '10 Modules\SharePointOnline.ps1')
-    Write-Host '  [4] Microsoft Teams' -ForegroundColor White
-    Write-TenantIQModuleCountLine -ModuleFile (Join-Path $PSScriptRoot '10 Modules\MicrosoftTeams.ps1')
-    Write-Host '  [5] OneDrive' -ForegroundColor White
-    Write-TenantIQModuleCountLine -ModuleFile (Join-Path $PSScriptRoot '10 Modules\OneDrive.ps1')
-    Write-Host '  [6] Microsoft Intune' -ForegroundColor White
-    Write-TenantIQModuleCountLine -ModuleFile (Join-Path $PSScriptRoot '10 Modules\MicrosoftIntune.ps1')
-    Write-Host '  [7] Microsoft Defender' -ForegroundColor White
-    Write-TenantIQModuleCountLine -ModuleFile (Join-Path $PSScriptRoot '10 Modules\MicrosoftDefender.ps1')
-    Write-Host '  [8] Microsoft Purview' -ForegroundColor White
-    Write-TenantIQModuleCountLine -ModuleFile (Join-Path $PSScriptRoot '10 Modules\MicrosoftPurview.ps1')
+    Write-TenantIQMenuRow -Number 1 -Name 'Exchange Online'   -Checks (Get-TenantIQMenuCount -ModuleFile (Join-Path $PSScriptRoot '01 Framework\HealthChecks.ps1') -CountHint $ExchangeAIHealthChecks.Count) -Accent 'Cyan'
+    Write-TenantIQMenuRow -Number 2 -Name 'Entra ID'          -Checks (Get-TenantIQMenuCount -ModuleFile (Join-Path $PSScriptRoot '10 Modules\EntraID.ps1') -CountHint 66) -Accent 'Green'
+    Write-TenantIQMenuRow -Number 3 -Name 'SharePoint Online' -Checks (Get-TenantIQMenuCount -ModuleFile (Join-Path $PSScriptRoot '10 Modules\SharePointOnline.ps1')) -Accent 'Green'
+    Write-TenantIQMenuRow -Number 4 -Name 'Microsoft Teams'   -Checks (Get-TenantIQMenuCount -ModuleFile (Join-Path $PSScriptRoot '10 Modules\MicrosoftTeams.ps1')) -Accent 'Cyan'
+    Write-TenantIQMenuRow -Number 5 -Name 'OneDrive'          -Checks (Get-TenantIQMenuCount -ModuleFile (Join-Path $PSScriptRoot '10 Modules\OneDrive.ps1')) -Accent 'Cyan'
+    Write-TenantIQMenuRow -Number 6 -Name 'Microsoft Intune'  -Checks (Get-TenantIQMenuCount -ModuleFile (Join-Path $PSScriptRoot '10 Modules\MicrosoftIntune.ps1')) -Accent 'Green'
+    Write-TenantIQMenuRow -Number 7 -Name 'Microsoft Defender'-Checks (Get-TenantIQMenuCount -ModuleFile (Join-Path $PSScriptRoot '10 Modules\MicrosoftDefender.ps1')) -Accent 'Yellow'
+    Write-TenantIQMenuRow -Number 8 -Name 'Microsoft Purview' -Checks (Get-TenantIQMenuCount -ModuleFile (Join-Path $PSScriptRoot '10 Modules\MicrosoftPurview.ps1')) -Accent 'Magenta'
 
     Write-Host ''
-    Write-Host 'Reports & Support' -ForegroundColor Cyan
-    Write-Host '============================================================' -ForegroundColor DarkGray
-    Write-Host '  [9]  Portfolio Report'
-    Write-Host '  [10] Help / Documentation'
-    Write-Host '  [11] About TenantIQ'
+    Write-Host '  REPORTS & SUPPORT' -ForegroundColor Yellow
+    Write-Host '  --------------------------------------------------------' -ForegroundColor DarkGray
+    Write-Host '  [9]  Portfolio Report' -ForegroundColor White
+    Write-Host '  [10] Help / Documentation' -ForegroundColor White
+    Write-Host '  [11] About TenantIQ' -ForegroundColor White
     Write-Host ''
     Write-Host '  [0]  Exit' -ForegroundColor DarkGray
     Write-Host ''
-    Write-Host '------------------------------------------------------------' -ForegroundColor DarkGray
+    Write-Host '  --------------------------------------------------------' -ForegroundColor DarkGray
 
-    switch(Read-Host 'Select'){
+    switch(Read-Host '  Select'){
         '1'{Start-TenantIQExchangeModule}
         '2'{Start-TenantIQEntraModule}
         '3'{Start-TenantIQSharePointModule}

@@ -9,7 +9,7 @@ function Ensure-TenantIQGraphDependency {
     }
 
     try {
-        $Installed = Get-Module -ListAvailable -Name $ModuleName | Select-Object -First 1
+        $Installed = Get-Module -ListAvailable -Name $ModuleName | Sort-Object Version -Descending | Select-Object -First 1
 
         if (-not $Installed) {
             Write-Host ""
@@ -22,9 +22,16 @@ function Ensure-TenantIQGraphDependency {
                 -Force `
                 -AllowClobber `
                 -ErrorAction Stop
+
+            $Installed = Get-Module -ListAvailable -Name $ModuleName | Sort-Object Version -Descending | Select-Object -First 1
         }
 
-        Import-Module $ModuleName -Force -ErrorAction Stop
+        if ($Installed) {
+            Import-Module $Installed.Path -Force -Global -ErrorAction Stop
+        }
+        else {
+            throw "Module '$ModuleName' could not be located after installation."
+        }
     }
     catch {
         if (Get-Command Write-ExchangeAILog -ErrorAction SilentlyContinue) {
@@ -40,6 +47,31 @@ function Ensure-TenantIQGraphDependency {
     }
 
     return [bool](Get-Command $CommandName -ErrorAction SilentlyContinue)
+}
+
+function Ensure-TenantIQGraphCore {
+    try {
+        if (-not (Get-Command Connect-MgGraph -ErrorAction SilentlyContinue)) {
+            $CoreModule = Get-Module -ListAvailable -Name "Microsoft.Graph.Authentication" | Sort-Object Version -Descending | Select-Object -First 1
+            if (-not $CoreModule) {
+                Write-Host ""
+                Write-Host "Installing required Microsoft Graph module: Microsoft.Graph.Authentication" -ForegroundColor Cyan
+                Install-Module -Name "Microsoft.Graph.Authentication" -Scope CurrentUser -Repository PSGallery -Force -AllowClobber -ErrorAction Stop
+                $CoreModule = Get-Module -ListAvailable -Name "Microsoft.Graph.Authentication" | Sort-Object Version -Descending | Select-Object -First 1
+            }
+            if ($CoreModule) {
+                Import-Module $CoreModule.Path -Force -Global -ErrorAction Stop
+            }
+        }
+
+        return [bool](Get-Command Get-MgContext -ErrorAction SilentlyContinue)
+    }
+    catch {
+        if (Get-Command Write-ExchangeAILog -ErrorAction SilentlyContinue) {
+            Write-ExchangeAILog -Message "Unable to prepare Microsoft Graph core authentication module. $($_.Exception.Message)" -Level ERROR
+        }
+        return $false
+    }
 }
 
 function Ensure-TenantIQGraphReports {

@@ -2,7 +2,9 @@
 # Loaded after Invoke-TenantIQOneDriveHardenedCheck.ps1 so this definition
 # intentionally replaces the legacy in-process Get-TenantIQOneDrivePurviewData.
 
-$script:TenantIQOneDrivePurviewCache = $null
+if (-not (Get-Variable TenantIQOneDrivePurviewCache -Scope Global -ErrorAction SilentlyContinue)) {
+    $Global:TenantIQOneDrivePurviewCache = $null
+}
 
 function Get-TenantIQOneDrivePurviewCachePath {
     $Runtime = Join-Path (Split-Path $PSScriptRoot -Parent) '00 Runtime'
@@ -14,8 +16,8 @@ function Get-TenantIQOneDrivePurviewCachePath {
 }
 
 function Get-TenantIQOneDrivePurviewCache {
-    if ($script:TenantIQOneDrivePurviewCache) {
-        return $script:TenantIQOneDrivePurviewCache
+    if ($Global:TenantIQOneDrivePurviewCache) {
+        return $Global:TenantIQOneDrivePurviewCache
     }
 
     $CachePath = Get-TenantIQOneDrivePurviewCachePath
@@ -43,6 +45,7 @@ function Get-TenantIQOneDrivePurviewCache {
     Write-Host ''
     Write-Host 'Preparing isolated Microsoft Purview evidence for OneDrive...' -ForegroundColor Cyan
     Write-Host 'Purview runs in a separate PowerShell process to avoid MSAL assembly conflicts.' -ForegroundColor DarkGray
+    Write-Host 'You should be prompted for Purview authentication only once during this OneDrive assessment.' -ForegroundColor DarkGray
     Write-Host ''
 
     $Args = @(
@@ -63,12 +66,12 @@ function Get-TenantIQOneDrivePurviewCache {
         throw "Isolated Purview collection failed. $($Cache.Error)"
     }
 
-    $script:TenantIQOneDrivePurviewCache = $Cache
+    $Global:TenantIQOneDrivePurviewCache = $Cache
 
-    Write-Host '[OK] OneDrive Purview evidence collected.' -ForegroundColor Green
+    Write-Host '[OK] OneDrive Purview evidence collected and cached for this assessment.' -ForegroundColor Green
     Write-Host ''
 
-    return $script:TenantIQOneDrivePurviewCache
+    return $Global:TenantIQOneDrivePurviewCache
 }
 
 function Get-TenantIQOneDrivePurviewData {

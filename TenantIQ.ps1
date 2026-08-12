@@ -396,7 +396,7 @@ function Show-TenantIQAbout { Clear-Host;Show-Banner;Write-Host "$($Config.Name)
 while($true){
     Clear-Host
     Write-Host '┌──────────────────────────────────────────────────────────┐' -ForegroundColor Cyan
-    Write-Host '│              TenantIQ - M365 Assessment Tool           │' -ForegroundColor Cyan
+    Write-Host '│              TenantIQ - M365 Assessment Tool            │' -ForegroundColor Cyan
     Write-Host '└──────────────────────────────────────────────────────────┘' -ForegroundColor Cyan
     Write-Host ''
     Write-Host ('  Version : {0}' -f $Config.Version) -ForegroundColor DarkGray

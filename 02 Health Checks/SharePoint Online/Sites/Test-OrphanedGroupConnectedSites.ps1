@@ -78,11 +78,49 @@ try {
     Write-Host ""
     Write-Host "Retrieving Microsoft 365 Group-connected SharePoint sites..." -ForegroundColor Cyan
 
+    $Sites = @()
+    $SiteEnumerationIssue = $null
+
     try {
         $Sites = @(Get-SPOSite -Limit All -GroupIdDefined $true -ErrorAction Stop)
     }
     catch {
-        throw "Unable to retrieve Microsoft 365 Group-connected SharePoint sites. Connect first with Connect-SPOService to the SharePoint admin center. $($_.Exception.Message)"
+        $SiteEnumerationIssue = $_.Exception.Message
+        Write-ExchangeAILog -Message "Primary GroupIdDefined SharePoint site query failed. Falling back to full site inventory. $SiteEnumerationIssue" -Level WARNING
+
+        try {
+            $AllSites = @(Get-SPOSite -Limit All -ErrorAction Stop)
+            $Sites = @(
+                $AllSites |
+                Where-Object {
+                    $GroupId = $_.PSObject.Properties['GroupId']
+                    if ($null -eq $GroupId) { return $false }
+
+                    $Value = [string]$GroupId.Value
+                    if ([string]::IsNullOrWhiteSpace($Value)) { return $false }
+
+                    $ParsedGuid = [guid]::Empty
+                    if (-not [guid]::TryParse($Value, [ref]$ParsedGuid)) { return $false }
+                    return ($ParsedGuid -ne [guid]::Empty)
+                }
+            )
+        }
+        catch {
+            $FallbackMessage = $_.Exception.Message
+            $Stopwatch.Stop()
+
+            $null = New-HealthCheckResult `
+                -Check "Orphaned Group-Connected Sites" `
+                -Category "Sites" `
+                -Status "INFO" `
+                -Severity "None" `
+                -Finding "SharePoint Online site inventory could not be retrieved reliably. Primary query error: $SiteEnumerationIssue Fallback query error: $FallbackMessage" `
+                -Recommendation "Verify the SharePoint Online administrative connection and rerun this control. The check was not scored because site inventory evidence was unavailable." `
+                -Duration $Stopwatch.Elapsed.TotalSeconds
+
+            Write-Host "INFO  SharePoint site inventory was unavailable; this control was not scored." -ForegroundColor Yellow
+            return
+        }
     }
 
     $GraphContext = Get-MgContext -ErrorAction SilentlyContinue
@@ -153,8 +191,6 @@ try {
         $SiteUrl = [string]$Site.Url
         $Template = [string]$Site.Template
 
-        # Teams channel sites have a different relationship model and must not be
-        # treated as ordinary Microsoft 365 Group-connected sites.
         if ($Template -like "TEAMCHANNEL#*") {
             $ExcludedTeamsChannelSites += [PSCustomObject]@{
                 Url      = $SiteUrl
@@ -226,9 +262,6 @@ try {
                 $ErrorCode = [string]$_.Exception.ResponseStatusCode
             }
 
-            # A missing directory object is an orphan condition. Other failures
-            # (permission, throttling, transport, etc.) are assessment errors and
-            # are excluded from scoring rather than mislabeled as orphaned.
             if ($Message -match "Request_ResourceNotFound|does not exist|ResourceNotFound|404" -or
                 $ErrorCode -eq "NotFound" -or $ErrorCode -eq "404") {
 
@@ -272,59 +305,38 @@ try {
         Write-Host ""
         Write-Host "Resolved Group-Connected Site Inventory" -ForegroundColor Cyan
         Write-Host "---------------------------------------"
-
-        $HealthySites |
-            Sort-Object GroupDisplayName |
-            Select-Object SiteUrl,GroupDisplayName,GroupId,Visibility,GroupMail |
-            Format-Table -AutoSize -Wrap
+        $HealthySites | Sort-Object GroupDisplayName | Select-Object SiteUrl,GroupDisplayName,GroupId,Visibility,GroupMail | Format-Table -AutoSize -Wrap
     }
 
     if ($OrphanedSites.Count -gt 0) {
         Write-Host ""
         Write-Host "Orphaned Group Associations" -ForegroundColor Cyan
         Write-Host "---------------------------"
-
-        $OrphanedSites |
-            Sort-Object Url |
-            Select-Object Url,Template,GroupId,Reason |
-            Format-Table -AutoSize -Wrap
+        $OrphanedSites | Sort-Object Url | Select-Object Url,Template,GroupId,Reason | Format-Table -AutoSize -Wrap
     }
 
     if ($InvalidGroupIdSites.Count -gt 0) {
         Write-Host ""
         Write-Host "Invalid / Missing Group IDs" -ForegroundColor Cyan
         Write-Host "---------------------------"
-
-        $InvalidGroupIdSites |
-            Sort-Object Url |
-            Select-Object Url,Template,GroupId,Reason |
-            Format-Table -AutoSize -Wrap
+        $InvalidGroupIdSites | Sort-Object Url | Select-Object Url,Template,GroupId,Reason | Format-Table -AutoSize -Wrap
     }
 
     if ($ExcludedTeamsChannelSites.Count -gt 0) {
         Write-Host ""
         Write-Host "Teams Channel Sites Excluded" -ForegroundColor Cyan
         Write-Host "----------------------------"
-
-        $ExcludedTeamsChannelSites |
-            Sort-Object Url |
-            Select-Object Url,Template,Reason |
-            Format-Table -AutoSize -Wrap
+        $ExcludedTeamsChannelSites | Sort-Object Url | Select-Object Url,Template,Reason | Format-Table -AutoSize -Wrap
     }
 
     if ($LookupErrors.Count -gt 0) {
         Write-Host ""
         Write-Host "Lookup Errors Excluded From Scoring" -ForegroundColor Cyan
         Write-Host "-----------------------------------"
-
-        $LookupErrors |
-            Sort-Object Url |
-            Select-Object Url,Template,GroupId,Reason |
-            Format-Table -AutoSize -Wrap
+        $LookupErrors | Sort-Object Url | Select-Object Url,Template,GroupId,Reason | Format-Table -AutoSize -Wrap
     }
 
     $Stopwatch.Stop()
-
     $OrphanCount = $OrphanedSites.Count + $InvalidGroupIdSites.Count
 
     Write-Host ""
@@ -335,14 +347,8 @@ try {
         $Status = "WARNING"
         $Severity = "High"
         $Finding = "$OrphanCount SharePoint Group-connected site association(s) appear orphaned or have an invalid/missing Microsoft 365 Group ID. $($ExcludedTeamsChannelSites.Count) Teams channel site(s) were intentionally excluded."
-
-        if ($LookupErrors.Count -gt 0) {
-            $Finding += " $($LookupErrors.Count) lookup error(s) were excluded from scoring."
-        }
-
+        if ($LookupErrors.Count -gt 0) { $Finding += " $($LookupErrors.Count) lookup error(s) were excluded from scoring." }
         $Recommendation = "Review the affected SharePoint sites and Microsoft 365 Groups. Confirm whether the directory group was deleted, whether the site should be retained, and follow Microsoft-supported recovery or lifecycle procedures before making destructive changes."
-
-        Write-Host ""
         Write-Host "WARNING  $OrphanCount Group-connected SharePoint site association(s) require review." -ForegroundColor Yellow
     }
     elseif ($ScoredSites -eq 0 -and $Sites.Count -gt 0) {
@@ -350,32 +356,19 @@ try {
         $Severity = "None"
         $Finding = "Group-connected SharePoint sites were discovered, but none could be reliably scored for orphaned Microsoft 365 Group associations."
         $Recommendation = "Verify SharePoint Online and Microsoft Graph connectivity and permissions, then rerun the assessment."
-
-        Write-Host ""
         Write-Host "INFO  No Group-connected sites could be reliably scored." -ForegroundColor Yellow
     }
     else {
         $Status = "PASS"
         $Severity = "None"
         $Finding = "$($HealthySites.Count) standard Microsoft 365 Group-connected SharePoint site(s) were successfully resolved and no orphaned group associations were detected. $($ExcludedTeamsChannelSites.Count) Teams channel site(s) were intentionally excluded."
-
-        if ($LookupErrors.Count -gt 0) {
-            $Finding += " $($LookupErrors.Count) lookup error(s) were excluded from scoring."
-        }
-
+        if ($LookupErrors.Count -gt 0) { $Finding += " $($LookupErrors.Count) lookup error(s) were excluded from scoring." }
         $Recommendation = "Continue monitoring Microsoft 365 Group and SharePoint site lifecycle alignment, especially after group deletion, restoration, or ownership changes."
-
-        Write-Host ""
         Write-Host "PASS  No orphaned Microsoft 365 Group-connected SharePoint sites were detected." -ForegroundColor Green
     }
 
-    if ($ExcludedTeamsChannelSites.Count -gt 0) {
-        Write-Host "INFO  $($ExcludedTeamsChannelSites.Count) Teams channel site(s) were excluded from standard Microsoft 365 Group orphan scoring." -ForegroundColor DarkYellow
-    }
-
-    if ($LookupErrors.Count -gt 0) {
-        Write-Host "INFO  $($LookupErrors.Count) Microsoft Graph/site lookup error(s) were excluded from scoring." -ForegroundColor DarkYellow
-    }
+    if ($ExcludedTeamsChannelSites.Count -gt 0) { Write-Host "INFO  $($ExcludedTeamsChannelSites.Count) Teams channel site(s) were excluded from standard Microsoft 365 Group orphan scoring." -ForegroundColor DarkYellow }
+    if ($LookupErrors.Count -gt 0) { Write-Host "INFO  $($LookupErrors.Count) Microsoft Graph/site lookup error(s) were excluded from scoring." -ForegroundColor DarkYellow }
 
     Write-Host ""
     Write-Host "Health Check Complete" -ForegroundColor Cyan
@@ -389,28 +382,23 @@ try {
         -Recommendation $Recommendation `
         -Duration $Stopwatch.Elapsed.TotalSeconds
 
-    Write-ExchangeAILog `
-        -Message "SharePoint Online Orphaned Group-Connected Sites health check completed in $([math]::Round($Stopwatch.Elapsed.TotalSeconds,2)) seconds." `
-        -Level INFO
+    Write-ExchangeAILog -Message "SharePoint Online Orphaned Group-Connected Sites health check completed in $([math]::Round($Stopwatch.Elapsed.TotalSeconds,2)) seconds." -Level INFO
 }
 catch {
-    $Stopwatch.Stop()
+    if ($Stopwatch.IsRunning) { $Stopwatch.Stop() }
     $ErrorMessage = $_.Exception.Message
 
-    Write-ExchangeAILog `
-        -Message "SharePoint Online Orphaned Group-Connected Sites health check failed. $ErrorMessage" `
-        -Level ERROR
-
+    Write-ExchangeAILog -Message "SharePoint Online Orphaned Group-Connected Sites health check failed. $ErrorMessage" -Level ERROR
     Write-Host ""
-    Write-Host "Orphaned Group-Connected Sites assessment failed." -ForegroundColor Red
-    Write-Host $ErrorMessage -ForegroundColor Red
+    Write-Host "Orphaned Group-Connected Sites assessment could not be completed." -ForegroundColor Yellow
+    Write-Host $ErrorMessage -ForegroundColor Yellow
 
     $null = New-HealthCheckResult `
         -Check "Orphaned Group-Connected Sites" `
         -Category "Sites" `
-        -Status "FAIL" `
-        -Severity "High" `
-        -Finding $ErrorMessage `
-        -Recommendation "Verify SharePoint Online and Microsoft Graph connectivity, ensure Group.Read.All or equivalent permission is available, and rerun the assessment." `
+        -Status "INFO" `
+        -Severity "None" `
+        -Finding "The orphaned group-connected site control could not obtain reliable SharePoint/Graph evidence. $ErrorMessage" `
+        -Recommendation "Verify SharePoint Online and Microsoft Graph connectivity and rerun this control. The result was not scored because the evidence source failed." `
         -Duration $Stopwatch.Elapsed.TotalSeconds
 }

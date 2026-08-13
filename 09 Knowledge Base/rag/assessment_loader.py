@@ -6,8 +6,21 @@ from pathlib import Path
 from typing import Any
 
 
+CHECK_ID_ALIASES = {
+    # Entra ID
+    "mfa registration": "ENTRA-MFA-001",
+    "mfa registration coverage": "ENTRA-MFA-001",
+    "multifactor authentication registration": "ENTRA-MFA-001",
+    "multi-factor authentication registration": "ENTRA-MFA-001",
+}
+
+
 def _normalize_key(value: str) -> str:
     return "".join(ch for ch in value.strip().lower() if ch.isalnum())
+
+
+def _normalize_text(value: Any) -> str:
+    return " ".join(str(value or "").strip().lower().split())
 
 
 def _first_present(row: dict[str, Any], *names: str) -> Any:
@@ -19,8 +32,19 @@ def _first_present(row: dict[str, Any], *names: str) -> Any:
     return None
 
 
+def _infer_check_id(row: dict[str, Any], title: Any) -> str | None:
+    explicit = _first_present(row, "check_id", "checkid", "id", "controlid")
+    if explicit:
+        return str(explicit).strip()
+
+    normalized_title = _normalize_text(title)
+    if normalized_title in CHECK_ID_ALIASES:
+        return CHECK_ID_ALIASES[normalized_title]
+
+    return None
+
+
 def normalize_finding(row: dict[str, Any]) -> dict[str, Any]:
-    check_id = _first_present(row, "check_id", "checkid", "id", "controlid")
     status = _first_present(row, "status", "result", "state")
     workload = _first_present(row, "workload", "module", "service")
     category = _first_present(row, "category", "area")
@@ -28,6 +52,7 @@ def normalize_finding(row: dict[str, Any]) -> dict[str, Any]:
     evidence = _first_present(row, "evidence", "details", "detail", "observed", "output")
     recommendation = _first_present(row, "recommendation", "remediation", "action")
     severity = _first_present(row, "severity", "risk", "priority")
+    check_id = _infer_check_id(row, title)
 
     result: dict[str, Any] = {
         "check_id": check_id,
@@ -75,4 +100,21 @@ def select_finding(findings: list[dict[str, Any]], check_id: str) -> dict[str, A
         candidate = str(finding.get("check_id", "")).strip().lower()
         if candidate == requested:
             return finding
-    raise SystemExit(f"Check ID not found in assessment file: {check_id}")
+
+    known = sorted(
+        {
+            str(finding.get("check_id"))
+            for finding in findings
+            if finding.get("check_id")
+        }
+    )
+    if known:
+        raise SystemExit(
+            f"Check ID not found in assessment file: {check_id}. "
+            f"Mapped check IDs present: {', '.join(known)}"
+        )
+
+    raise SystemExit(
+        f"Check ID not found in assessment file: {check_id}. "
+        "No rows in this assessment currently map to canonical TenantIQ RAG check IDs."
+    )

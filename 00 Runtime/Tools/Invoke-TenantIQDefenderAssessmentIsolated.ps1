@@ -42,9 +42,6 @@ try {
         throw ('Exchange Online connected, but required Defender policy cmdlets were not loaded: ' + ($MissingCommands -join ', '))
     }
 
-    # Load only normal framework/library scripts. Some framework files are
-    # executable helper scripts with mandatory parameters and must never be
-    # dot-sourced as libraries.
     $FrameworkExclusions = @(
         'Invoke-TenantIQGraphIsolatedCache.ps1'
     )
@@ -70,6 +67,36 @@ try {
         Write-Host '└────────────────────────────────────────────────────────────┘' -ForegroundColor Cyan
         Write-Host ''
         Write-Host 'Version : 1.0.0' -ForegroundColor DarkGray
+        Write-Host ''
+    }
+
+    function Show-TenantIQAssessmentResults {
+        param([string]$Title)
+
+        Write-Host ''
+        Write-Host '============================================================' -ForegroundColor Cyan
+        Write-Host ("              {0}" -f $Title) -ForegroundColor Cyan
+        Write-Host '============================================================' -ForegroundColor Cyan
+        Write-Host ''
+
+        $Results = @($Global:ExchangeAIResults)
+        if ($Results.Count -eq 0) {
+            Write-Host 'No assessment results were returned.' -ForegroundColor Yellow
+            return
+        }
+
+        $Passed = @($Results | Where-Object Status -eq 'PASS').Count
+        $Warnings = @($Results | Where-Object Status -eq 'WARNING').Count
+        $Failed = @($Results | Where-Object Status -eq 'FAIL').Count
+        $Info = @($Results | Where-Object Status -eq 'INFO').Count
+        $NotEvaluated = @($Results | Where-Object Status -eq 'NOT EVALUATED').Count
+
+        Write-Host ("Checks Run     : {0}" -f $Results.Count)
+        Write-Host ("Passed         : {0}" -f $Passed) -ForegroundColor Green
+        Write-Host ("Warnings       : {0}" -f $Warnings) -ForegroundColor Yellow
+        Write-Host ("Failed         : {0}" -f $Failed) -ForegroundColor Red
+        Write-Host ("Info           : {0}" -f $Info) -ForegroundColor Cyan
+        Write-Host ("Not Evaluated  : {0}" -f $NotEvaluated) -ForegroundColor DarkYellow
         Write-Host ''
     }
 

@@ -61,7 +61,7 @@ CHECKS: tuple[CheckDefinition, ...] = (
     CheckDefinition("ENTRA-IDP-002", "Entra ID", ("risky service principals", "service principal risk")),
     CheckDefinition("ENTRA-IDP-003", "Entra ID", ("risky sign ins", "risky sign-ins", "risky signins")),
     CheckDefinition("ENTRA-IDP-004", "Entra ID", ("risky users", "user risk")),
-    CheckDefinition("ENTRA-IDP-005", "Entra ID", ("service principal risk detections", "service principal risk detections")),
+    CheckDefinition("ENTRA-IDP-005", "Entra ID", ("service principal risk detections",)),
     CheckDefinition("ENTRA-ID-001", "Entra ID", ("authorization policy", "entra authorization policy")),
     CheckDefinition("ENTRA-ID-002", "Entra ID", ("default user permissions", "user default permissions")),
     CheckDefinition("ENTRA-ID-003", "Entra ID", ("deleted users", "soft deleted users")),
@@ -81,6 +81,25 @@ CHECKS: tuple[CheckDefinition, ...] = (
     CheckDefinition("ENTRA-SEC-001", "Entra ID", ("security risky sign ins", "security risky sign-ins")),
     CheckDefinition("ENTRA-SEC-002", "Entra ID", ("security risky users", "security user risk")),
     CheckDefinition("ENTRA-SEC-003", "Entra ID", ("security defaults", "entra security defaults")),
+
+    # Exchange Online - Mail Flow
+    CheckDefinition("EXO-MF-001", "Exchange Online", ("accepted domains", "exchange accepted domains")),
+    CheckDefinition("EXO-MF-002", "Exchange Online", ("connectors", "exchange connectors", "mail flow connectors")),
+    CheckDefinition("EXO-MF-003", "Exchange Online", ("dkim", "dkim configuration", "domainkeys identified mail")),
+    CheckDefinition("EXO-MF-004", "Exchange Online", ("dmarc", "dmarc policy", "domain-based message authentication reporting and conformance")),
+    CheckDefinition("EXO-MF-005", "Exchange Online", ("remote domains", "exchange remote domains")),
+    CheckDefinition("EXO-MF-006", "Exchange Online", ("spf", "spf record", "sender policy framework")),
+    CheckDefinition("EXO-MF-007", "Exchange Online", ("transport rules", "mail flow rules", "exchange transport rules")),
+
+    # Exchange Online - Security
+    CheckDefinition("EXO-SEC-001", "Exchange Online", ("anti spam", "anti-spam", "anti spam policies", "spam policies")),
+    CheckDefinition("EXO-SEC-002", "Exchange Online", ("authentication policies", "exchange authentication policies")),
+    CheckDefinition("EXO-SEC-003", "Exchange Online", ("external forwarding", "automatic external forwarding", "mail forwarding")),
+    CheckDefinition("EXO-SEC-004", "Exchange Online", ("mailbox auditing", "mailbox audit", "mailbox audit logging")),
+    CheckDefinition("EXO-SEC-005", "Exchange Online", ("smtp auth", "smtp authentication", "authenticated smtp")),
+
+    # Exchange Online - Production
+    CheckDefinition("EXO-PROD-001", "Exchange Online", ("exchange bulk control", "bulk exchange control")),
 )
 
 

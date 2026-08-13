@@ -35,8 +35,9 @@ if ($subscription.livemode) { throw 'This token rotation command is currently re
 if ($subscription.status -ne 'active') { throw "Subscription is not active. Current status: $($subscription.status)" }
 
 $metadata = $subscription.metadata
-if ([string]$metadata.tenantiq_delivery_status -ne 'package_ready') {
-    throw "Delivery must be package_ready before a claim token can be rotated. Current status: '$($metadata.tenantiq_delivery_status)'"
+$deliveryStatus = [string]$metadata.tenantiq_delivery_status
+if ($deliveryStatus -notin @('package_ready','download_ready')) {
+    throw "Delivery must be package_ready or download_ready before a claim token can be rotated. Current status: '$deliveryStatus'"
 }
 if ([string]::IsNullOrWhiteSpace([string]$metadata.tenantiq_delivery_id)) {
     throw 'Subscription does not contain a TenantIQ delivery ID.'
@@ -63,6 +64,7 @@ Write-Host 'TenantIQ Claim Token Rotated' -ForegroundColor Green
 Write-Host '============================' -ForegroundColor Green
 Write-Host ('Subscription : {0}' -f $SubscriptionId)
 Write-Host ('Delivery ID  : {0}' -f $metadata.tenantiq_delivery_id)
+Write-Host ('Status       : {0}' -f $deliveryStatus)
 Write-Host ('Claim URL    : {0}' -f $claimUrl) -ForegroundColor Yellow
 Write-Host ('Expires      : {0}' -f $claimExpiresAt.ToUniversalTime().ToString('u'))
 Write-Host ''
@@ -71,6 +73,7 @@ Write-Host 'IMPORTANT: Treat this URL like a password. Do not post it in screens
 [pscustomobject]@{
     SubscriptionId = $SubscriptionId
     DeliveryId     = [string]$metadata.tenantiq_delivery_id
+    DeliveryStatus = $deliveryStatus
     ClaimToken     = $claimToken
     ClaimUrl       = $claimUrl
     ClaimExpiresAt = $claimExpiresAt

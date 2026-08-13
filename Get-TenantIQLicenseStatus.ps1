@@ -6,6 +6,28 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+function New-InvalidLicenseResult {
+    param(
+        [object]$License,
+        [string]$Reason,
+        [bool]$SignatureValid = $false
+    )
+    [pscustomobject]@{
+        Licensed       = $false
+        SignatureValid = $SignatureValid
+        State          = 'INVALID'
+        CustomerName   = if ($License) { [string]$License.CustomerName } else { '' }
+        CustomerDomain = if ($License) { [string]$License.CustomerDomain } else { '' }
+        Edition        = if ($License) { [string]$License.Edition } else { '' }
+        LicenseId      = if ($License) { [string]$License.LicenseId } else { '' }
+        KeyId          = if ($License) { [string]$License.KeyId } else { '' }
+        ExpiresAt      = $null
+        DaysRemaining  = $null
+        MaxTenants     = if ($License) { $License.MaxTenants } else { $null }
+        Reason         = $Reason
+    }
+}
+
 function Get-TenantIQLicenseState {
     param(
         [Parameter(Mandatory)][string]$Path,
@@ -28,44 +50,20 @@ function Get-TenantIQLicenseState {
         $License = Get-Content -Path $Path -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
     }
     catch {
-        return [pscustomobject]@{
-            Licensed=$false; SignatureValid=$false; State='INVALID'; CustomerName=''; CustomerDomain=''; Edition=''; LicenseId=''; KeyId=''; ExpiresAt=$null; DaysRemaining=$null; MaxTenants=$null; Reason='TenantIQ-License.json could not be parsed.'
-        }
+        return New-InvalidLicenseResult -License $null -Reason 'TenantIQ-License.json could not be parsed.'
     }
 
     $Required = @('SchemaVersion','Product','LicenseId','CustomerName','CustomerDomain','Edition','Status','IssuedAt','ExpiresAt','MaxTenants','Features','KeyId','SignatureAlgorithm','Signature')
     foreach ($Name in $Required) {
         if (-not $License.PSObject.Properties.Name.Contains($Name) -or $null -eq $License.$Name -or [string]::IsNullOrWhiteSpace([string]$License.$Name)) {
             if ($Name -eq 'Features' -and @($License.Features).Count -gt 0) { continue }
-            return [pscustomobject]@{
-                Licensed=$false; SignatureValid=$false; State='INVALID'; CustomerName=[string]$License.CustomerName; CustomerDomain=[string]$License.CustomerDomain; Edition=[string]$License.Edition; LicenseId=[string]$License.LicenseId; KeyId=[string]$License.KeyId; ExpiresAt=$null; DaysRemaining=$null; MaxTenants=$License.MaxTenants; Reason="Required license field is missing or empty: $Name"
-            }
+            return New-InvalidLicenseResult -License $License -Reason "Required license field is missing or empty: $Name"
         }
     }
 
     if ([string]$License.Product -ne 'TenantIQ' -or [string]$License.SignatureAlgorithm -ne 'RSA-SHA256') {
-        return [pscustomobject]@{
-            Licensed=$false; SignatureValid=$false; State='INVALID'; CustomerName=[string]$License.CustomerName; CustomerDomain=[string]$License.CustomerDomain; Edition=[string]$License.Edition; LicenseId=[string]$License.LicenseId; KeyId=[string]$License.KeyId; ExpiresAt=$null; DaysRemaining=$null; MaxTenants=$License.MaxTenants; Reason='Product or signature algorithm is not supported.'
-        }
+        return New-InvalidLicenseResult -License $License -Reason 'Product or signature algorithm is not supported.'
     }
-
-    $Payload = [ordered]@{
-        SchemaVersion  = [string]$License.SchemaVersion
-        Product        = [string]$License.Product
-        LicenseId      = [string]$License.LicenseId
-        CustomerName   = [string]$License.CustomerName
-        CustomerDomain = [string]$License.CustomerDomain
-        Edition        = [string]$License.Edition
-        Status         = [string]$License.Status
-        IssuedAt       = [string]$License.IssuedAt
-        ExpiresAt      = [string]$License.ExpiresAt
-        MaxTenants     = [int]$License.MaxTenants
-        Features       = @($License.Features)
-        KeyId          = [string]$License.KeyId
-    }
-
-    $CanonicalJson = $Payload | ConvertTo-Json -Depth 6 -Compress
-    $Data = [System.Text.Encoding]::UTF8.GetBytes($CanonicalJson)
 
     try {
         $rsa = [System.Security.Cryptography.RSA]::Create()
@@ -74,12 +72,59 @@ function Get-TenantIQLicenseState {
             $PublicBytes = $rsa.ExportSubjectPublicKeyInfo()
             $ExpectedKeyId = [Convert]::ToHexString([System.Security.Cryptography.SHA256]::HashData($PublicBytes)).Substring(0,16)
             $SignatureBytes = [Convert]::FromBase64String([string]$License.Signature)
-            $SignatureValid = $rsa.VerifyData(
-                $Data,
-                $SignatureBytes,
-                [System.Security.Cryptography.HashAlgorithmName]::SHA256,
-                [System.Security.Cryptography.RSASignaturePadding]::Pkcs1
-            )
+
+            if ($License.PSObject.Properties.Name.Contains('SignedPayload') -and -not [string]::IsNullOrWhiteSpace([string]$License.SignedPayload)) {
+                # Schema 1.1+: verify the exact bytes that were signed by the issuer.
+                $Data = [Convert]::FromBase64String([string]$License.SignedPayload)
+                $SignedJson = [System.Text.Encoding]::UTF8.GetString($Data)
+                $Signed = $SignedJson | ConvertFrom-Json -ErrorAction Stop
+
+                $SignatureValid = $rsa.VerifyData(
+                    $Data,
+                    $SignatureBytes,
+                    [System.Security.Cryptography.HashAlgorithmName]::SHA256,
+                    [System.Security.Cryptography.RSASignaturePadding]::Pkcs1
+                )
+
+                if ($SignatureValid) {
+                    # Top-level display/metadata fields must exactly reflect the signed payload.
+                    $NamesToCompare = @('SchemaVersion','Product','LicenseId','CustomerName','CustomerDomain','Edition','Status','IssuedAt','ExpiresAt','MaxTenants','KeyId')
+                    foreach ($Name in $NamesToCompare) {
+                        if ([string]$License.$Name -ne [string]$Signed.$Name) {
+                            return New-InvalidLicenseResult -License $License -Reason "License field '$Name' does not match the signed payload."
+                        }
+                    }
+                    if ((@($License.Features) -join "`0") -ne (@($Signed.Features) -join "`0")) {
+                        return New-InvalidLicenseResult -License $License -Reason 'License features do not match the signed payload.'
+                    }
+                    $License = $Signed
+                }
+            }
+            else {
+                # Legacy schema 1.0 fallback: reconstruct canonical JSON exactly as older issuers did.
+                $Payload = [ordered]@{
+                    SchemaVersion  = [string]$License.SchemaVersion
+                    Product        = [string]$License.Product
+                    LicenseId      = [string]$License.LicenseId
+                    CustomerName   = [string]$License.CustomerName
+                    CustomerDomain = [string]$License.CustomerDomain
+                    Edition        = [string]$License.Edition
+                    Status         = [string]$License.Status
+                    IssuedAt       = [string]$License.IssuedAt
+                    ExpiresAt      = [string]$License.ExpiresAt
+                    MaxTenants     = [int]$License.MaxTenants
+                    Features       = @($License.Features)
+                    KeyId          = [string]$License.KeyId
+                }
+                $CanonicalJson = $Payload | ConvertTo-Json -Depth 6 -Compress
+                $Data = [System.Text.Encoding]::UTF8.GetBytes($CanonicalJson)
+                $SignatureValid = $rsa.VerifyData(
+                    $Data,
+                    $SignatureBytes,
+                    [System.Security.Cryptography.HashAlgorithmName]::SHA256,
+                    [System.Security.Cryptography.RSASignaturePadding]::Pkcs1
+                )
+            }
         }
         finally { $rsa.Dispose() }
     }
@@ -88,10 +133,11 @@ function Get-TenantIQLicenseState {
         $ExpectedKeyId = ''
     }
 
-    if (-not $SignatureValid -or $ExpectedKeyId -ne [string]$License.KeyId) {
-        return [pscustomobject]@{
-            Licensed=$false; SignatureValid=$false; State='INVALID'; CustomerName=[string]$License.CustomerName; CustomerDomain=[string]$License.CustomerDomain; Edition=[string]$License.Edition; LicenseId=[string]$License.LicenseId; KeyId=[string]$License.KeyId; ExpiresAt=$null; DaysRemaining=$null; MaxTenants=$License.MaxTenants; Reason='License signature verification failed.'
-        }
+    if (-not $SignatureValid) {
+        return New-InvalidLicenseResult -License $License -Reason 'License signature verification failed.'
+    }
+    if ($ExpectedKeyId -ne [string]$License.KeyId) {
+        return New-InvalidLicenseResult -License $License -Reason 'License key ID does not match the packaged verification key.'
     }
 
     try {
@@ -99,9 +145,7 @@ function Get-TenantIQLicenseState {
         $Expires = [datetimeoffset]::Parse([string]$License.ExpiresAt)
     }
     catch {
-        return [pscustomobject]@{
-            Licensed=$false; SignatureValid=$true; State='INVALID'; CustomerName=[string]$License.CustomerName; CustomerDomain=[string]$License.CustomerDomain; Edition=[string]$License.Edition; LicenseId=[string]$License.LicenseId; KeyId=[string]$License.KeyId; ExpiresAt=$null; DaysRemaining=$null; MaxTenants=$License.MaxTenants; Reason='License date fields are invalid.'
-        }
+        return New-InvalidLicenseResult -License $License -Reason 'License date fields are invalid.' -SignatureValid $true
     }
 
     $Now = [datetimeoffset]::UtcNow

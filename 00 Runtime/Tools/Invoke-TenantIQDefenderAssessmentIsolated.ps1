@@ -30,8 +30,6 @@ try {
         throw 'Exchange Online authentication completed without an active connection.'
     }
 
-    # Verify the Defender for Office 365 / EOP policy commands are actually present
-    # before Graph is introduced into this process.
     $RequiredCommands = @(
         'Get-AntiPhishPolicy',
         'Get-SafeLinksPolicy',
@@ -44,9 +42,15 @@ try {
         throw ('Exchange Online connected, but required Defender policy cmdlets were not loaded: ' + ($MissingCommands -join ', '))
     }
 
-    # Load the TenantIQ framework after EXO is established. Do not load the
-    # Exchange isolated runner itself; only framework functions are dot-sourced.
+    # Load only normal framework/library scripts. Some framework files are
+    # executable helper scripts with mandatory parameters and must never be
+    # dot-sourced as libraries.
+    $FrameworkExclusions = @(
+        'Invoke-TenantIQGraphIsolatedCache.ps1'
+    )
+
     Get-ChildItem $FrameworkPath -Filter '*.ps1' |
+        Where-Object { $_.Name -notin $FrameworkExclusions } |
         Sort-Object Name |
         ForEach-Object { . $_.FullName }
 

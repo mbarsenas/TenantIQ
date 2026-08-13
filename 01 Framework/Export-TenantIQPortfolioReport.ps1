@@ -85,13 +85,17 @@ function Export-TenantIQPortfolioReport {
     }
     else { 100 }
 
-    $RiskLevel = if ($PortfolioFail -gt 0) { 'High Risk' }
-        elseif ($PortfolioWarning -gt 0) { 'Needs Attention' }
-        else { 'Healthy' }
+    # Portfolio posture label is derived from the score so the headline score and
+    # customer-facing badge cannot contradict one another. Individual FAIL and
+    # WARNING findings remain visible and prioritized in the findings section.
+    $RiskLevel = if ($PortfolioScore -ge 90) { 'Strong Posture' }
+        elseif ($PortfolioScore -ge 75) { 'Needs Attention' }
+        elseif ($PortfolioScore -ge 60) { 'Elevated Risk' }
+        else { 'High Risk' }
 
-    $RiskClass = if ($PortfolioFail -gt 0) { 'risk-high' }
-        elseif ($PortfolioWarning -gt 0) { 'risk-medium' }
-        else { 'risk-low' }
+    $RiskClass = if ($PortfolioScore -ge 90) { 'risk-low' }
+        elseif ($PortfolioScore -ge 75) { 'risk-medium' }
+        else { 'risk-high' }
 
     $AllActionable = @(
         foreach ($Snapshot in $Snapshots) {

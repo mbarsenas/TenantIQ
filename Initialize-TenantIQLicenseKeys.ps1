@@ -12,7 +12,9 @@ if (-not (Test-Path $PrivateDirectory)) {
     New-Item -Path $PrivateDirectory -ItemType Directory -Force | Out-Null
 }
 
-if ((Test-Path $PrivateKeyPath -or Test-Path $PublicKeyPath) -and -not $Force) {
+$PrivateExists = Test-Path $PrivateKeyPath
+$PublicExists = Test-Path $PublicKeyPath
+if (($PrivateExists -or $PublicExists) -and -not $Force) {
     throw 'TenantIQ license keys already exist. Use -Force only if you intentionally want to rotate the signing key.'
 }
 

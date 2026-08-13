@@ -1,0 +1,101 @@
+name: TenantIQ Order Fulfillment
+
+on:
+  workflow_dispatch:
+    inputs:
+      subscription_id:
+        description: Stripe subscription ID to fulfill
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tenantiq-fulfillment-${{ inputs.subscription_id }}
+  cancel-in-progress: false
+
+jobs:
+  fulfill:
+    name: Fulfill TenantIQ order
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+      TENANTIQ_R2_ACCOUNT_ID: ${{ secrets.TENANTIQ_R2_ACCOUNT_ID }}
+      TENANTIQ_R2_ACCESS_KEY_ID: ${{ secrets.TENANTIQ_R2_ACCESS_KEY_ID }}
+      TENANTIQ_R2_SECRET_ACCESS_KEY: ${{ secrets.TENANTIQ_R2_SECRET_ACCESS_KEY }}
+      TENANTIQ_R2_BUCKET: ${{ secrets.TENANTIQ_R2_BUCKET }}
+      TENANTIQ_FULFILLMENT_API_KEY: ${{ secrets.TENANTIQ_FULFILLMENT_API_KEY }}
+      TENANTIQ_SITE_URL: https://tenantiq365.com
+      TENANTIQ_LICENSE_PRIVATE_KEY_PATH: ${{ github.workspace }}\.tenantiq-secrets\TenantIQ-License-Private.pem
+      TENANTIQ_SUBSCRIPTION_ID: ${{ inputs.subscription_id }}
+
+    steps:
+      - name: Check out TenantIQ
+        uses: actions/checkout@v4
+
+      - name: Validate fulfillment secrets
+        shell: pwsh
+        run: |
+          $required = @(
+            'STRIPE_SECRET_KEY',
+            'TENANTIQ_R2_ACCOUNT_ID',
+            'TENANTIQ_R2_ACCESS_KEY_ID',
+            'TENANTIQ_R2_SECRET_ACCESS_KEY',
+            'TENANTIQ_FULFILLMENT_API_KEY'
+          )
+          foreach ($name in $required) {
+            if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
+              throw "Required GitHub Actions secret is missing: $name"
+            }
+          }
+          if ([string]::IsNullOrWhiteSpace('${{ secrets.TENANTIQ_LICENSE_PRIVATE_KEY_B64 }}')) {
+            throw 'Required GitHub Actions secret is missing: TENANTIQ_LICENSE_PRIVATE_KEY_B64'
+          }
+
+      - name: Restore private signing key
+        shell: pwsh
+        env:
+          PRIVATE_KEY_B64: ${{ secrets.TENANTIQ_LICENSE_PRIVATE_KEY_B64 }}
+        run: |
+          $secretDirectory = Split-Path -Parent $env:TENANTIQ_LICENSE_PRIVATE_KEY_PATH
+          New-Item -ItemType Directory -Path $secretDirectory -Force | Out-Null
+          try {
+            $bytes = [Convert]::FromBase64String($env:PRIVATE_KEY_B64)
+          }
+          catch {
+            throw 'TENANTIQ_LICENSE_PRIVATE_KEY_B64 is not valid Base64.'
+          }
+          [IO.File]::WriteAllBytes($env:TENANTIQ_LICENSE_PRIVATE_KEY_PATH, $bytes)
+          if (-not (Test-Path $env:TENANTIQ_LICENSE_PRIVATE_KEY_PATH -PathType Leaf)) {
+            throw 'Private signing key could not be restored.'
+          }
+
+      - name: Ensure AWS CLI is available
+        shell: pwsh
+        run: |
+          if (-not (Get-Command aws -ErrorAction SilentlyContinue)) {
+            $installer = Join-Path $env:RUNNER_TEMP 'AWSCLIV2.msi'
+            Invoke-WebRequest -Uri 'https://awscli.amazonaws.com/AWSCLIV2.msi' -OutFile $installer
+            Start-Process msiexec.exe -ArgumentList '/i', $installer, '/qn', '/norestart' -Wait
+            $env:PATH = "C:\Program Files\Amazon\AWSCLIV2;$env:PATH"
+          }
+          aws --version
+
+      - name: Run TenantIQ fulfillment
+        shell: pwsh
+        run: |
+          if ($env:TENANTIQ_SUBSCRIPTION_ID -notmatch '^sub_[A-Za-z0-9]+$') {
+            throw 'workflow_dispatch subscription_id is not a valid Stripe subscription ID.'
+          }
+          .\Invoke-TenantIQOrderFulfillment.ps1 -SubscriptionId $env:TENANTIQ_SUBSCRIPTION_ID
+
+      - name: Remove signing key
+        if: always()
+        shell: pwsh
+        run: |
+          $secretDirectory = Split-Path -Parent $env:TENANTIQ_LICENSE_PRIVATE_KEY_PATH
+          if (Test-Path $secretDirectory) {
+            Remove-Item -Path $secretDirectory -Recurse -Force -ErrorAction SilentlyContinue
+          }

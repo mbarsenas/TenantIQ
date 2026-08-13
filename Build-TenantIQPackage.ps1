@@ -7,9 +7,14 @@ param(
 $ErrorActionPreference = 'Stop'
 $Root = $PSScriptRoot
 $ConfigPath = Join-Path $Root 'TenantIQ.json'
+$ValidatorPath = Join-Path $Root 'Test-TenantIQReleasePackage.ps1'
 
 if (-not (Test-Path $ConfigPath)) {
     throw "TenantIQ.json was not found at $ConfigPath"
+}
+
+if (-not (Test-Path $ValidatorPath)) {
+    throw "Release package validator was not found at $ValidatorPath"
 }
 
 $Config = Get-Content -Path $ConfigPath -Raw | ConvertFrom-Json
@@ -26,6 +31,7 @@ $RequiredFiles = @(
     'Install-TenantIQPrerequisites.ps1',
     'Get-TenantIQVersion.ps1',
     'Get-TenantIQLicenseStatus.ps1',
+    'Test-TenantIQReleasePackage.ps1',
     'QUICKSTART.md',
     'CUSTOMER-README.md',
     'CHANGELOG.md'
@@ -76,6 +82,9 @@ if (Test-Path $PackageRoot) {
 }
 if (Test-Path $ZipPath) {
     Remove-Item -Path $ZipPath -Force
+}
+if (Test-Path "$ZipPath.sha256") {
+    Remove-Item -Path "$ZipPath.sha256" -Force
 }
 
 New-Item -Path $PackageRoot -ItemType Directory -Force | Out-Null
@@ -156,14 +165,24 @@ $ZipHash = (Get-FileHash -Path $ZipPath -Algorithm SHA256).Hash
 $ZipHashPath = "$ZipPath.sha256"
 '{0}  {1}' -f $ZipHash,(Split-Path $ZipPath -Leaf) | Set-Content -Path $ZipHashPath -Encoding UTF8
 
-Write-Host '[OK] Customer package created.' -ForegroundColor Green
+Write-Host ''
+Write-Host 'Running release package validation...' -ForegroundColor Cyan
+$Validation = & $ValidatorPath -PackageRoot $PackageRoot -ZipPath $ZipPath
+if (-not $Validation.Ready) {
+    throw 'TenantIQ customer package failed release validation.'
+}
+
+Write-Host ''
+Write-Host '[OK] Customer package created and validated.' -ForegroundColor Green
 Write-Host ("Folder      : {0}" -f $PackageRoot) -ForegroundColor Cyan
 Write-Host ("ZIP         : {0}" -f $ZipPath) -ForegroundColor Cyan
 Write-Host ("ZIP SHA256  : {0}" -f $ZipHash) -ForegroundColor Cyan
+Write-Host ("Validation  : RELEASE READY ({0} checks passed)" -f $Validation.Passed) -ForegroundColor Green
 Write-Host ''
-Write-Host 'Customer support/version command:' -ForegroundColor Yellow
+Write-Host 'Customer support/version commands:' -ForegroundColor Yellow
 Write-Host '  .\Get-TenantIQVersion.ps1'
 Write-Host '  .\Get-TenantIQLicenseStatus.ps1'
+Write-Host '  .\Test-TenantIQReleasePackage.ps1 -PackageRoot <folder> -ZipPath <zip>'
 Write-Host ''
 Write-Host 'Customer first-run commands:' -ForegroundColor Yellow
 Write-Host '  .\Install-TenantIQPrerequisites.ps1'
@@ -178,4 +197,6 @@ Write-Host '  .\Start-TenantIQ.ps1'
     ZipSha256      = $ZipHash
     ZipHashPath    = $ZipHashPath
     LicensingMode  = 'ScaffoldingOnly'
+    ReleaseReady   = $true
+    ValidationPass = $Validation.Passed
 }

@@ -1,0 +1,15 @@
+# TenantIQ - Microsoft Defender
+
+Microsoft Defender includes 50 registered TenantIQ controls covering protection policies, tenant security settings, threat protection, submissions, quarantine, and related security posture.
+
+Run Defender from main menu option [7].
+
+TenantIQ runs Defender in an isolated PowerShell 7 process because Defender assessment can require both Exchange Online protection-policy cmdlets and Microsoft Graph evidence.
+
+Expected behavior can include a dedicated Exchange Online sign-in for Defender policy checks.
+
+Common policy cmdlets used by Defender evidence collection include anti-phishing, Safe Links, Safe Attachments, anti-spam, malware, quarantine, and related Exchange Online protection commands.
+
+The workload exports a timestamped CSV under 06 Output.
+
+If Defender suddenly returns many INFO results with missing Exchange policy cmdlets, verify that Exchange Online authentication and cmdlet loading succeeded inside the isolated Defender process before changing control logic.

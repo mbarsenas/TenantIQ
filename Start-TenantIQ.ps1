@@ -76,11 +76,6 @@ if (Test-Path $Prereq) {
         Read-Host 'Press Enter to exit'
         exit 2
     }
-
-    if (@($Check.OptionalMissing).Count -gt 0) {
-        Write-Host ''
-        Write-Host '[WARNING] Optional components are missing. Some enrichment checks may return INFO instead of scored results.' -ForegroundColor Yellow
-    }
 }
 else {
     Write-Host '[WARNING] Prerequisite validation script was not found. Startup will continue without dependency checks.' -ForegroundColor Yellow

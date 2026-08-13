@@ -10,9 +10,11 @@ if (-not (Test-Path -LiteralPath $TenantIQPath)) {
 }
 
 $content = Get-Content -LiteralPath $TenantIQPath -Raw
-$backup = "$TenantIQPath.navigation-backup-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+$backup = "$TenantIQPath.ui-navigation-backup-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 Copy-Item -LiteralPath $TenantIQPath -Destination $backup -Force
+$changed = $false
 
+# Keep the workload navigation fix isolated from presentation code.
 $helper = @'
 function Start-TenantIQWorkloadModule {
     param(
@@ -85,39 +87,70 @@ function Start-TenantIQPurviewModule {
 '@
 }
 
-# If the shared helper already exists, treat the repair as already applied.
-if ($content -match '(?m)^function\s+Start-TenantIQWorkloadModule\b') {
-    Write-Host '[OK] TenantIQ workload navigation repair is already applied.' -ForegroundColor Green
-    Write-Host "Backup: $backup" -ForegroundColor DarkGray
-    return
+if ($content -notmatch '(?m)^function\s+Start-TenantIQWorkloadModule\b') {
+    $first = $true
+    foreach ($name in $replacements.Keys) {
+        $pattern = "(?m)^function\\s+$([regex]::Escape($name))\\s*\\{[^\\r\\n]*\\}\\s*$"
+        $matches = [regex]::Matches($content, $pattern)
+        if ($matches.Count -ne 1) {
+            Copy-Item -LiteralPath $backup -Destination $TenantIQPath -Force
+            throw "Expected exactly one $name wrapper but found $($matches.Count). Original TenantIQ.ps1 was restored."
+        }
+        $replacement = $replacements[$name]
+        if ($first) {
+            $replacement = $helper + $replacement
+            $first = $false
+        }
+        $content = [regex]::Replace($content, $pattern, [System.Text.RegularExpressions.MatchEvaluator]{ param($m) $replacement }, 1)
+    }
+    $changed = $true
 }
 
-$first = $true
-foreach ($name in $replacements.Keys) {
-    # The current affected wrappers are single-line function definitions. Match each independently so
-    # differences in neighboring whitespace or line endings cannot block the entire repair.
-    $pattern = "(?m)^function\\s+$([regex]::Escape($name))\\s*\\{[^\\r\\n]*\\}\\s*$"
-    $matches = [regex]::Matches($content, $pattern)
-    if ($matches.Count -ne 1) {
-        Copy-Item -LiteralPath $backup -Destination $TenantIQPath -Force
-        throw "Expected exactly one $name wrapper but found $($matches.Count). No changes were made."
-    }
+# Restore a full-width, centered workload banner. This keeps the UI proportional to the
+# actual console window instead of leaving a large dead area to the right of a fixed 60-column box.
+$banner = @'
+function Show-Banner {
+    Clear-Host
 
-    $replacement = $replacements[$name]
-    if ($first) {
-        $replacement = $helper + $replacement
-        $first = $false
+    $width = 80
+    try {
+        $hostWidth = [int]$Host.UI.RawUI.WindowSize.Width
+        if ($hostWidth -gt 20) { $width = $hostWidth - 1 }
     }
+    catch {}
 
-    $content = [regex]::Replace(
-        $content,
-        $pattern,
-        [System.Text.RegularExpressions.MatchEvaluator]{ param($m) $replacement },
-        1
-    )
+    $width = [Math]::Max(60, [Math]::Min($width, 120))
+    $innerWidth = $width - 2
+    $title = 'TenantIQ - M365 Assessment Tool'
+    if ($title.Length -gt $innerWidth) { $title = $title.Substring(0, $innerWidth) }
+    $leftPad = [Math]::Floor(($innerWidth - $title.Length) / 2)
+    $rightPad = $innerWidth - $title.Length - $leftPad
+
+    Write-Host ('+' + ('-' * $innerWidth) + '+') -ForegroundColor Cyan
+    Write-Host ('|' + (' ' * $leftPad) + $title + (' ' * $rightPad) + '|') -ForegroundColor Cyan
+    Write-Host ('+' + ('-' * $innerWidth) + '+') -ForegroundColor Cyan
+    Write-Host ''
+    Write-Host 'Version : 1.0.0' -ForegroundColor DarkGray
+    Write-Host ''
+}
+'@
+
+$bannerPattern = '(?ms)^function\s+Show-Banner\s*\{.*?^\}'
+$bannerMatches = [regex]::Matches($content, $bannerPattern)
+if ($bannerMatches.Count -ne 1) {
+    Copy-Item -LiteralPath $backup -Destination $TenantIQPath -Force
+    throw "Expected exactly one Show-Banner function but found $($bannerMatches.Count). Original TenantIQ.ps1 was restored."
 }
 
-Set-Content -LiteralPath $TenantIQPath -Value $content -Encoding utf8
+$currentBanner = $bannerMatches[0].Value
+if ($currentBanner -notmatch "TenantIQ - M365 Assessment Tool" -or $currentBanner -notmatch "WindowSize\.Width") {
+    $content = [regex]::Replace($content, $bannerPattern, [System.Text.RegularExpressions.MatchEvaluator]{ param($m) $banner }, 1)
+    $changed = $true
+}
+
+if ($changed) {
+    Set-Content -LiteralPath $TenantIQPath -Value $content -Encoding utf8
+}
 
 $updated = Get-Content -LiteralPath $TenantIQPath -Raw
 $requiredFunctions = @(
@@ -127,16 +160,15 @@ $requiredFunctions = @(
     'Start-TenantIQOneDriveModule',
     'Start-TenantIQIntuneModule',
     'Start-TenantIQDefenderModule',
-    'Start-TenantIQPurviewModule'
+    'Start-TenantIQPurviewModule',
+    'Show-Banner'
 )
-
 foreach ($functionName in $requiredFunctions) {
     if ($updated -notmatch "(?m)^function\s+$([regex]::Escape($functionName))\b") {
         Copy-Item -LiteralPath $backup -Destination $TenantIQPath -Force
-        throw "Navigation verification failed for $functionName. Original TenantIQ.ps1 was restored."
+        throw "Verification failed for $functionName. Original TenantIQ.ps1 was restored."
     }
 }
 
-Write-Host '[OK] TenantIQ workload navigation standardized.' -ForegroundColor Green
-Write-Host '[OK] SharePoint, Teams, OneDrive, Intune, Defender, and Purview now return to their workload menu.' -ForegroundColor Green
+Write-Host '[OK] TenantIQ navigation and console layout repaired.' -ForegroundColor Green
 Write-Host "Backup: $backup" -ForegroundColor DarkGray

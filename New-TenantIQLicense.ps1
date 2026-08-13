@@ -30,6 +30,21 @@ finally {
     $rsaPublic.Dispose()
 }
 
+# The private signing key and packaged public verification key must be the same RSA key pair.
+$rsaPairCheck = [System.Security.Cryptography.RSA]::Create()
+try {
+    $rsaPairCheck.ImportFromPem((Get-Content -Path $PrivateKeyPath -Raw))
+    $PrivateDerivedPublicBytes = $rsaPairCheck.ExportSubjectPublicKeyInfo()
+}
+finally {
+    $rsaPairCheck.Dispose()
+}
+
+if (-not [System.Security.Cryptography.CryptographicOperations]::FixedTimeEquals($PublicBytes, $PrivateDerivedPublicBytes)) {
+    $privateKeyId = [Convert]::ToHexString([System.Security.Cryptography.SHA256]::HashData($PrivateDerivedPublicBytes)).Substring(0,16)
+    throw "TenantIQ signing key mismatch. Private key ID $privateKeyId does not match public key ID $KeyId. Refusing to issue an unverifiable license."
+}
+
 $Payload = [ordered]@{
     SchemaVersion  = '1.0'
     Product        = 'TenantIQ'

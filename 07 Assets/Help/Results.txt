@@ -1,0 +1,169 @@
+# TenantIQ - Understanding Results
+
+TenantIQ converts Microsoft 365 evidence into standardized assessment findings. Results are designed to distinguish tenant posture findings from runtime, permission, licensing, and evidence-availability limitations.
+
+## Status Values
+
+PASS
+  The control was evaluated and the observed tenant configuration met the TenantIQ criteria.
+
+WARNING
+  The control was evaluated and identified a condition that warrants review or improvement but is not classified as a failure.
+
+FAIL
+  The control was evaluated and the observed tenant configuration did not meet the TenantIQ criteria.
+
+INFO
+  The result provides useful configuration, inventory, governance, or operational context but is not included in the posture score.
+
+NOT EVALUATED
+  TenantIQ could not conclusively evaluate the control because the required evidence was unavailable or unsupported in the current assessment context.
+
+NOT EVALUATED is not the same as PASS and is not the same as FAIL.
+
+## Scored vs Unscored Controls
+
+TenantIQ posture calculations use only scored results:
+
+  PASS    = 1.0 point
+  WARNING = 0.5 point
+  FAIL    = 0 points
+
+INFO and NOT EVALUATED are unscored.
+
+Posture Score = earned scored-control points / total scored controls x 100
+
+This prevents informational inventory data or unavailable evidence from distorting the posture score.
+
+## Portfolio Posture Labels
+
+TenantIQ uses the following executive labels:
+
+  90-100  Strong Posture
+  75-89   Needs Attention
+  60-74   Elevated Risk
+  0-59    High Risk
+
+The portfolio label summarizes the scored control population. It does not erase individual findings. A portfolio can have a relatively strong overall score and still contain one or more important FAIL findings requiring remediation.
+
+## Finding
+
+The Finding field explains what TenantIQ determined from the evaluated evidence.
+
+Examples can include:
+
+  A security control is not enabled.
+  A policy type is not configured.
+  A tenant has a measurable coverage gap.
+  No objects of a particular type were discovered.
+  A Microsoft evidence source was unavailable.
+
+Read the Finding together with Status and Evidence.
+
+## Evidence
+
+Evidence records the configuration data, counts, policy names, API result, or other observation used to support the finding where available.
+
+Evidence should help an administrator understand why the control received its status without requiring TenantIQ to automatically modify the tenant.
+
+Evidence availability varies by Microsoft workload, licensing, API, cmdlet, permission, and tenant configuration.
+
+## Recommendation
+
+Recommendation describes a remediation or review action appropriate to the finding.
+
+A TenantIQ recommendation is assessment guidance. It is not an authorization to make a production change.
+
+Before applying a recommendation, consider:
+
+  Business requirements
+  Existing exceptions
+  Licensing
+  Application dependencies
+  Security architecture
+  Change-management requirements
+  Microsoft documentation and current service behavior
+
+## Severity
+
+Severity helps prioritize findings within a workload or portfolio report. Severity should be interpreted together with status, evidence, and customer context.
+
+A high-severity finding can require attention even when the overall portfolio posture score remains relatively high.
+
+## FAIL Does Not Mean TenantIQ Failed
+
+A FAIL result normally means the control successfully executed and detected a tenant configuration that did not meet the assessment criteria.
+
+Examples:
+
+  MFA coverage below the control threshold
+  Missing security policy
+  Unsafe configuration detected
+
+A TenantIQ runtime failure is different. Runtime failures appear as execution/authentication errors, missing functions, module failures, or assessment termination rather than a legitimate standardized FAIL finding.
+
+## WARNING Does Not Always Mean Misconfiguration
+
+A WARNING can represent a configuration that deserves review but may be intentional for a particular tenant.
+
+For example, a feature may not be deployed because the organization uses an alternative control or does not license that service.
+
+Validate the finding against customer requirements before remediation.
+
+## INFO Results
+
+INFO results are intentionally retained because they can provide valuable assessment context such as:
+
+  Inventory counts
+  Feature availability
+  Licensing context
+  Governance observations
+  Configuration summaries
+  Evidence that is useful but not appropriate for pass/fail scoring
+
+INFO does not improve or reduce the posture score.
+
+## NOT EVALUATED Results
+
+Review NOT EVALUATED results because they can indicate an assessment coverage limitation.
+
+Common causes include:
+
+  Required Microsoft cmdlet unavailable in the active session
+  Microsoft Graph API limitation
+  Missing delegated scope or administrator consent
+  Insufficient administrator role
+  Required service or license unavailable
+  Feature not provisioned
+  Microsoft service-side error
+
+When practical, correct the evidence-access limitation and rerun the affected workload.
+
+If Microsoft does not expose a supported evidence source, retain the result as unscored rather than manually converting it to PASS or FAIL without evidence.
+
+## Recommended Review Order
+
+For technical remediation review:
+
+  1. FAIL findings
+  2. High-severity WARNING findings
+  3. Remaining WARNING findings
+  4. NOT EVALUATED coverage gaps
+  5. INFO context
+  6. PASS evidence as needed
+
+For executive review, begin with the Portfolio Report posture score, workload posture table, Priority Findings, and Recommended Next Steps.
+
+## Comparing Assessments
+
+After remediation, rerun the affected workload and compare the new output with the previous assessment.
+
+A change from FAIL or WARNING to PASS should be supported by newly collected evidence. Do not manually edit exported TenantIQ CSV files to manufacture posture improvement.
+
+Generate a new Portfolio Report after reassessment when an updated executive view is required.
+
+## Important Interpretation Rule
+
+TenantIQ reports what its registered controls can establish from the available Microsoft 365 evidence at assessment time.
+
+TenantIQ results should be interpreted as structured assessment evidence, not as a guarantee that a tenant is completely secure, compliant, or free of operational risk.

@@ -2,128 +2,166 @@
 
 Welcome to TenantIQ.
 
-TenantIQ is a Microsoft 365 assessment platform designed to evaluate the configuration, security, governance, and operational health of a Microsoft 365 tenant.
+TenantIQ is a read-only Microsoft 365 assessment platform designed to evaluate configuration, security, governance, and operational posture across supported Microsoft 365 workloads. TenantIQ collects evidence, evaluates controls, and produces standardized findings and customer-facing reports. It does not automatically remediate or change tenant configuration.
 
-TenantIQ performs automated health checks against supported Microsoft 365 workloads and presents findings, severity levels, recommendations, and assessment reports.
+## TenantIQ v1.0 Coverage
 
-## Supported Workloads
+TenantIQ currently assesses eight Microsoft 365 workloads:
 
-TenantIQ currently supports:
+  [1] Exchange Online       - 50 checks
+  [2] Entra ID              - 66 checks
+  [3] SharePoint Online     - 50 checks
+  [4] Microsoft Teams       - 50 checks
+  [5] OneDrive              - 50 checks
+  [6] Microsoft Intune      - 50 checks
+  [7] Microsoft Defender    - 50 checks
+  [8] Microsoft Purview     - 50 checks
 
-  Exchange Online
-  Entra ID
-  SharePoint Online
+Total registered assessment controls: 416
 
-Additional Microsoft 365 workloads may be added in future releases.
-
+The Portfolio Report combines the latest available results from all eight workloads into a single executive assessment.
 
 ## Starting TenantIQ
 
-Open Windows PowerShell and navigate to the TenantIQ directory.
+TenantIQ requires PowerShell 7 or later.
 
-Launch TenantIQ with:
+Open PowerShell 7 and navigate to the TenantIQ installation directory. Start the product with:
 
-  .\TenantIQ.ps1
+  .\Start-TenantIQ.ps1
 
-The TenantIQ main menu displays the available Microsoft 365 assessment modules and the number of health checks currently available for each workload.
+Start-TenantIQ.ps1 is the supported product entry point. It validates the environment and required PowerShell dependencies before opening the TenantIQ main menu.
 
+Do not use TenantIQ.ps1 as the normal product launch command.
 
-## Selecting a Workload
+## Startup Validation
 
-From the main menu, select the workload you want to assess.
+At startup, TenantIQ checks the local environment for required components. Required dependencies must be available before the main menu launches.
 
-For example:
+The startup screen reports each dependency as OK, MISSING, or OPTIONAL. Optional components do not prevent TenantIQ from starting, but controls that depend on unavailable optional capabilities may be returned as unscored informational results.
+
+## Main Menu
+
+The main menu provides:
 
   [1] Exchange Online
   [2] Entra ID
   [3] SharePoint Online
+  [4] Microsoft Teams
+  [5] OneDrive
+  [6] Microsoft Intune
+  [7] Microsoft Defender
+  [8] Microsoft Purview
+  [9] Portfolio Report
+  [10] Help / Documentation
+  [11] About TenantIQ
+  [0] Exit
 
-Each workload contains its own health checks, assessment options, reporting capabilities, and configuration requirements.
+Select a workload to run its assessment. Authentication is requested when required by that workload.
 
+## Authentication
 
-## Connecting to Microsoft 365
+TenantIQ uses Microsoft-supported administrative PowerShell and Microsoft Graph authentication for evidence collection. Depending on the selected workload, a Microsoft sign-in window may appear.
 
-TenantIQ requires an authenticated administrative connection to the Microsoft 365 service being assessed.
+Authentication and available evidence can vary based on tenant licensing, administrator permissions, Microsoft API availability, and workload-specific PowerShell capabilities.
 
-TenantIQ can detect supported existing administrative sessions and reuse them when possible.
+TenantIQ is designed for assessment and reporting. Authentication is used to read supported tenant configuration and evidence; TenantIQ does not automatically apply remediation actions.
 
-If a required connection is not available, TenantIQ may prompt you to authenticate before continuing.
-
-Depending on the workload, TenantIQ uses Microsoft administrative PowerShell modules such as:
-
-  ExchangeOnlineManagement
-  Microsoft Graph PowerShell
-  SharePoint Online Management Shell
-
-See "Connecting to Microsoft 365" in the Help Center for detailed connection information.
-
+See "Connecting to Microsoft 365" in the Help Center for additional details.
 
 ## Running an Assessment
 
-After selecting a workload, TenantIQ provides assessment options such as:
+From the main menu:
 
-  Full Assessment
-  Health Checks
-  Reports
-  Settings
+  1. Select the workload.
+  2. Complete Microsoft authentication if prompted.
+  3. Allow all registered checks to finish.
+  4. Review the assessment summary.
+  5. Locate the generated CSV in the 06 Output directory.
 
-A Full Assessment runs the registered health checks for that workload.
+Each result is standardized with fields such as workload, check, category, status, severity, finding, evidence, and recommendation where available.
 
-The Health Checks menu can be used to review or execute individual assessment checks.
+## Understanding Statuses
 
+PASS
+  The evaluated condition met the TenantIQ control criteria.
 
-## Understanding Results
+WARNING
+  The control detected a condition that should be reviewed or improved but is not classified as a failure.
 
-TenantIQ evaluates Microsoft 365 configuration data and produces findings based on the conditions detected by each health check.
+FAIL
+  The evaluated condition failed the TenantIQ control criteria and should receive remediation attention.
 
-Results may include:
+INFO
+  Contextual or informational evidence. INFO results are not included in scored-control posture calculations.
 
-  PASS
-      The evaluated configuration appears healthy based on the conditions tested.
+NOT EVALUATED
+  The control could not be conclusively evaluated, commonly because a required API, cmdlet, permission, license, or evidence source was unavailable. Portfolio reporting treats these results as unscored context rather than silently dropping them.
 
-  WARNING
-      A configuration or condition was detected that should be reviewed.
+A FAIL does not mean TenantIQ itself failed to run. FAIL can represent a legitimate tenant configuration finding. Runtime or authentication errors are reported separately during execution.
 
-  FAIL
-      TenantIQ could not successfully complete the assessment or detected a condition classified as a failure.
+## Portfolio Report
 
-  INFO
-      Informational data was collected that may require administrator review but does not necessarily represent a problem.
+After workload assessments are complete, select:
 
-Findings may also include severity ratings and remediation recommendations.
+  [9] Portfolio Report
 
+TenantIQ reads the latest available workload CSV for each supported workload and generates:
 
-## Important
+  TenantIQ-Portfolio-Assessment-<timestamp>.html
+  TenantIQ-Portfolio-Assessment-<timestamp>.csv
 
-TenantIQ is an assessment and reporting platform.
+The executive HTML report includes:
 
-TenantIQ health checks are intended to inspect Microsoft 365 configuration and identify potential security, governance, configuration, and operational concerns.
+  Portfolio posture score
+  Workload coverage
+  Assessment snapshot
+  Per-workload posture
+  Priority FAIL and WARNING findings
+  Recommended next steps
 
-Assessment findings should be reviewed by a qualified Microsoft 365 administrator before configuration changes are made.
+Scoring uses:
 
-TenantIQ does not assume that every warning represents an incorrect configuration. Some settings may be intentional based on organizational requirements, licensing, security architecture, or business policy.
+  PASS    = full credit
+  WARNING = half credit
+  FAIL    = no credit
+  INFO / NOT EVALUATED = unscored context
 
+Portfolio posture labels are:
 
-## Reports
+  90-100  Strong Posture
+  75-89   Needs Attention
+  60-74   Elevated Risk
+  0-59    High Risk
 
-TenantIQ can use collected assessment results to generate reports for supported workloads.
+Individual FAIL findings remain visible and prioritized regardless of the overall portfolio score.
 
-Reports can provide a consolidated view of:
+## Output Directory
 
-  Assessment status
-  Health check results
-  Findings
-  Severity
-  Recommendations
-  Tenant configuration information
+Assessment and portfolio output is written under:
 
-See the Reports section of the Help Center for additional information.
+  06 Output
 
+Keep workload CSV files if you want them represented in a later Portfolio Report. The portfolio report selects the latest available CSV for each workload.
 
-## Getting Help
+## Recommended First Full Assessment
 
-Additional documentation is available from the TenantIQ Help Center:
+For a new tenant assessment:
 
+  1. Start TenantIQ with .\Start-TenantIQ.ps1.
+  2. Confirm the startup prerequisite validation passes.
+  3. Run workloads 1 through 8.
+  4. Complete authentication when prompted.
+  5. Confirm each workload exports its assessment CSV.
+  6. Select 9 to generate the Portfolio Report.
+  7. Review FAIL findings first, followed by high-severity WARNING findings.
+  8. Validate recommendations against tenant requirements before making production changes.
+  9. Re-run affected workloads after remediation to document posture improvement.
+
+## Help Center
+
+Additional documentation is available from menu option [10]:
+
+  Getting Started
   Prerequisites
   Connecting to Microsoft 365
   Running Assessments
@@ -131,33 +169,8 @@ Additional documentation is available from the TenantIQ Help Center:
   Reports
   Troubleshooting
 
-Workload-specific documentation is also available for:
+## Important
 
-  Exchange Online
-  Entra ID
-  SharePoint Online
+TenantIQ findings are assessment guidance, not automatic change instructions. Tenant configuration, licensing, business requirements, exceptions, and Microsoft service behavior should be considered before remediation.
 
-
-## Recommended First Run
-
-For a new TenantIQ installation:
-
-  1. Review Prerequisites.
-
-  2. Review Connecting to Microsoft 365.
-
-  3. Select a Microsoft 365 workload.
-
-  4. Authenticate when required.
-
-  5. Verify TenantIQ reports the workload as connected.
-
-  6. Run individual Health Checks to validate connectivity and permissions.
-
-  7. Run the Full Assessment.
-
-  8. Review all findings and recommendations.
-
-  9. Generate an assessment report.
-
-TIP: Start with individual health checks when validating a new TenantIQ installation or testing a new Microsoft 365 tenant.
+For production use, review findings with a qualified Microsoft 365 administrator or security professional before changing tenant configuration.

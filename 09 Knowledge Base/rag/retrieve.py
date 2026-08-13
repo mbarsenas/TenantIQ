@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import psycopg
 from dotenv import load_dotenv
 from openai import OpenAI
+from pgvector import Vector
 from pgvector.psycopg import register_vector
 
 load_dotenv()
@@ -40,16 +41,16 @@ def embed(text: str) -> list[float]:
 
 
 def retrieve(question: str, workload: str | None = None, limit: int = 5) -> list[Match]:
-    query_vector = embed(question)
+    query_vector = Vector(embed(question))
     with psycopg.connect(DATABASE_URL) as conn:
         register_vector(conn)
         if workload:
             rows = conn.execute(
                 """
-                SELECT source_path, workload, content, embedding <=> %s AS distance
+                SELECT source_path, workload, content, embedding <=> %s::vector AS distance
                 FROM tenantiq_knowledge_chunks
                 WHERE workload = %s
-                ORDER BY embedding <=> %s
+                ORDER BY embedding <=> %s::vector
                 LIMIT %s
                 """,
                 (query_vector, workload, query_vector, limit),
@@ -57,9 +58,9 @@ def retrieve(question: str, workload: str | None = None, limit: int = 5) -> list
         else:
             rows = conn.execute(
                 """
-                SELECT source_path, workload, content, embedding <=> %s AS distance
+                SELECT source_path, workload, content, embedding <=> %s::vector AS distance
                 FROM tenantiq_knowledge_chunks
-                ORDER BY embedding <=> %s
+                ORDER BY embedding <=> %s::vector
                 LIMIT %s
                 """,
                 (query_vector, query_vector, limit),

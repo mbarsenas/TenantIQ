@@ -158,8 +158,20 @@ try:
     from check_catalog_intune import CHECKS as INTUNE_CHECKS
 except ImportError:
     INTUNE_CHECKS = ()
+try:
+    from check_catalog_defender_core import CHECKS as DEFENDER_CORE_CHECKS
+except ImportError:
+    DEFENDER_CORE_CHECKS = ()
+try:
+    from check_catalog_defender_email1 import CHECKS as DEFENDER_EMAIL1_CHECKS
+except ImportError:
+    DEFENDER_EMAIL1_CHECKS = ()
+try:
+    from check_catalog_defender_email2 import CHECKS as DEFENDER_EMAIL2_CHECKS
+except ImportError:
+    DEFENDER_EMAIL2_CHECKS = ()
 
-CHECKS = CHECKS + TEAMS_CHECKS + ONEDRIVE_CHECKS + INTUNE_CHECKS
+CHECKS = CHECKS + TEAMS_CHECKS + ONEDRIVE_CHECKS + INTUNE_CHECKS + DEFENDER_CORE_CHECKS + DEFENDER_EMAIL1_CHECKS + DEFENDER_EMAIL2_CHECKS
 
 CHECK_BY_ID = {check.check_id: check for check in CHECKS}
 CHECK_ID_BY_ALIAS = {alias: check.check_id for check in CHECKS for alias in check.aliases}

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TenantIQ Knowledge Record",
+  "type": "object",
+  "required": ["id", "workload", "title", "contentType", "content", "sourcePath"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "checkId": { "type": ["string", "null"] },
+    "workload": { "type": "string" },
+    "category": { "type": ["string", "null"] },
+    "title": { "type": "string", "minLength": 1 },
+    "contentType": { "type": "string" },
+    "content": { "type": "string", "minLength": 1 },
+    "sourcePath": { "type": "string", "minLength": 1 },
+    "sourceUrl": { "type": ["string", "null"] },
+    "version": { "type": "string", "default": "1.0" },
+    "tags": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+  },
+  "additionalProperties": false
+}

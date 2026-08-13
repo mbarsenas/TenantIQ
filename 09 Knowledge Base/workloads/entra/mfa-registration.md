@@ -1,25 +1,41 @@
+---
+check_id: ENTRA-MFA-001
+workload: Entra ID
+category: Authentication
+severity: High
+source_check_path: 02 Health Checks/Entra ID/Authentication/Test-MFARegistration.ps1
+content_type: finding-guidance
+---
+
 # MFA Registration Coverage
 
-## Workload
-Entra ID
+TenantIQ uses this finding to evaluate whether member users are registered for multi-factor authentication methods.
 
-## Category
-Authentication
-
-## Purpose
-TenantIQ evaluates how broadly member users are registered for multifactor authentication methods. Low registration coverage means a significant portion of the tenant may be unable to satisfy stronger authentication requirements when policies require them.
+Low registration coverage means a meaningful portion of the user population may still depend primarily on password-based authentication. That increases exposure to phishing, password spraying, credential stuffing, and other credential-based attacks.
 
 ## Why it matters
-Accounts protected only by a password have materially weaker resistance to password spraying, credential stuffing, and phishing. MFA registration is a prerequisite for enforcing stronger authentication across the tenant.
 
-## Evidence to present
-TenantIQ should present the number of member users evaluated, the number registered for MFA, the number not registered, the number capable of MFA, and the resulting registration percentage when those values are available from the assessment.
+MFA registration is a prerequisite for reliably enforcing stronger authentication. If a user is not registered for an acceptable MFA method, a policy that requires MFA can create user disruption or force administrators to introduce exceptions that reduce the tenant's security posture.
 
-## Interpretation
-A failed finding means TenantIQ observed registration coverage below the assessment's expected threshold. The assistant must not invent missing counts or claim that MFA is disabled tenant-wide when the evidence only demonstrates incomplete registration.
+## Evidence to review
+
+TenantIQ should evaluate values such as:
+
+- Total member users
+- MFA registered users
+- MFA not registered users
+- MFA capable users
+- Passwordless capable users
+- Registration coverage percentage
 
 ## Recommended remediation
-Review the affected user population, confirm appropriate authentication methods are available, establish or validate Conditional Access requirements, and drive registration for users who are not enrolled. Emergency and service accounts should be reviewed separately according to the organization's identity design.
 
-## Assistant guidance
-Explain the measured gap, why registration matters, and the remediation sequence. Do not claim remediation has been performed and do not execute tenant changes.
+- Identify users who are not registered for MFA.
+- Confirm approved authentication methods are available for those users.
+- Validate Conditional Access requirements for MFA.
+- Drive registration for unenrolled users.
+- Review emergency access and service identities separately according to the organization's identity design.
+
+## Interpretation
+
+A failed finding indicates the observed registration coverage does not meet the TenantIQ check's expected security posture. TenantIQ should explain the evidence returned by the assessment rather than inventing tenant-specific counts that are not present in the assessment data.

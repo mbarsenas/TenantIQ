@@ -7,6 +7,7 @@ $Main = Join-Path $Root 'TenantIQ.ps1'
 $Prereq = Join-Path $Root '01 Framework\Test-TenantIQPrerequisites.ps1'
 $ConfigPath = Join-Path $Root 'TenantIQ.json'
 $FirstRunMarker = Join-Path $Root '.tenantiq-first-run-complete'
+$LicensePath = Join-Path $Root 'TenantIQ-License.json'
 
 try { $Host.UI.RawUI.WindowTitle = 'TenantIQ M365 Assessment Tool' } catch {}
 
@@ -40,6 +41,33 @@ Write-Host ('Release Channel  : {0}' -f $(if ($Config -and $Config.ReleaseChanne
 Write-Host ('PowerShell       : {0}' -f $PSVersionTable.PSVersion.ToString())
 Write-Host ('Host             : {0}' -f $Host.Name)
 Write-Host ('Working Directory: {0}' -f $Root)
+
+$LicenseState = 'UNLICENSED'
+$LicenseCustomer = ''
+if (Test-Path $LicensePath) {
+    try {
+        $License = Get-Content -Path $LicensePath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+        $LicenseState = if ($License.Status) { ([string]$License.Status).ToUpperInvariant() } else { 'UNKNOWN' }
+        $LicenseCustomer = [string]$License.CustomerName
+        if ($License.ExpiresAt) {
+            try {
+                if ([datetimeoffset]::Parse([string]$License.ExpiresAt) -lt [datetimeoffset]::Now) {
+                    $LicenseState = 'EXPIRED'
+                }
+            }
+            catch {
+                $LicenseState = 'INVALID'
+            }
+        }
+    }
+    catch {
+        $LicenseState = 'INVALID'
+    }
+}
+Write-Host ('License Status   : {0}' -f $LicenseState) -ForegroundColor $(if ($LicenseState -eq 'ACTIVE') { 'Green' } elseif ($LicenseState -in @('EXPIRED','INVALID')) { 'Yellow' } else { 'DarkGray' })
+if ($LicenseCustomer) {
+    Write-Host ('Licensed To      : {0}' -f $LicenseCustomer)
+}
 Write-Host ''
 
 if (Test-Path $Prereq) {
@@ -103,6 +131,10 @@ if (-not (Test-Path $FirstRunMarker)) {
     Write-Host '  TenantIQ does not automatically remediate or modify the tenant.'
     Write-Host '  Some workloads use isolated PowerShell sessions, so additional'
     Write-Host '  Microsoft sign-in prompts can be expected during a full assessment.'
+    Write-Host ''
+    Write-Host 'Licensing:' -ForegroundColor Cyan
+    Write-Host '  TenantIQ v1.0 records license metadata but does not enforce activation.'
+    Write-Host '  Use .\Get-TenantIQLicenseStatus.ps1 to view license details.'
     Write-Host ''
     Write-Host 'Help is always available from main-menu option 10.' -ForegroundColor DarkGray
     Write-Host ''

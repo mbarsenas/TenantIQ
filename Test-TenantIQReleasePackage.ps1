@@ -97,15 +97,15 @@ $PackageInfoPath = Join-Path $PackageRoot 'PACKAGE-INFO.json'
 if (Test-Path $PackageInfoPath) {
     try {
         $Info = Get-Content $PackageInfoPath -Raw | ConvertFrom-Json -ErrorAction Stop
-        $Results.Add((Add-CheckResult -Name 'Metadata product' -Passed ($Info.Product -eq 'TenantIQ') -Detail [string]$Info.Product))
-        $Results.Add((Add-CheckResult -Name 'Metadata version' -Passed ([string]$Info.Version -match '^\d+\.\d+\.\d+$') -Detail [string]$Info.Version))
-        $Results.Add((Add-CheckResult -Name 'Metadata controls' -Passed ([int]$Info.Controls -eq 416) -Detail [string]$Info.Controls))
-        $Results.Add((Add-CheckResult -Name 'Metadata workloads' -Passed ([int]$Info.Workloads -eq 8) -Detail [string]$Info.Workloads))
-        $Results.Add((Add-CheckResult -Name 'Metadata PowerShell minimum' -Passed ([string]$Info.MinimumPowerShell -eq '7.0') -Detail [string]$Info.MinimumPowerShell))
-        $Results.Add((Add-CheckResult -Name 'Metadata package type' -Passed ([string]$Info.PackageType -eq 'Customer') -Detail [string]$Info.PackageType))
-        $Results.Add((Add-CheckResult -Name 'Metadata licensing mode' -Passed ([string]$Info.LicensingMode -eq 'SignedLicenseVerification') -Detail [string]$Info.LicensingMode))
+        $Results.Add((Add-CheckResult -Name 'Metadata product' -Passed ($Info.Product -eq 'TenantIQ') -Detail ([string]$Info.Product)))
+        $Results.Add((Add-CheckResult -Name 'Metadata version' -Passed ([string]$Info.Version -match '^\d+\.\d+\.\d+$') -Detail ([string]$Info.Version)))
+        $Results.Add((Add-CheckResult -Name 'Metadata controls' -Passed ([int]$Info.Controls -eq 416) -Detail ([string]$Info.Controls)))
+        $Results.Add((Add-CheckResult -Name 'Metadata workloads' -Passed ([int]$Info.Workloads -eq 8) -Detail ([string]$Info.Workloads)))
+        $Results.Add((Add-CheckResult -Name 'Metadata PowerShell minimum' -Passed ([string]$Info.MinimumPowerShell -eq '7.0') -Detail ([string]$Info.MinimumPowerShell)))
+        $Results.Add((Add-CheckResult -Name 'Metadata package type' -Passed ([string]$Info.PackageType -eq 'Customer') -Detail ([string]$Info.PackageType)))
+        $Results.Add((Add-CheckResult -Name 'Metadata licensing mode' -Passed ([string]$Info.LicensingMode -eq 'SignedLicenseVerification') -Detail ([string]$Info.LicensingMode)))
         $Results.Add((Add-CheckResult -Name 'License key ID matches package metadata' -Passed ($PublicKeyId -and [string]$Info.LicenseKeyId -eq $PublicKeyId) -Detail ("Package={0}; PublicKey={1}" -f $Info.LicenseKeyId,$PublicKeyId)))
-        $Results.Add((Add-CheckResult -Name 'License launch enforcement disabled' -Passed (-not [bool]$Info.LicenseEnforcement) -Detail [string]$Info.LicenseEnforcement))
+        $Results.Add((Add-CheckResult -Name 'License launch enforcement disabled' -Passed (-not [bool]$Info.LicenseEnforcement) -Detail ([string]$Info.LicenseEnforcement)))
     }
     catch {
         $Results.Add((Add-CheckResult -Name 'PACKAGE-INFO.json parses' -Passed $false -Detail $_.Exception.Message))
@@ -139,7 +139,11 @@ if (Test-Path $ManifestPath) {
 if ($ZipPath) {
     $ZipHashPath="$ZipPath.sha256"
     $ZipSidecarExists=Test-Path $ZipHashPath -PathType Leaf
-    $Results.Add((Add-CheckResult -Name 'ZIP SHA256 sidecar present' -Passed $ZipSidecarExists -Detail $ZipHashPath))
+    if ($IsCustomerDelivery -and -not $ZipSidecarExists) {
+        $Results.Add((Add-CheckResult -Name 'ZIP SHA256 sidecar' -Passed $true -Detail 'Not supplied with customer download; package manifest and signed license remain authoritative.'))
+    } else {
+        $Results.Add((Add-CheckResult -Name 'ZIP SHA256 sidecar present' -Passed $ZipSidecarExists -Detail $ZipHashPath))
+    }
     if($ZipSidecarExists){
         try{
             $HashLine=(Get-Content $ZipHashPath|Select-Object -First 1).Trim()

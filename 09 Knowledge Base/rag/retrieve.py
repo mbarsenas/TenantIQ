@@ -40,36 +40,54 @@ def embed(text: str) -> list[float]:
     return response.data[0].embedding
 
 
-def retrieve(question: str, workload: str | None = None, limit: int = 5) -> list[Match]:
+def retrieve(
+    question: str,
+    workload: str | None = None,
+    check_id: str | None = None,
+    limit: int = 5,
+) -> list[Match]:
     query_vector = Vector(embed(question))
+
+    where: list[str] = []
+    params: list[object] = []
+
+    if workload:
+        where.append("workload = %s")
+        params.append(workload)
+    if check_id:
+        where.append("metadata->>'check_id' = %s")
+        params.append(check_id)
+
+    where_sql = f"WHERE {' AND '.join(where)}" if where else ""
+
+    sql = f"""
+        SELECT source_path, workload, content, embedding <=> %s::vector AS distance
+        FROM tenantiq_knowledge_chunks
+        {where_sql}
+        ORDER BY embedding <=> %s::vector
+        LIMIT %s
+    """
+
     with psycopg.connect(DATABASE_URL) as conn:
         register_vector(conn)
-        if workload:
-            rows = conn.execute(
-                """
-                SELECT source_path, workload, content, embedding <=> %s::vector AS distance
-                FROM tenantiq_knowledge_chunks
-                WHERE workload = %s
-                ORDER BY embedding <=> %s::vector
-                LIMIT %s
-                """,
-                (query_vector, workload, query_vector, limit),
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                """
-                SELECT source_path, workload, content, embedding <=> %s::vector AS distance
-                FROM tenantiq_knowledge_chunks
-                ORDER BY embedding <=> %s::vector
-                LIMIT %s
-                """,
-                (query_vector, query_vector, limit),
-            ).fetchall()
+        rows = conn.execute(
+            sql,
+            (query_vector, *params, query_vector, limit),
+        ).fetchall()
+
     return [Match(*row) for row in rows]
 
 
-def answer(question: str, workload: str | None = None) -> str:
-    matches = retrieve(question, workload=workload)
+def answer(
+    question: str,
+    workload: str | None = None,
+    check_id: str | None = None,
+) -> str:
+    matches = retrieve(question, workload=workload, check_id=check_id)
+    if not matches:
+        scope = f" for check {check_id}" if check_id else ""
+        return f"TenantIQ does not have enough grounded information to answer{scope}."
+
     context = "\n\n".join(
         f"SOURCE: {m.source_path}\nWORKLOAD: {m.workload or 'General'}\n{m.content}"
         for m in matches
@@ -88,5 +106,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Ask the TenantIQ RAG knowledge base a question.")
     parser.add_argument("question")
     parser.add_argument("--workload", default=None)
+    parser.add_argument("--check-id", default=None)
     args = parser.parse_args()
-    print(answer(args.question, workload=args.workload))
+    print(answer(args.question, workload=args.workload, check_id=args.check_id))

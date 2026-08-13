@@ -10,6 +10,7 @@ class CheckDefinition:
     aliases: tuple[str, ...]
 
 
+# Base catalog. Workload-specific catalogs are appended below to keep writes manageable.
 CHECKS: tuple[CheckDefinition, ...] = (
     CheckDefinition("ENTRA-MFA-001", "Entra ID", ("mfa registration", "mfa registration coverage", "multifactor authentication registration", "multi-factor authentication registration")),
     CheckDefinition("ENTRA-AUTH-001", "Entra ID", ("authentication methods", "authentication method registration", "registered authentication methods")),
@@ -133,19 +134,30 @@ CHECKS: tuple[CheckDefinition, ...] = (
     CheckDefinition("SPO-SHR-007", "SharePoint Online", ("m365 group guest membership", "microsoft 365 group guest membership")),
     CheckDefinition("SPO-SHR-008", "SharePoint Online", ("sharing domain restrictions", "external sharing domain restrictions")),
     CheckDefinition("SPO-SHR-009", "SharePoint Online", ("site external sharing", "site-level external sharing")),
-    CheckDefinition("SPO-SITE-001", "SharePoint Online", ("hub site association coverage", "hub site association")),
-    CheckDefinition("SPO-SITE-002", "SharePoint Online", ("hub site configuration", "sharepoint hub site configuration")),
-    CheckDefinition("SPO-SITE-003", "SharePoint Online", ("inactive sites", "stale sharepoint sites")),
+    CheckDefinition("SPO-SITE-001", "SharePoint Online", ("hub site association coverage", "hub association coverage")),
+    CheckDefinition("SPO-SITE-002", "SharePoint Online", ("hub site configuration", "hub configuration")),
+    CheckDefinition("SPO-SITE-003", "SharePoint Online", ("inactive sites", "inactive sharepoint sites")),
     CheckDefinition("SPO-SITE-004", "SharePoint Online", ("m365 group site ownership", "microsoft 365 group site ownership")),
     CheckDefinition("SPO-SITE-005", "SharePoint Online", ("orphaned group connected sites", "orphaned group-connected sites")),
-    CheckDefinition("SPO-SITE-006", "SharePoint Online", ("site collection administrator coverage", "site collection admin coverage")),
+    CheckDefinition("SPO-SITE-006", "SharePoint Online", ("site collection administrator coverage", "site admin coverage")),
     CheckDefinition("SPO-SITE-007", "SharePoint Online", ("site inventory", "sharepoint site inventory")),
     CheckDefinition("SPO-SITE-008", "SharePoint Online", ("site lock state", "sharepoint site lock state")),
-    CheckDefinition("SPO-SITE-009", "SharePoint Online", ("site storage management v2", "sharepoint site storage management v2")),
-    CheckDefinition("SPO-SITE-010", "SharePoint Online", ("site storage management", "sharepoint site storage management")),
+    CheckDefinition("SPO-SITE-009", "SharePoint Online", ("site storage management v2", "site storage management")),
+    CheckDefinition("SPO-SITE-010", "SharePoint Online", ("site storage management",)),
     CheckDefinition("SPO-TEN-001", "SharePoint Online", ("tenant configuration", "sharepoint tenant configuration")),
 )
 
+try:
+    from check_catalog_teams import CHECKS as TEAMS_CHECKS
+except ImportError:
+    TEAMS_CHECKS = ()
+
+try:
+    from check_catalog_onedrive import CHECKS as ONEDRIVE_CHECKS
+except ImportError:
+    ONEDRIVE_CHECKS = ()
+
+CHECKS = CHECKS + TEAMS_CHECKS + ONEDRIVE_CHECKS
 
 CHECK_BY_ID = {check.check_id: check for check in CHECKS}
 CHECK_ID_BY_ALIAS = {alias: check.check_id for check in CHECKS for alias in check.aliases}

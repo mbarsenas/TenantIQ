@@ -91,12 +91,15 @@ New-Item -ItemType Directory -Path $payloadRoot -Force | Out-Null
 try {
     Expand-Archive -Path $PackageZipPath -DestinationPath $payloadRoot -Force
 
-    # Customer package must contain both the customer-specific signed license and the exact public key used to validate it.
+    # Refresh all license-critical files from the current production source. The base dist ZIP may contain
+    # an older validator that cannot verify the current license schema.
     Copy-Item -Path $LicensePath -Destination (Join-Path $payloadRoot 'TenantIQ-License.json') -Force
     Copy-Item -Path $PublicKeyPath -Destination (Join-Path $payloadRoot 'TenantIQ-License-Public.pem') -Force
+    Copy-Item -Path $LicenseTool -Destination (Join-Path $payloadRoot 'Get-TenantIQLicenseStatus.ps1') -Force
 
-    # Verify the packaged copies, not merely the source files, before compression.
-    $packagedStatus = & (Join-Path $payloadRoot 'Get-TenantIQLicenseStatus.ps1') `
+    # Verify the exact files the customer will receive before compression.
+    $packagedLicenseTool = Join-Path $payloadRoot 'Get-TenantIQLicenseStatus.ps1'
+    $packagedStatus = & $packagedLicenseTool `
         -LicensePath (Join-Path $payloadRoot 'TenantIQ-License.json') `
         -PublicKeyPath (Join-Path $payloadRoot 'TenantIQ-License-Public.pem') 6>$null
     if ($packagedStatus -is [array]) { $packagedStatus = $packagedStatus | Select-Object -Last 1 }
@@ -108,25 +111,27 @@ try {
     $packageHash = (Get-FileHash -Path $PackageZipPath -Algorithm SHA256).Hash
     $licenseHash = (Get-FileHash -Path $LicensePath -Algorithm SHA256).Hash
     $publicKeyHash = (Get-FileHash -Path $PublicKeyPath -Algorithm SHA256).Hash
+    $licenseToolHash = (Get-FileHash -Path $LicenseTool -Algorithm SHA256).Hash
 
     $manifest = [ordered]@{
-        SchemaVersion      = '1.0'
-        Product            = 'TenantIQ'
-        DeliveryId         = $deliveryId
-        SubscriptionId     = $SubscriptionId
-        CustomerId         = [string]$subscription.customer
-        CustomerName       = $customerName
-        CustomerEmail      = $customerEmail
-        LicenseId          = [string]$license.LicenseId
-        Edition            = [string]$license.Edition
-        MaxTenants         = [int]$license.MaxTenants
-        CustomerDomain     = [string]$license.CustomerDomain
-        LicenseExpiresAt   = [string]$license.ExpiresAt
-        PackageSourceSha256= $packageHash
-        LicenseSha256      = $licenseHash
-        PublicKeySha256    = $publicKeyHash
-        CreatedAt          = [datetimeoffset]::UtcNow.ToString('o')
-        ClaimExpiresAt     = $claimExpiresAt.ToString('o')
+        SchemaVersion       = '1.1'
+        Product             = 'TenantIQ'
+        DeliveryId          = $deliveryId
+        SubscriptionId      = $SubscriptionId
+        CustomerId          = [string]$subscription.customer
+        CustomerName        = $customerName
+        CustomerEmail       = $customerEmail
+        LicenseId           = [string]$license.LicenseId
+        Edition             = [string]$license.Edition
+        MaxTenants          = [int]$license.MaxTenants
+        CustomerDomain      = [string]$license.CustomerDomain
+        LicenseExpiresAt    = [string]$license.ExpiresAt
+        PackageSourceSha256 = $packageHash
+        LicenseSha256       = $licenseHash
+        PublicKeySha256     = $publicKeyHash
+        LicenseToolSha256   = $licenseToolHash
+        CreatedAt           = [datetimeoffset]::UtcNow.ToString('o')
+        ClaimExpiresAt      = $claimExpiresAt.ToString('o')
     }
     $manifest | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $payloadRoot 'CUSTOMER-DELIVERY.json') -Encoding UTF8
 

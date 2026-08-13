@@ -5,22 +5,11 @@ import json
 from pathlib import Path
 from typing import Any
 
-
-CHECK_ID_ALIASES = {
-    # Entra ID
-    "mfa registration": "ENTRA-MFA-001",
-    "mfa registration coverage": "ENTRA-MFA-001",
-    "multifactor authentication registration": "ENTRA-MFA-001",
-    "multi-factor authentication registration": "ENTRA-MFA-001",
-}
+from check_catalog import canonical_check_id
 
 
 def _normalize_key(value: str) -> str:
     return "".join(ch for ch in value.strip().lower() if ch.isalnum())
-
-
-def _normalize_text(value: Any) -> str:
-    return " ".join(str(value or "").strip().lower().split())
 
 
 def _first_present(row: dict[str, Any], *names: str) -> Any:
@@ -35,11 +24,11 @@ def _first_present(row: dict[str, Any], *names: str) -> Any:
 def _infer_check_id(row: dict[str, Any], title: Any) -> str | None:
     explicit = _first_present(row, "check_id", "checkid", "id", "controlid")
     if explicit:
-        return str(explicit).strip()
+        canonical = canonical_check_id(str(explicit))
+        return canonical or str(explicit).strip()
 
-    normalized_title = _normalize_text(title)
-    if normalized_title in CHECK_ID_ALIASES:
-        return CHECK_ID_ALIASES[normalized_title]
+    if title:
+        return canonical_check_id(str(title))
 
     return None
 
@@ -149,7 +138,7 @@ def load_assessment(path: str, follow_portfolio: bool = True) -> list[dict[str, 
 
 
 def select_finding(findings: list[dict[str, Any]], check_id: str) -> dict[str, Any]:
-    requested = check_id.strip().lower()
+    requested = (canonical_check_id(check_id) or check_id).strip().lower()
     for finding in findings:
         candidate = str(finding.get("check_id", "")).strip().lower()
         if candidate == requested:

@@ -1,242 +1,168 @@
 # TenantIQ - Prerequisites
 
-Before running TenantIQ, verify that the workstation and Microsoft 365 administrative account meet the following requirements.
+TenantIQ v1.0 is designed to run from a Windows administrative workstation using PowerShell 7 or later.
 
-## Operating System
+The supported entry point is:
 
-TenantIQ is currently designed to run from a Windows administrative workstation.
+  .\Start-TenantIQ.ps1
 
-Recommended environment:
+The launcher performs prerequisite validation before the TenantIQ main menu opens.
 
-  Windows 10 or Windows 11
-  Windows Server administrative workstation
+## Required Runtime
+
+  Windows 10, Windows 11, or a supported Windows administrative workstation
   64-bit operating system
+  PowerShell 7 or later (pwsh.exe)
+  Internet access to Microsoft 365 authentication and administrative endpoints
+  Permission to execute TenantIQ PowerShell scripts under organizational policy
 
-TenantIQ relies on Microsoft PowerShell modules used to administer Microsoft 365 services.
-
-
-## PowerShell
-
-TenantIQ requires Windows PowerShell or a compatible PowerShell environment capable of loading the Microsoft 365 administrative modules required by each workload.
-
-For the current TenantIQ release, Windows PowerShell 5.1 is recommended.
-
-Check your PowerShell version with:
+Check the PowerShell version with:
 
   $PSVersionTable.PSVersion
 
-TIP: Use a dedicated PowerShell session for TenantIQ to reduce the possibility of module or authentication-library conflicts.
+TenantIQ v1.0 requires PowerShell 7+. Windows PowerShell 5.1 is not the supported TenantIQ runtime.
 
+## Required PowerShell Modules
 
-## PowerShell Execution Policy
-
-PowerShell must permit TenantIQ scripts to execute.
-
-Check the current execution policy with:
-
-  Get-ExecutionPolicy -List
-
-If scripts are blocked, consult your organization's PowerShell security policy before changing the execution policy.
-
-WARNING: Do not weaken organizational PowerShell security controls simply to run TenantIQ.
-
-
-## Required Microsoft 365 Modules
-
-TenantIQ uses Microsoft administrative PowerShell modules to retrieve Microsoft 365 configuration information.
-
-The modules required depend on the workload being assessed.
-
-
-## Exchange Online
-
-Exchange Online assessments require:
+TenantIQ startup currently validates the following required modules:
 
   ExchangeOnlineManagement
+  Microsoft.Graph.Authentication
+  Microsoft.Graph.Reports
+  Microsoft.Graph.Users
+  Microsoft.Graph.Groups
+  Microsoft.Graph.Applications
+  Microsoft.Graph.Identity.SignIns
+  Microsoft.Graph.Identity.Governance
+  Microsoft.Graph.Identity.DirectoryManagement
+  Microsoft.Online.SharePoint.PowerShell
+  MicrosoftTeams
 
-Check whether the module is installed:
+The following component is currently optional:
 
-  Get-Module ExchangeOnlineManagement -ListAvailable
+  PnP.PowerShell
 
-Install it when necessary:
+If an optional component is unavailable, TenantIQ can still start. Controls that depend on unavailable optional capabilities may return INFO or another unscored result instead of a scored finding.
 
-  Install-Module ExchangeOnlineManagement -Scope CurrentUser
+## Installing Required Modules
 
-TenantIQ uses Exchange Online PowerShell to retrieve messaging, mail flow, security, authentication, and tenant configuration information.
-
-TIP: Avoid keeping obsolete versions of ExchangeOnlineManagement installed when they are no longer required. Conflicting module or authentication-library versions can cause connection problems.
-
-
-## Entra ID
-
-Entra ID assessments use Microsoft Graph PowerShell.
-
-The required Microsoft Graph modules depend on the TenantIQ health checks being executed.
-
-Check installed Microsoft Graph modules with:
-
-  Get-Module Microsoft.Graph* -ListAvailable
-
-Microsoft Graph PowerShell can be installed with:
-
-  Install-Module Microsoft.Graph -Scope CurrentUser
-
-TenantIQ may request Microsoft Graph permissions required to read the configuration being assessed.
-
-
-## SharePoint Online
-
-SharePoint Online assessments require the SharePoint Online Management Shell module.
-
-The module provides commands such as:
-
-  Connect-SPOService
-  Get-SPOTenant
-  Get-SPOSite
-  Get-SPOUser
-
-Check whether the module is installed:
-
-  Get-Module Microsoft.Online.SharePoint.PowerShell -ListAvailable
-
-If required, install the SharePoint Online Management Shell before running SharePoint Online assessments.
-
-
-## Administrative Permissions
-
-TenantIQ is designed for Microsoft 365 administrators and requires sufficient read access to the configuration being assessed.
-
-Required permissions vary by workload and by individual health check.
-
-An account may successfully connect to a service but still lack permission to retrieve specific configuration information.
-
-When this occurs, TenantIQ may report that the health check could not be completed or that specific objects could not be evaluated.
-
-
-## Exchange Online Permissions
-
-The administrative account must have sufficient Exchange Online permissions to retrieve the configuration evaluated by TenantIQ.
-
-Some checks may require elevated Exchange administrative roles depending on the configuration being queried.
-
-
-## Entra ID Permissions
-
-Entra ID assessments use Microsoft Graph permissions.
-
-The scopes required depend on the health checks being executed.
-
-TenantIQ should request only the permissions necessary to retrieve the Microsoft Graph configuration required for assessment.
-
-Some Microsoft Graph permissions may require administrator consent.
-
-
-## SharePoint Online Permissions
-
-SharePoint Online assessments generally require SharePoint administrative permissions.
-
-Some site-level operations have additional requirements.
-
-For example, retrieving site users or site collection administrators may require the connected account to have appropriate administrative access to the individual site.
-
-A SharePoint Administrator connection alone does not guarantee that every site-level object can be enumerated.
-
-TenantIQ should identify sites that cannot be evaluated rather than automatically treating inaccessible sites as unhealthy.
-
-
-## Authentication
-
-TenantIQ uses Microsoft's supported authentication mechanisms provided by the administrative PowerShell modules.
-
-Interactive authentication may be required when a connection does not already exist.
-
-Multi-factor authentication is supported through the Microsoft authentication process used by the applicable module.
-
-TenantIQ should never require an administrator's Microsoft 365 password to be stored in TenantIQ configuration files.
-
-
-## Internet Connectivity
-
-The workstation running TenantIQ requires network access to the Microsoft 365 services being assessed.
-
-This may include Microsoft authentication endpoints and administrative service endpoints for:
-
-  Exchange Online
-  Microsoft Graph
-  SharePoint Online
-
-Corporate firewalls, proxies, SSL inspection, Conditional Access policies, or endpoint security controls may affect connectivity.
-
-
-## Tenant Connectivity
-
-Before running assessments, TenantIQ must establish or detect an authenticated connection to the selected workload.
-
-Typical Microsoft administrative connection commands include:
+Run PowerShell 7 and install missing modules for the current user as needed.
 
 Exchange Online:
 
-  Connect-ExchangeOnline
+  Install-Module ExchangeOnlineManagement -Scope CurrentUser
 
-Entra ID / Microsoft Graph:
+Microsoft Graph modules:
 
-  Connect-MgGraph
+  Install-Module Microsoft.Graph.Authentication -Scope CurrentUser
+  Install-Module Microsoft.Graph.Reports -Scope CurrentUser
+  Install-Module Microsoft.Graph.Users -Scope CurrentUser
+  Install-Module Microsoft.Graph.Groups -Scope CurrentUser
+  Install-Module Microsoft.Graph.Applications -Scope CurrentUser
+  Install-Module Microsoft.Graph.Identity.SignIns -Scope CurrentUser
+  Install-Module Microsoft.Graph.Identity.Governance -Scope CurrentUser
+  Install-Module Microsoft.Graph.Identity.DirectoryManagement -Scope CurrentUser
 
 SharePoint Online:
 
-  Connect-SPOService -Url https://<tenant>-admin.sharepoint.com
+  Install-Module Microsoft.Online.SharePoint.PowerShell -Scope CurrentUser
 
-TenantIQ may automatically detect or initiate these connections where supported.
+Microsoft Teams:
 
-See "Connecting to Microsoft 365" in the Help Center for additional information.
+  Install-Module MicrosoftTeams -Scope CurrentUser
 
+Optional PnP PowerShell:
 
-## Required TenantIQ Files
+  Install-Module PnP.PowerShell -Scope CurrentUser
 
-Do not remove or rename TenantIQ framework, module, health-check, or asset directories unless the TenantIQ configuration has also been updated.
+Follow your organization's software installation and PowerShell repository policies before installing modules.
 
-The TenantIQ installation contains components such as:
+## Automatic Environment Validation
 
-  Framework files
-  Health check scripts
-  Workload modules
-  Configuration files
-  Assets
-  Help documentation
-  Reporting components
+When you run:
 
-Moving individual files without updating their references may prevent health checks or reports from loading.
+  .\Start-TenantIQ.ps1
 
+TenantIQ displays an Environment Validation section.
 
-## Recommended Administrative Workstation
+Statuses are:
 
-For consistent assessment results, use a trusted administrative workstation with:
+  [OK]       Required component is available.
+  [MISSING]  Required component is unavailable. TenantIQ will not continue.
+  [OPTIONAL] Optional component is unavailable. TenantIQ can continue.
 
-  Current Windows updates
-  Current Microsoft 365 PowerShell modules
-  Reliable Internet connectivity
-  Appropriate Microsoft 365 administrative access
-  PowerShell script execution permitted by organizational policy
+When a required component is missing, the launcher prints the corresponding installation action and stops before loading the assessment engine.
 
-Avoid running TenantIQ from an untrusted or shared workstation.
+## Microsoft 365 Administrative Access
 
+TenantIQ requires sufficient read access to retrieve the evidence needed by the selected workload. The exact Microsoft role, Graph scope, or service permission varies by control.
 
-## Before Your First Assessment
+An account can authenticate successfully but still lack permission to retrieve specific evidence. TenantIQ should report that limitation as an unscored or unavailable-evidence result rather than assuming the tenant configuration is healthy or unhealthy.
 
-Verify the following:
+Use an administrative account appropriate for assessment of:
 
-  1. TenantIQ starts successfully.
+  Exchange Online
+  Entra ID
+  SharePoint Online
+  Microsoft Teams
+  OneDrive
+  Microsoft Intune
+  Microsoft Defender
+  Microsoft Purview
 
-  2. Required Microsoft 365 PowerShell modules are installed.
+Microsoft Graph permissions requested by TenantIQ may require administrator consent.
 
-  3. Your administrative account can authenticate.
+## Authentication
 
-  4. MFA or Conditional Access requirements can be completed.
+TenantIQ uses Microsoft-supported authentication provided by Exchange Online PowerShell, Microsoft Graph, SharePoint Online, Teams, and other applicable Microsoft administrative interfaces.
 
-  5. The selected workload reports a successful connection.
+Interactive sign-in and MFA are supported through Microsoft's authentication flow.
 
-  6. Individual health checks can retrieve tenant information.
+TenantIQ does not require Microsoft 365 passwords to be stored in TenantIQ configuration files.
 
-  7. TenantIQ can write to its required local log and report locations.
+Some workloads use isolated PowerShell processes to prevent authentication-library and module conflicts between Microsoft administrative SDKs. Additional Microsoft sign-in prompts can therefore be expected when moving between certain workloads.
 
-TIP: Run several individual health checks before the first Full Assessment. This provides a quick way to identify missing modules, permissions, or connectivity problems.
+## Network Requirements
+
+The workstation must be able to reach Microsoft authentication and Microsoft 365 administrative endpoints. Connectivity can be affected by:
+
+  Corporate firewalls
+  Web proxies
+  SSL inspection
+  Conditional Access
+  Endpoint security controls
+  DNS or Internet connectivity
+
+If authentication succeeds but a specific control cannot retrieve evidence, also verify tenant licensing, API availability, permissions, and service-specific requirements.
+
+## PowerShell Execution Policy
+
+Check the current policy with:
+
+  Get-ExecutionPolicy -List
+
+If TenantIQ scripts are blocked, follow your organization's approved PowerShell security process. Do not weaken enterprise security controls simply to run TenantIQ.
+
+## TenantIQ Installation Integrity
+
+Keep the TenantIQ directory structure intact. Do not independently move or rename framework, runtime, health-check, module, asset, configuration, or reporting files.
+
+The supported launcher resolves dependencies relative to the TenantIQ installation directory.
+
+Assessment output is written under:
+
+  06 Output
+
+## Before the First Full Assessment
+
+Verify:
+
+  1. PowerShell 7 is running.
+  2. .\Start-TenantIQ.ps1 completes prerequisite validation.
+  3. All required dependencies display [OK].
+  4. The Microsoft 365 administrative account can complete MFA/Conditional Access requirements.
+  5. The workstation can reach Microsoft 365 services.
+  6. The TenantIQ directory is writable so assessment reports can be exported.
+  7. Workloads are run from the TenantIQ main menu rather than by directly launching internal scripts.
+
+After validation, run workloads 1 through 8 and then generate the Portfolio Report with option 9.

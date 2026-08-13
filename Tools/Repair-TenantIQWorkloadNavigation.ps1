@@ -13,15 +13,6 @@ $content = Get-Content -LiteralPath $TenantIQPath -Raw
 $backup = "$TenantIQPath.navigation-backup-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 Copy-Item -LiteralPath $TenantIQPath -Destination $backup -Force
 
-$old = @'
-function Start-TenantIQSharePointModule { if(-not(Ensure-TenantIQSharePointConnection)){Wait-TenantIQ;return}; Start-TenantIQSharePointAssessment; Wait-TenantIQ }
-function Start-TenantIQTeamsModule { Start-TenantIQTeamsAssessment; Wait-TenantIQ }
-function Start-TenantIQOneDriveModule { if(-not(Ensure-TenantIQSharePointConnection)){Wait-TenantIQ;return}; Start-TenantIQOneDriveAssessment; Wait-TenantIQ }
-function Start-TenantIQIntuneModule { Start-TenantIQIntuneAssessment; Wait-TenantIQ }
-function Start-TenantIQDefenderModule { Start-TenantIQDefenderAssessment; Wait-TenantIQ }
-function Start-TenantIQPurviewModule { Start-TenantIQPurviewAssessment; Wait-TenantIQ }
-'@
-
 $new = @'
 function Start-TenantIQWorkloadModule {
     param(
@@ -79,17 +70,39 @@ function Start-TenantIQPurviewModule {
 }
 '@
 
-if (-not $content.Contains($old)) {
-    throw 'Expected six one-shot workload module functions were not found. TenantIQ.ps1 may have changed; no changes were made.'
+# Match the six current one-line wrappers regardless of CRLF/LF line endings or minor spacing differences.
+$pattern = '(?ms)^function\s+Start-TenantIQSharePointModule\s*\{[^\r\n]*\}\s*\r?\n' +
+           '^function\s+Start-TenantIQTeamsModule\s*\{[^\r\n]*\}\s*\r?\n' +
+           '^function\s+Start-TenantIQOneDriveModule\s*\{[^\r\n]*\}\s*\r?\n' +
+           '^function\s+Start-TenantIQIntuneModule\s*\{[^\r\n]*\}\s*\r?\n' +
+           '^function\s+Start-TenantIQDefenderModule\s*\{[^\r\n]*\}\s*\r?\n' +
+           '^function\s+Start-TenantIQPurviewModule\s*\{[^\r\n]*\}'
+
+$matches = [regex]::Matches($content, $pattern)
+if ($matches.Count -ne 1) {
+    throw "Expected one block containing the six one-shot workload module functions, but found $($matches.Count). No changes were made."
 }
 
-$content = $content.Replace($old, $new)
+$content = [regex]::Replace($content, $pattern, [System.Text.RegularExpressions.MatchEvaluator]{ param($m) $new }, 1)
 Set-Content -LiteralPath $TenantIQPath -Value $content -Encoding utf8
 
-$remaining = Select-String -LiteralPath $TenantIQPath -Pattern '^function Start-TenantIQ(SharePoint|Teams|OneDrive|Intune|Defender|Purview)Module \{.*Wait-TenantIQ.*\}$'
-if ($remaining) {
-    Copy-Item -LiteralPath $backup -Destination $TenantIQPath -Force
-    throw 'Navigation verification failed. Original TenantIQ.ps1 was restored.'
+# Verify the shared menu function and all six wrappers are now present.
+$requiredFunctions = @(
+    'Start-TenantIQWorkloadModule',
+    'Start-TenantIQSharePointModule',
+    'Start-TenantIQTeamsModule',
+    'Start-TenantIQOneDriveModule',
+    'Start-TenantIQIntuneModule',
+    'Start-TenantIQDefenderModule',
+    'Start-TenantIQPurviewModule'
+)
+
+$updated = Get-Content -LiteralPath $TenantIQPath -Raw
+foreach ($functionName in $requiredFunctions) {
+    if ($updated -notmatch "(?m)^function\s+$([regex]::Escape($functionName))\b") {
+        Copy-Item -LiteralPath $backup -Destination $TenantIQPath -Force
+        throw "Navigation verification failed for $functionName. Original TenantIQ.ps1 was restored."
+    }
 }
 
 Write-Host '[OK] TenantIQ workload navigation standardized.' -ForegroundColor Green

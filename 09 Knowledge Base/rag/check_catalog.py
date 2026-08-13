@@ -57,6 +57,75 @@ CHECKS: tuple[CheckDefinition, ...] = (
             "password expiration",
         ),
     ),
+    CheckDefinition(
+        check_id="ENTRA-CA-001",
+        workload="Entra ID",
+        aliases=(
+            "authentication context",
+            "conditional access authentication context",
+            "authentication contexts",
+        ),
+    ),
+    CheckDefinition(
+        check_id="ENTRA-CA-002",
+        workload="Entra ID",
+        aliases=(
+            "authentication strength",
+            "conditional access authentication strength",
+        ),
+    ),
+    CheckDefinition(
+        check_id="ENTRA-CA-003",
+        workload="Entra ID",
+        aliases=(
+            "authentication strengths",
+            "conditional access authentication strengths",
+        ),
+    ),
+    CheckDefinition(
+        check_id="ENTRA-CA-004",
+        workload="Entra ID",
+        aliases=(
+            "conditional access exclusions",
+            "ca exclusions",
+            "conditional access policy exclusions",
+        ),
+    ),
+    CheckDefinition(
+        check_id="ENTRA-CA-005",
+        workload="Entra ID",
+        aliases=(
+            "conditional access policies",
+            "conditional access policy",
+            "ca policies",
+        ),
+    ),
+    CheckDefinition(
+        check_id="ENTRA-CA-006",
+        workload="Entra ID",
+        aliases=(
+            "legacy authentication",
+            "legacy auth",
+            "block legacy authentication",
+        ),
+    ),
+    CheckDefinition(
+        check_id="ENTRA-CA-007",
+        workload="Entra ID",
+        aliases=(
+            "named locations",
+            "conditional access named locations",
+        ),
+    ),
+    CheckDefinition(
+        check_id="ENTRA-CA-008",
+        workload="Entra ID",
+        aliases=(
+            "risk based conditional access",
+            "risk-based conditional access",
+            "identity protection conditional access",
+        ),
+    ),
 )
 
 

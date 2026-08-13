@@ -46,7 +46,7 @@ function Export-TenantIQPortfolioReport {
         $PassCount = @($Rows | Where-Object { $_.Status -eq 'PASS' }).Count
         $WarningCount = @($Rows | Where-Object { $_.Status -eq 'WARNING' }).Count
         $FailCount = @($Rows | Where-Object { $_.Status -eq 'FAIL' }).Count
-        $InfoCount = @($Rows | Where-Object { $_.Status -eq 'INFO' }).Count
+        $InfoCount = @($Rows | Where-Object { $_.Status -notin @('PASS','WARNING','FAIL') }).Count
         $TotalCount = $Rows.Count
         $ScoredCount = $PassCount + $WarningCount + $FailCount
         $Score = if ($ScoredCount -gt 0) {

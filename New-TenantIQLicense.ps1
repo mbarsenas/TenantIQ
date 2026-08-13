@@ -46,7 +46,7 @@ if (-not [System.Security.Cryptography.CryptographicOperations]::FixedTimeEquals
 }
 
 $Payload = [ordered]@{
-    SchemaVersion  = '1.0'
+    SchemaVersion  = '1.1'
     Product        = 'TenantIQ'
     LicenseId      = $LicenseId
     CustomerName   = $CustomerName.Trim()
@@ -60,6 +60,8 @@ $Payload = [ordered]@{
     KeyId          = $KeyId
 }
 
+# Sign one exact immutable byte sequence and embed those exact bytes in the license.
+# The verifier no longer has to recreate JSON and risk serializer/version differences.
 $CanonicalJson = $Payload | ConvertTo-Json -Depth 6 -Compress
 $Data = [System.Text.Encoding]::UTF8.GetBytes($CanonicalJson)
 
@@ -76,8 +78,25 @@ finally {
     $rsa.Dispose()
 }
 
+# Self-verify before writing or returning any license.
+$rsaVerify = [System.Security.Cryptography.RSA]::Create()
+try {
+    $rsaVerify.ImportFromPem((Get-Content -Path $PublicKeyPath -Raw))
+    $selfVerified = $rsaVerify.VerifyData(
+        $Data,
+        $SignatureBytes,
+        [System.Security.Cryptography.HashAlgorithmName]::SHA256,
+        [System.Security.Cryptography.RSASignaturePadding]::Pkcs1
+    )
+}
+finally {
+    $rsaVerify.Dispose()
+}
+if (-not $selfVerified) { throw 'TenantIQ license self-verification failed immediately after signing. License was not written.' }
+
 $License = [ordered]@{}
 foreach ($Key in $Payload.Keys) { $License[$Key] = $Payload[$Key] }
+$License.SignedPayload = [Convert]::ToBase64String($Data)
 $License.SignatureAlgorithm = 'RSA-SHA256'
 $License.Signature = [Convert]::ToBase64String($SignatureBytes)
 

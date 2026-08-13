@@ -1,0 +1,17 @@
+# TenantIQ - SharePoint Online
+
+SharePoint Online includes 50 registered TenantIQ controls covering tenant configuration, site governance, sharing, access, storage, lifecycle, and operational posture.
+
+TenantIQ uses the SharePoint Online Management Shell and may request the tenant name before assessment.
+
+Typical tenant admin endpoint:
+
+  https://<tenant>-admin.sharepoint.com
+
+Run SharePoint Online from main menu option [3]. Complete Microsoft authentication when prompted and allow all 50 checks to finish.
+
+Some site-level evidence can require additional administrative access beyond a successful tenant-level connection. When evidence cannot be retrieved, TenantIQ reports the limitation rather than assuming the site is healthy or unhealthy.
+
+The workload exports a timestamped CSV under 06 Output.
+
+OneDrive assessment also relies on SharePoint administrative connectivity because OneDrive for Business is built on SharePoint Online infrastructure.

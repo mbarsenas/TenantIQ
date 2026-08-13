@@ -27,6 +27,7 @@ jobs:
       TENANTIQ_R2_SECRET_ACCESS_KEY: ${{ secrets.TENANTIQ_R2_SECRET_ACCESS_KEY }}
       TENANTIQ_R2_BUCKET: ${{ secrets.TENANTIQ_R2_BUCKET }}
       TENANTIQ_FULFILLMENT_API_KEY: ${{ secrets.TENANTIQ_FULFILLMENT_API_KEY }}
+      TENANTIQ_LICENSE_PRIVATE_KEY_B64: ${{ secrets.TENANTIQ_LICENSE_PRIVATE_KEY_B64 }}
       TENANTIQ_SITE_URL: https://tenantiq365.com
       TENANTIQ_LICENSE_PRIVATE_KEY_PATH: ${{ github.workspace }}\.tenantiq-secrets\TenantIQ-License-Private.pem
       TENANTIQ_SUBSCRIPTION_ID: ${{ inputs.subscription_id }}
@@ -43,26 +44,22 @@ jobs:
             'TENANTIQ_R2_ACCOUNT_ID',
             'TENANTIQ_R2_ACCESS_KEY_ID',
             'TENANTIQ_R2_SECRET_ACCESS_KEY',
-            'TENANTIQ_FULFILLMENT_API_KEY'
+            'TENANTIQ_FULFILLMENT_API_KEY',
+            'TENANTIQ_LICENSE_PRIVATE_KEY_B64'
           )
           foreach ($name in $required) {
             if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
               throw "Required GitHub Actions secret is missing: $name"
             }
           }
-          if ([string]::IsNullOrWhiteSpace('${{ secrets.TENANTIQ_LICENSE_PRIVATE_KEY_B64 }}')) {
-            throw 'Required GitHub Actions secret is missing: TENANTIQ_LICENSE_PRIVATE_KEY_B64'
-          }
 
       - name: Restore private signing key
         shell: pwsh
-        env:
-          PRIVATE_KEY_B64: ${{ secrets.TENANTIQ_LICENSE_PRIVATE_KEY_B64 }}
         run: |
           $secretDirectory = Split-Path -Parent $env:TENANTIQ_LICENSE_PRIVATE_KEY_PATH
           New-Item -ItemType Directory -Path $secretDirectory -Force | Out-Null
           try {
-            $bytes = [Convert]::FromBase64String($env:PRIVATE_KEY_B64)
+            $bytes = [Convert]::FromBase64String($env:TENANTIQ_LICENSE_PRIVATE_KEY_B64)
           }
           catch {
             throw 'TENANTIQ_LICENSE_PRIVATE_KEY_B64 is not valid Base64.'

@@ -43,19 +43,11 @@ function Test-TenantIQPrerequisites {
         Write-Host '===============================' -ForegroundColor Cyan
         Write-Host ''
 
-        foreach ($Result in $Results) {
-            $Color = switch ($Result.Status) {
-                'PASS' { 'Green' }
-                'FAIL' { 'Red' }
-                default { 'Yellow' }
-            }
-
-            $Label = switch ($Result.Status) {
-                'PASS' { '[OK]' }
-                'FAIL' { '[MISSING]' }
-                default { '[OPTIONAL]' }
-            }
-
+        # Customer startup shows only required dependencies. Optional enrichment
+        # modules remain tracked internally but do not appear as warnings/errors.
+        foreach ($Result in ($Results | Where-Object { $_.Required -eq $true })) {
+            $Color = if ($Result.Status -eq 'PASS') { 'Green' } else { 'Red' }
+            $Label = if ($Result.Status -eq 'PASS') { '[OK]' } else { '[MISSING]' }
             Write-Host ('{0} {1}' -f $Label,$Result.Name) -ForegroundColor $Color
         }
 
@@ -70,11 +62,6 @@ function Test-TenantIQPrerequisites {
             foreach ($Missing in $RequiredMissing) {
                 Write-Host ('  - {0}' -f $Missing.Remediation) -ForegroundColor Yellow
             }
-        }
-
-        if ($OptionalMissing.Count -gt 0) {
-            Write-Host ''
-            Write-Host ('[INFO] {0} optional component(s) are not installed. TenantIQ can still start.' -f $OptionalMissing.Count) -ForegroundColor Yellow
         }
     }
 

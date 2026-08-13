@@ -6,6 +6,7 @@ $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Main = Join-Path $Root 'TenantIQ.ps1'
 $Prereq = Join-Path $Root '01 Framework\Test-TenantIQPrerequisites.ps1'
 $ConfigPath = Join-Path $Root 'TenantIQ.json'
+$FirstRunMarker = Join-Path $Root '.tenantiq-first-run-complete'
 
 try { $Host.UI.RawUI.WindowTitle = 'TenantIQ M365 Assessment Tool' } catch {}
 
@@ -73,6 +74,47 @@ if (Test-Path (Join-Path $Root '06 Output')) {
 }
 else {
     Write-Host '[INFO] Output directory will be created on first report export' -ForegroundColor Yellow
+}
+
+# Customer onboarding is intentionally launcher-only. It does not alter assessment modules.
+if (-not (Test-Path $FirstRunMarker)) {
+    Write-Host ''
+    Write-Host '============================================================' -ForegroundColor DarkCyan
+    Write-Host '                    Welcome to TenantIQ' -ForegroundColor Cyan
+    Write-Host '============================================================' -ForegroundColor DarkCyan
+    Write-Host ''
+    Write-Host 'TenantIQ v1.0 provides a read-only Microsoft 365 assessment' -ForegroundColor White
+    Write-Host 'across 8 workloads and 416 registered controls.' -ForegroundColor White
+    Write-Host ''
+    Write-Host 'Recommended first assessment:' -ForegroundColor Cyan
+    Write-Host '  1. Run workloads 1 through 8 from the main menu.'
+    Write-Host '  2. Complete Microsoft authentication when prompted.'
+    Write-Host '  3. Allow each workload to export its assessment CSV.'
+    Write-Host '  4. Select 9 to generate the Portfolio Report.'
+    Write-Host ''
+    Write-Host 'Assessment output:' -ForegroundColor Cyan
+    Write-Host '  06 Output' -ForegroundColor White
+    Write-Host ''
+    Write-Host 'Result model:' -ForegroundColor Cyan
+    Write-Host '  PASS / WARNING / FAIL       = scored controls'
+    Write-Host '  INFO / NOT EVALUATED        = unscored context'
+    Write-Host ''
+    Write-Host 'Important:' -ForegroundColor Yellow
+    Write-Host '  TenantIQ does not automatically remediate or modify the tenant.'
+    Write-Host '  Some workloads use isolated PowerShell sessions, so additional'
+    Write-Host '  Microsoft sign-in prompts can be expected during a full assessment.'
+    Write-Host ''
+    Write-Host 'Help is always available from main-menu option 10.' -ForegroundColor DarkGray
+    Write-Host ''
+
+    $null = Read-Host 'Press Enter to continue to TenantIQ'
+
+    try {
+        Set-Content -Path $FirstRunMarker -Value ('TenantIQ first run completed: {0}' -f (Get-Date).ToString('o')) -Encoding UTF8 -Force
+    }
+    catch {
+        # A read-only install location should not prevent TenantIQ from launching.
+    }
 }
 
 Write-Host ''

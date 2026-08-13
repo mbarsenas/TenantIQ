@@ -94,6 +94,9 @@ else {
     Write-Host '[INFO] Output directory will be created on first report export' -ForegroundColor Yellow
 }
 
+Write-Host ''
+$null = Read-Host 'Press Enter to continue'
+
 if (-not (Test-Path $FirstRunMarker)) {
     Write-Host ''
     Write-Host '============================================================' -ForegroundColor DarkCyan

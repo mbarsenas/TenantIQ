@@ -15,6 +15,11 @@ if ([string]::IsNullOrWhiteSpace($StripeSecretKey)) {
 if (-not $SubscriptionId.StartsWith('sub_')) { throw 'SubscriptionId must begin with sub_.' }
 if (-not (Test-Path $LicensePath)) { throw "License file not found: $LicensePath" }
 
+$PublicKeyPath = Join-Path $PSScriptRoot 'TenantIQ-License-Public.pem'
+$LicenseTool = Join-Path $PSScriptRoot 'Get-TenantIQLicenseStatus.ps1'
+if (-not (Test-Path $PublicKeyPath)) { throw "Public verification key not found: $PublicKeyPath" }
+if (-not (Test-Path $LicenseTool)) { throw "License verification tool not found: $LicenseTool" }
+
 function Invoke-StripeApi {
     param(
         [Parameter(Mandatory)][ValidateSet('GET','POST')][string]$Method,
@@ -42,7 +47,15 @@ if ([string]$license.LicenseId -ne [string]$metadata.tenantiq_license_id) {
     throw "License ID does not match Stripe fulfillment metadata. License: $($license.LicenseId) Stripe: $($metadata.tenantiq_license_id)"
 }
 if ([string]$license.Edition -ne [string]$metadata.tenantiq_edition) {
-    throw "License edition does not match Stripe fulfillment metadata."
+    throw 'License edition does not match Stripe fulfillment metadata.'
+}
+
+# Validate the signed license against the current production public key before any customer package is created.
+$licenseStatus = & $LicenseTool -LicensePath $LicensePath -PublicKeyPath $PublicKeyPath 6>$null
+if ($licenseStatus -is [array]) { $licenseStatus = $licenseStatus | Select-Object -Last 1 }
+if (-not $licenseStatus -or -not $licenseStatus.SignatureValid -or [string]$licenseStatus.State -ne 'ACTIVE') {
+    $reason = if ($licenseStatus -and $licenseStatus.Reason) { [string]$licenseStatus.Reason } else { 'License validation did not return an active signed license.' }
+    throw "Refusing to create customer delivery because the license is not cryptographically valid. $reason"
 }
 
 if (-not $PackageZipPath) {
@@ -78,11 +91,23 @@ New-Item -ItemType Directory -Path $payloadRoot -Force | Out-Null
 try {
     Expand-Archive -Path $PackageZipPath -DestinationPath $payloadRoot -Force
 
-    # Customer package must contain the customer-specific signed license at a deterministic path.
+    # Customer package must contain both the customer-specific signed license and the exact public key used to validate it.
     Copy-Item -Path $LicensePath -Destination (Join-Path $payloadRoot 'TenantIQ-License.json') -Force
+    Copy-Item -Path $PublicKeyPath -Destination (Join-Path $payloadRoot 'TenantIQ-License-Public.pem') -Force
+
+    # Verify the packaged copies, not merely the source files, before compression.
+    $packagedStatus = & (Join-Path $payloadRoot 'Get-TenantIQLicenseStatus.ps1') `
+        -LicensePath (Join-Path $payloadRoot 'TenantIQ-License.json') `
+        -PublicKeyPath (Join-Path $payloadRoot 'TenantIQ-License-Public.pem') 6>$null
+    if ($packagedStatus -is [array]) { $packagedStatus = $packagedStatus | Select-Object -Last 1 }
+    if (-not $packagedStatus -or -not $packagedStatus.SignatureValid -or [string]$packagedStatus.State -ne 'ACTIVE') {
+        $reason = if ($packagedStatus -and $packagedStatus.Reason) { [string]$packagedStatus.Reason } else { 'Packaged license verification failed.' }
+        throw "Customer package license verification failed before compression. $reason"
+    }
 
     $packageHash = (Get-FileHash -Path $PackageZipPath -Algorithm SHA256).Hash
     $licenseHash = (Get-FileHash -Path $LicensePath -Algorithm SHA256).Hash
+    $publicKeyHash = (Get-FileHash -Path $PublicKeyPath -Algorithm SHA256).Hash
 
     $manifest = [ordered]@{
         SchemaVersion      = '1.0'
@@ -99,6 +124,7 @@ try {
         LicenseExpiresAt   = [string]$license.ExpiresAt
         PackageSourceSha256= $packageHash
         LicenseSha256      = $licenseHash
+        PublicKeySha256    = $publicKeyHash
         CreatedAt          = [datetimeoffset]::UtcNow.ToString('o')
         ClaimExpiresAt     = $claimExpiresAt.ToString('o')
     }

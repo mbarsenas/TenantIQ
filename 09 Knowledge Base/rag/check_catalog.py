@@ -21,6 +21,42 @@ CHECKS: tuple[CheckDefinition, ...] = (
             "multi-factor authentication registration",
         ),
     ),
+    CheckDefinition(
+        check_id="ENTRA-AUTH-001",
+        workload="Entra ID",
+        aliases=(
+            "authentication methods",
+            "authentication method registration",
+            "registered authentication methods",
+        ),
+    ),
+    CheckDefinition(
+        check_id="ENTRA-AUTH-002",
+        workload="Entra ID",
+        aliases=(
+            "authentication methods policy",
+            "authentication method policy",
+            "authentication policy methods",
+        ),
+    ),
+    CheckDefinition(
+        check_id="ENTRA-AUTH-003",
+        workload="Entra ID",
+        aliases=(
+            "authentication registration campaign",
+            "authentication methods registration campaign",
+            "registration campaign",
+        ),
+    ),
+    CheckDefinition(
+        check_id="ENTRA-AUTH-004",
+        workload="Entra ID",
+        aliases=(
+            "password expiration policy",
+            "password expiry policy",
+            "password expiration",
+        ),
+    ),
 )
 
 

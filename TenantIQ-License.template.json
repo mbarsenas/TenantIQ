@@ -1,0 +1,17 @@
+{
+  "SchemaVersion": "1.0",
+  "Product": "TenantIQ",
+  "LicenseId": "",
+  "CustomerName": "",
+  "CustomerDomain": "",
+  "Edition": "Evaluation",
+  "Status": "Unlicensed",
+  "IssuedAt": "",
+  "ExpiresAt": "",
+  "MaxTenants": 1,
+  "Features": [
+    "Assessment",
+    "PortfolioReport"
+  ],
+  "Signature": ""
+}

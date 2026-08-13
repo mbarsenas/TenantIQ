@@ -5,7 +5,7 @@
   "CustomerName": "",
   "CustomerDomain": "",
   "Edition": "Evaluation",
-  "Status": "Unlicensed",
+  "Status": "Active",
   "IssuedAt": "",
   "ExpiresAt": "",
   "MaxTenants": 1,
@@ -13,5 +13,7 @@
     "Assessment",
     "PortfolioReport"
   ],
+  "KeyId": "",
+  "SignatureAlgorithm": "RSA-SHA256",
   "Signature": ""
 }

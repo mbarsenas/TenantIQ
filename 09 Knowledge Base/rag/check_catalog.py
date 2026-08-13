@@ -11,215 +11,81 @@ class CheckDefinition:
 
 
 CHECKS: tuple[CheckDefinition, ...] = (
-    CheckDefinition(
-        check_id="ENTRA-MFA-001",
-        workload="Entra ID",
-        aliases=(
-            "mfa registration",
-            "mfa registration coverage",
-            "multifactor authentication registration",
-            "multi-factor authentication registration",
-        ),
-    ),
-    CheckDefinition(
-        check_id="ENTRA-AUTH-001",
-        workload="Entra ID",
-        aliases=(
-            "authentication methods",
-            "authentication method registration",
-            "registered authentication methods",
-        ),
-    ),
-    CheckDefinition(
-        check_id="ENTRA-AUTH-002",
-        workload="Entra ID",
-        aliases=(
-            "authentication methods policy",
-            "authentication method policy",
-            "authentication policy methods",
-        ),
-    ),
-    CheckDefinition(
-        check_id="ENTRA-AUTH-003",
-        workload="Entra ID",
-        aliases=(
-            "authentication registration campaign",
-            "authentication methods registration campaign",
-            "registration campaign",
-        ),
-    ),
-    CheckDefinition(
-        check_id="ENTRA-AUTH-004",
-        workload="Entra ID",
-        aliases=(
-            "password expiration policy",
-            "password expiry policy",
-            "password expiration",
-        ),
-    ),
-    CheckDefinition(
-        check_id="ENTRA-CA-001",
-        workload="Entra ID",
-        aliases=(
-            "authentication context",
-            "conditional access authentication context",
-            "authentication contexts",
-        ),
-    ),
-    CheckDefinition(
-        check_id="ENTRA-CA-002",
-        workload="Entra ID",
-        aliases=(
-            "authentication strength",
-            "conditional access authentication strength",
-        ),
-    ),
-    CheckDefinition(
-        check_id="ENTRA-CA-003",
-        workload="Entra ID",
-        aliases=(
-            "authentication strengths",
-            "conditional access authentication strengths",
-        ),
-    ),
-    CheckDefinition(
-        check_id="ENTRA-CA-004",
-        workload="Entra ID",
-        aliases=(
-            "conditional access exclusions",
-            "ca exclusions",
-            "conditional access policy exclusions",
-        ),
-    ),
-    CheckDefinition(
-        check_id="ENTRA-CA-005",
-        workload="Entra ID",
-        aliases=(
-            "conditional access policies",
-            "conditional access policy",
-            "ca policies",
-        ),
-    ),
-    CheckDefinition(
-        check_id="ENTRA-CA-006",
-        workload="Entra ID",
-        aliases=(
-            "legacy authentication",
-            "legacy auth",
-            "block legacy authentication",
-        ),
-    ),
-    CheckDefinition(
-        check_id="ENTRA-CA-007",
-        workload="Entra ID",
-        aliases=(
-            "named locations",
-            "conditional access named locations",
-        ),
-    ),
-    CheckDefinition(
-        check_id="ENTRA-CA-008",
-        workload="Entra ID",
-        aliases=(
-            "risk based conditional access",
-            "risk-based conditional access",
-            "identity protection conditional access",
-        ),
-    ),
-    CheckDefinition(
-        check_id="ENTRA-APP-001",
-        workload="Entra ID",
-        aliases=(
-            "admin consent request policy",
-            "admin consent requests",
-        ),
-    ),
-    CheckDefinition(
-        check_id="ENTRA-APP-002",
-        workload="Entra ID",
-        aliases=(
-            "admin consent workflow",
-            "admin consent request workflow",
-        ),
-    ),
-    CheckDefinition(
-        check_id="ENTRA-APP-003",
-        workload="Entra ID",
-        aliases=(
-            "app registrations",
-            "application registrations",
-        ),
-    ),
-    CheckDefinition(
-        check_id="ENTRA-APP-004",
-        workload="Entra ID",
-        aliases=(
-            "application credentials",
-            "app credentials",
-        ),
-    ),
-    CheckDefinition(
-        check_id="ENTRA-APP-005",
-        workload="Entra ID",
-        aliases=(
-            "application ownership",
-            "app ownership",
-            "application owners",
-        ),
-    ),
-    CheckDefinition(
-        check_id="ENTRA-APP-006",
-        workload="Entra ID",
-        aliases=(
-            "application proxy",
-            "entra application proxy",
-            "app proxy",
-        ),
-    ),
-    CheckDefinition(
-        check_id="ENTRA-APP-007",
-        workload="Entra ID",
-        aliases=(
-            "enterprise app permissions",
-            "enterprise application permissions",
-            "service principal permissions",
-        ),
-    ),
-    CheckDefinition(
-        check_id="ENTRA-APP-008",
-        workload="Entra ID",
-        aliases=(
-            "service principal credentials",
-            "service principal secrets",
-            "service principal certificates",
-        ),
-    ),
-    CheckDefinition(
-        check_id="ENTRA-APP-009",
-        workload="Entra ID",
-        aliases=(
-            "service principals",
-            "enterprise applications",
-        ),
-    ),
-    CheckDefinition(
-        check_id="ENTRA-APP-010",
-        workload="Entra ID",
-        aliases=(
-            "tenant app management policy",
-            "tenant application management policy",
-            "app management policy",
-        ),
-    ),
+    CheckDefinition("ENTRA-MFA-001", "Entra ID", ("mfa registration", "mfa registration coverage", "multifactor authentication registration", "multi-factor authentication registration")),
+    CheckDefinition("ENTRA-AUTH-001", "Entra ID", ("authentication methods", "authentication method registration", "registered authentication methods")),
+    CheckDefinition("ENTRA-AUTH-002", "Entra ID", ("authentication methods policy", "authentication method policy", "authentication policy methods")),
+    CheckDefinition("ENTRA-AUTH-003", "Entra ID", ("authentication registration campaign", "authentication methods registration campaign", "registration campaign")),
+    CheckDefinition("ENTRA-AUTH-004", "Entra ID", ("password expiration policy", "password expiry policy", "password expiration")),
+    CheckDefinition("ENTRA-CA-001", "Entra ID", ("authentication context", "conditional access authentication context", "authentication contexts")),
+    CheckDefinition("ENTRA-CA-002", "Entra ID", ("authentication strength", "conditional access authentication strength")),
+    CheckDefinition("ENTRA-CA-003", "Entra ID", ("authentication strengths", "conditional access authentication strengths")),
+    CheckDefinition("ENTRA-CA-004", "Entra ID", ("conditional access exclusions", "ca exclusions", "conditional access policy exclusions")),
+    CheckDefinition("ENTRA-CA-005", "Entra ID", ("conditional access policies", "conditional access policy", "ca policies")),
+    CheckDefinition("ENTRA-CA-006", "Entra ID", ("legacy authentication", "legacy auth", "block legacy authentication")),
+    CheckDefinition("ENTRA-CA-007", "Entra ID", ("named locations", "conditional access named locations")),
+    CheckDefinition("ENTRA-CA-008", "Entra ID", ("risk based conditional access", "risk-based conditional access", "identity protection conditional access")),
+    CheckDefinition("ENTRA-APP-001", "Entra ID", ("admin consent request policy", "admin consent requests")),
+    CheckDefinition("ENTRA-APP-002", "Entra ID", ("admin consent workflow", "admin consent request workflow")),
+    CheckDefinition("ENTRA-APP-003", "Entra ID", ("app registrations", "application registrations")),
+    CheckDefinition("ENTRA-APP-004", "Entra ID", ("application credentials", "app credentials")),
+    CheckDefinition("ENTRA-APP-005", "Entra ID", ("application ownership", "app ownership", "application owners")),
+    CheckDefinition("ENTRA-APP-006", "Entra ID", ("application proxy", "entra application proxy", "app proxy")),
+    CheckDefinition("ENTRA-APP-007", "Entra ID", ("enterprise app permissions", "enterprise application permissions", "service principal permissions")),
+    CheckDefinition("ENTRA-APP-008", "Entra ID", ("service principal credentials", "service principal secrets", "service principal certificates")),
+    CheckDefinition("ENTRA-APP-009", "Entra ID", ("service principals", "enterprise applications")),
+    CheckDefinition("ENTRA-APP-010", "Entra ID", ("tenant app management policy", "tenant application management policy", "app management policy")),
+    CheckDefinition("ENTRA-DEV-001", "Entra ID", ("device join types", "entra device join types")),
+    CheckDefinition("ENTRA-DEV-002", "Entra ID", ("device operating systems", "device os inventory", "device operating system inventory")),
+    CheckDefinition("ENTRA-DEV-003", "Entra ID", ("device ownership", "registered device ownership")),
+    CheckDefinition("ENTRA-DEV-004", "Entra ID", ("device registration activity", "device registration activity review")),
+    CheckDefinition("ENTRA-DEV-005", "Entra ID", ("device registration policy", "entra device registration policy")),
+    CheckDefinition("ENTRA-DEV-006", "Entra ID", ("registered device inventory", "device inventory", "registered devices")),
+    CheckDefinition("ENTRA-EXT-001", "Entra ID", ("cross tenant access", "cross-tenant access", "cross tenant access policy")),
+    CheckDefinition("ENTRA-EXT-002", "Entra ID", ("guest invitation restrictions", "guest invite restrictions", "guest invitation policy")),
+    CheckDefinition("ENTRA-EXT-003", "Entra ID", ("guest self service sign up", "guest self-service sign-up", "self service sign up")),
+    CheckDefinition("ENTRA-EXT-004", "Entra ID", ("stale guest accounts", "stale guests", "inactive guest accounts")),
+    CheckDefinition("ENTRA-EXT-005", "Entra ID", ("tenant restrictions", "tenant restriction policy")),
+    CheckDefinition("ENTRA-HYB-001", "Entra ID", ("directory sync health", "entra connect sync health", "directory synchronization health")),
+    CheckDefinition("ENTRA-HYB-002", "Entra ID", ("domain federation", "federated domains", "domain federation configuration")),
+    CheckDefinition("ENTRA-GOV-001", "Entra ID", ("access reviews", "identity governance access reviews")),
+    CheckDefinition("ENTRA-GOV-002", "Entra ID", ("administrative units", "entra administrative units")),
+    CheckDefinition("ENTRA-GOV-003", "Entra ID", ("deleted groups", "soft deleted groups")),
+    CheckDefinition("ENTRA-GOV-004", "Entra ID", ("dynamic group configuration", "dynamic groups")),
+    CheckDefinition("ENTRA-GOV-005", "Entra ID", ("group lifecycle policy", "microsoft 365 group lifecycle policy")),
+    CheckDefinition("ENTRA-GOV-006", "Entra ID", ("group membership hygiene", "group membership review")),
+    CheckDefinition("ENTRA-GOV-007", "Entra ID", ("group naming policy", "microsoft 365 group naming policy")),
+    CheckDefinition("ENTRA-GOV-008", "Entra ID", ("group ownership", "group owners", "groups without owners")),
+    CheckDefinition("ENTRA-GOV-009", "Entra ID", ("lifecycle workflows", "identity governance lifecycle workflows")),
+    CheckDefinition("ENTRA-GOV-010", "Entra ID", ("terms of use", "entra terms of use")),
+    CheckDefinition("ENTRA-IDP-001", "Entra ID", ("identity risk detections", "risk detections")),
+    CheckDefinition("ENTRA-IDP-002", "Entra ID", ("risky service principals", "service principal risk")),
+    CheckDefinition("ENTRA-IDP-003", "Entra ID", ("risky sign ins", "risky sign-ins", "risky signins")),
+    CheckDefinition("ENTRA-IDP-004", "Entra ID", ("risky users", "user risk")),
+    CheckDefinition("ENTRA-IDP-005", "Entra ID", ("service principal risk detections", "service principal risk detections")),
+    CheckDefinition("ENTRA-ID-001", "Entra ID", ("authorization policy", "entra authorization policy")),
+    CheckDefinition("ENTRA-ID-002", "Entra ID", ("default user permissions", "user default permissions")),
+    CheckDefinition("ENTRA-ID-003", "Entra ID", ("deleted users", "soft deleted users")),
+    CheckDefinition("ENTRA-ID-004", "Entra ID", ("domain configuration", "entra domain configuration")),
+    CheckDefinition("ENTRA-ID-005", "Entra ID", ("emergency access accounts", "emergency accounts")),
+    CheckDefinition("ENTRA-ID-006", "Entra ID", ("guest users", "guest user accounts")),
+    CheckDefinition("ENTRA-ID-007", "Entra ID", ("privileged authentication methods", "admin authentication methods")),
+    CheckDefinition("ENTRA-ID-008", "Entra ID", ("stale user accounts", "stale users", "inactive user accounts")),
+    CheckDefinition("ENTRA-ID-009", "Entra ID", ("user accounts", "user account inventory")),
+    CheckDefinition("ENTRA-PRIV-001", "Entra ID", ("break glass accounts", "break-glass accounts")),
+    CheckDefinition("ENTRA-PRIV-002", "Entra ID", ("custom directory roles", "custom entra roles")),
+    CheckDefinition("ENTRA-PRIV-003", "Entra ID", ("global administrators", "global admins")),
+    CheckDefinition("ENTRA-PRIV-004", "Entra ID", ("pim role settings", "privileged identity management role settings")),
+    CheckDefinition("ENTRA-PRIV-005", "Entra ID", ("privileged role eligibility", "pim role eligibility")),
+    CheckDefinition("ENTRA-PRIV-006", "Entra ID", ("privileged roles", "directory privileged roles")),
+    CheckDefinition("ENTRA-PRIV-007", "Entra ID", ("role assignable groups", "role-assignable groups")),
+    CheckDefinition("ENTRA-SEC-001", "Entra ID", ("security risky sign ins", "security risky sign-ins")),
+    CheckDefinition("ENTRA-SEC-002", "Entra ID", ("security risky users", "security user risk")),
+    CheckDefinition("ENTRA-SEC-003", "Entra ID", ("security defaults", "entra security defaults")),
 )
 
 
 CHECK_BY_ID = {check.check_id: check for check in CHECKS}
-CHECK_ID_BY_ALIAS = {
-    alias: check.check_id
-    for check in CHECKS
-    for alias in check.aliases
-}
+CHECK_ID_BY_ALIAS = {alias: check.check_id for check in CHECKS for alias in check.aliases}
 
 
 def canonical_check_id(value: str | None) -> str | None:

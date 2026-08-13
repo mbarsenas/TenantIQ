@@ -1,0 +1,15 @@
+# TenantIQ - Microsoft Purview
+
+Microsoft Purview includes 50 registered TenantIQ controls covering compliance, retention, audit, governance, information protection, and related Microsoft 365 compliance posture.
+
+Run Purview from main menu option [8].
+
+TenantIQ uses supported Microsoft compliance/security administrative capabilities available to the active session.
+
+Some Purview evidence depends on tenant licensing, administrator roles, Microsoft compliance cmdlets, and service-side availability.
+
+A control can legitimately return NOT EVALUATED when Microsoft does not expose a supported evidence source in the current session. For example, audit-search readiness may be unscored when no supported Purview audit-search cmdlet is available.
+
+The workload exports a timestamped CSV under 06 Output.
+
+Do not manually convert unavailable evidence to PASS. Retain it as unscored context or rerun after the required Microsoft capability becomes available.

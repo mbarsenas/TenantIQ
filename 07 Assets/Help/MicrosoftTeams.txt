@@ -1,0 +1,17 @@
+# TenantIQ - Microsoft Teams
+
+Microsoft Teams includes 50 registered TenantIQ controls covering tenant settings, meeting and messaging policies, governance, security, external access, and operational posture.
+
+Required module:
+
+  MicrosoftTeams
+
+Run Teams from main menu option [4]. Complete Microsoft authentication when prompted and allow all 50 checks to finish.
+
+TenantIQ may use both MicrosoftTeams PowerShell and Microsoft Graph evidence depending on the control.
+
+Licensing, permissions, administrator consent, and Microsoft service/API availability can affect individual results.
+
+The workload exports a timestamped CSV under 06 Output.
+
+INFO and NOT EVALUATED results are unscored context. Review them when determining assessment coverage completeness.

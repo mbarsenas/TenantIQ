@@ -68,7 +68,59 @@ def normalize_finding(row: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in result.items() if v not in (None, "")}
 
 
-def load_assessment(path: str) -> list[dict[str, Any]]:
+def _read_csv_rows(path: Path) -> list[dict[str, Any]]:
+    with path.open("r", encoding="utf-8-sig", newline="") as handle:
+        return [dict(row) for row in csv.DictReader(handle)]
+
+
+def _looks_like_portfolio(rows: list[dict[str, Any]]) -> bool:
+    if not rows:
+        return False
+    normalized_headers = {_normalize_key(str(key)) for key in rows[0].keys()}
+    required = {"workload", "file"}
+    summary_markers = {"total", "pass", "warning", "fail", "info", "score"}
+    return required.issubset(normalized_headers) and bool(summary_markers & normalized_headers)
+
+
+def _load_portfolio(path: Path, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    findings: list[dict[str, Any]] = []
+    missing: list[str] = []
+
+    for row in rows:
+        referenced = _first_present(row, "file", "assessmentfile", "resultfile")
+        if not referenced:
+            continue
+
+        child_path = Path(str(referenced))
+        if not child_path.is_absolute():
+            child_path = path.parent / child_path
+
+        if not child_path.exists():
+            missing.append(str(child_path))
+            continue
+
+        child_findings = load_assessment(str(child_path), follow_portfolio=False)
+        portfolio_workload = _first_present(row, "workload", "module", "service")
+        for finding in child_findings:
+            if portfolio_workload and "workload" not in finding:
+                finding["workload"] = portfolio_workload
+            finding["source_assessment_file"] = str(child_path)
+            finding["portfolio_file"] = str(path)
+        findings.extend(child_findings)
+
+    if findings:
+        return findings
+
+    if missing:
+        raise SystemExit(
+            "Portfolio assessment referenced workload files that were not found: "
+            + "; ".join(missing[:5])
+        )
+
+    raise SystemExit("Portfolio assessment did not reference any readable workload assessment files.")
+
+
+def load_assessment(path: str, follow_portfolio: bool = True) -> list[dict[str, Any]]:
     assessment_path = Path(path)
     if not assessment_path.exists():
         raise SystemExit(f"Assessment file not found: {assessment_path}")
@@ -88,8 +140,10 @@ def load_assessment(path: str) -> list[dict[str, Any]]:
         return [normalize_finding(item) for item in data if isinstance(item, dict)]
 
     if suffix == ".csv":
-        with assessment_path.open("r", encoding="utf-8-sig", newline="") as handle:
-            return [normalize_finding(dict(row)) for row in csv.DictReader(handle)]
+        rows = _read_csv_rows(assessment_path)
+        if follow_portfolio and _looks_like_portfolio(rows):
+            return _load_portfolio(assessment_path, rows)
+        return [normalize_finding(row) for row in rows]
 
     raise SystemExit("Assessment input currently supports .csv and .json files.")
 

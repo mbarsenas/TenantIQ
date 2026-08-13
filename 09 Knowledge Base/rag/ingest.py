@@ -38,7 +38,28 @@ def chunk_text(text: str, size: int = 2200, overlap: int = 300) -> Iterable[str]
     return chunks
 
 
-def infer_metadata(path: Path) -> dict:
+def parse_front_matter(text: str) -> tuple[dict, str]:
+    if not text.startswith("---\n"):
+        return {}, text
+
+    end = text.find("\n---\n", 4)
+    if end == -1:
+        return {}, text
+
+    raw = text[4:end]
+    body = text[end + 5 :].lstrip()
+    metadata: dict[str, str] = {}
+
+    for line in raw.splitlines():
+        if not line.strip() or line.lstrip().startswith("#") or ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        metadata[key.strip()] = value.strip().strip('"').strip("'")
+
+    return metadata, body
+
+
+def infer_metadata(path: Path, front_matter: dict | None = None) -> dict:
     rel = path.relative_to(ROOT).as_posix()
     parts = [p.lower() for p in path.parts]
     workload = None
@@ -56,11 +77,19 @@ def infer_metadata(path: Path) -> dict:
         if key in parts:
             workload = label
             break
-    return {
+
+    metadata = {
         "source_path": rel,
         "workload": workload,
         "content_type": path.parent.name,
     }
+
+    if front_matter:
+        metadata.update({k: v for k, v in front_matter.items() if v not in (None, "")})
+        if front_matter.get("workload"):
+            metadata["workload"] = front_matter["workload"]
+
+    return metadata
 
 
 def ensure_schema(conn: psycopg.Connection) -> None:
@@ -85,6 +114,10 @@ def ensure_schema(conn: psycopg.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS tenantiq_knowledge_embedding_idx "
         "ON tenantiq_knowledge_chunks USING hnsw (embedding vector_cosine_ops)"
     )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS tenantiq_knowledge_check_id_idx "
+        "ON tenantiq_knowledge_chunks ((metadata->>'check_id'))"
+    )
 
 
 def markdown_files() -> list[Path]:
@@ -108,8 +141,10 @@ def main() -> None:
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn:
         ensure_schema(conn)
         for path in files:
-            metadata = infer_metadata(path)
-            text = path.read_text(encoding="utf-8")
+            raw_text = path.read_text(encoding="utf-8")
+            front_matter, text = parse_front_matter(raw_text)
+            metadata = infer_metadata(path, front_matter)
+
             for index, chunk in enumerate(chunk_text(text)):
                 stable = f"{metadata['source_path']}:{index}:{chunk}".encode("utf-8")
                 chunk_id = hashlib.sha256(stable).hexdigest()
@@ -120,6 +155,10 @@ def main() -> None:
                         (id, source_path, workload, content_type, chunk_index, content, embedding, metadata, updated_at)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
                     ON CONFLICT (id) DO UPDATE SET
+                        source_path = EXCLUDED.source_path,
+                        workload = EXCLUDED.workload,
+                        content_type = EXCLUDED.content_type,
+                        chunk_index = EXCLUDED.chunk_index,
                         content = EXCLUDED.content,
                         embedding = EXCLUDED.embedding,
                         metadata = EXCLUDED.metadata,
@@ -128,8 +167,8 @@ def main() -> None:
                     (
                         chunk_id,
                         metadata["source_path"],
-                        metadata["workload"],
-                        metadata["content_type"],
+                        metadata.get("workload"),
+                        metadata.get("content_type"),
                         index,
                         chunk,
                         vector,

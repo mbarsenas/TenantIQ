@@ -1,0 +1,15 @@
+# TenantIQ - OneDrive
+
+OneDrive includes 50 registered TenantIQ controls covering OneDrive for Business governance, sharing, storage, lifecycle, access, and operational posture.
+
+Run OneDrive from main menu option [5].
+
+Because OneDrive for Business is built on SharePoint Online, TenantIQ uses SharePoint administrative connectivity and Microsoft Graph evidence where required.
+
+TenantIQ may request the SharePoint tenant name before assessment.
+
+Evidence availability can depend on SharePoint administrative access, Graph permissions, licensing, and whether OneDrive resources have been provisioned.
+
+The workload exports a timestamped CSV under 06 Output.
+
+A lack of provisioned OneDrive objects can legitimately result in informational findings rather than authentication failure.

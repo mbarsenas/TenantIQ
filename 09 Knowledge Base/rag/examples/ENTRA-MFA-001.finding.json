@@ -1,0 +1,14 @@
+{
+  "check_id": "ENTRA-MFA-001",
+  "status": "FAIL",
+  "workload": "Entra ID",
+  "category": "Authentication",
+  "evidence": {
+    "memberUsers": 28,
+    "mfaRegistered": 4,
+    "mfaNotRegistered": 24,
+    "mfaCapable": 4,
+    "passwordlessCapable": 1,
+    "registrationCoveragePercent": 14
+  }
+}

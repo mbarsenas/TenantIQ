@@ -1,0 +1,149 @@
+# TenantIQ - Running Assessments
+
+TenantIQ v1.0 provides 416 registered assessment controls across eight Microsoft 365 workloads.
+
+Start TenantIQ with:
+
+  .\Start-TenantIQ.ps1
+
+## Workload Coverage
+
+  [1] Exchange Online       - 50 controls
+  [2] Entra ID              - 66 controls
+  [3] SharePoint Online     - 50 controls
+  [4] Microsoft Teams       - 50 controls
+  [5] OneDrive              - 50 controls
+  [6] Microsoft Intune      - 50 controls
+  [7] Microsoft Defender    - 50 controls
+  [8] Microsoft Purview     - 50 controls
+
+Total: 416 controls
+
+## Standard Assessment Workflow
+
+For a complete Microsoft 365 tenant assessment:
+
+  1. Launch .\Start-TenantIQ.ps1 from PowerShell 7.
+  2. Confirm prerequisite validation passes.
+  3. Select workload 1 and run its assessment.
+  4. Complete Microsoft authentication when prompted.
+  5. Allow the workload to finish and export its CSV.
+  6. Repeat for workloads 2 through 8.
+  7. Select [9] Portfolio Report.
+  8. Review the executive HTML report and consolidated CSV.
+
+TenantIQ can also run an individual workload when only that area needs to be reassessed.
+
+## What Happens During an Assessment
+
+A workload assessment performs the following high-level sequence:
+
+  Prepare workload dependencies
+  Establish the required Microsoft authentication context
+  Collect supported tenant evidence
+  Execute the workload's registered controls
+  Standardize each result
+  Calculate workload summary statistics
+  Export the assessment CSV
+
+Some workloads run in an isolated PowerShell process to prevent authentication-library conflicts between Exchange Online, Microsoft Graph, and other Microsoft administrative modules.
+
+## Standard Result Fields
+
+TenantIQ assessment output can include:
+
+  Workload
+  Check
+  Category
+  Status
+  Severity
+  Finding
+  Evidence
+  Recommendation
+
+The exact evidence available depends on the control and Microsoft service.
+
+## Result Statuses
+
+PASS
+  The evaluated evidence met the TenantIQ control criteria.
+
+WARNING
+  The control identified a condition that should be reviewed or improved.
+
+FAIL
+  The evaluated evidence did not meet the TenantIQ control criteria and should receive remediation attention.
+
+INFO
+  Contextual information that is useful to the assessor but is not included in scored-control posture calculations.
+
+NOT EVALUATED
+  TenantIQ could not conclusively evaluate the control because required evidence was unavailable. Common causes include missing permissions, unsupported or unavailable Microsoft cmdlets/APIs, licensing, or service-side limitations.
+
+A FAIL is a tenant finding. It does not automatically mean the TenantIQ runtime failed.
+
+## Scoring
+
+TenantIQ workload and portfolio scoring use scored controls only:
+
+  PASS    = 1.0 point
+  WARNING = 0.5 point
+  FAIL    = 0 points
+
+INFO and NOT EVALUATED are unscored context.
+
+This prevents unavailable or informational evidence from artificially improving or reducing the posture score.
+
+## Assessment Output
+
+Assessment files are written under:
+
+  06 Output
+
+Workload CSV filenames include the workload and assessment timestamp.
+
+Keep the latest workload CSVs available if you intend to generate a Portfolio Report. Portfolio reporting uses the latest available assessment CSV for each supported workload.
+
+## Reassessing After Remediation
+
+After an administrator makes approved Microsoft 365 configuration changes:
+
+  1. Run only the affected TenantIQ workload again.
+  2. Confirm a new CSV is generated.
+  3. Review changed findings.
+  4. Regenerate the Portfolio Report if an updated executive posture is required.
+
+Do not delete prior reports if historical comparison or audit evidence is required by the engagement.
+
+## Partial Assessments
+
+TenantIQ can assess individual workloads independently. A customer does not have to run all eight workloads to obtain a workload-specific CSV.
+
+However, the executive Portfolio Report is most useful when current assessment output exists for all eight supported workloads.
+
+Do not combine workload CSV files from different Microsoft 365 tenants into one Portfolio Report.
+
+## Evidence Limitations
+
+A control may be unscored when Microsoft does not expose the required evidence in the active administrative session or when the tenant lacks the necessary service, license, consent, role, or configured object.
+
+TenantIQ should report the limitation rather than inventing evidence or assuming a healthy configuration.
+
+Review NOT EVALUATED and INFO results when determining assessment completeness.
+
+## Recommended Review Order
+
+After an assessment completes, review findings in this order:
+
+  1. FAIL results
+  2. High-severity WARNING results
+  3. Remaining WARNING results
+  4. NOT EVALUATED results that affect assessment coverage
+  5. INFO results for operational and governance context
+  6. PASS results when evidence validation is required
+
+## Production Safety
+
+TenantIQ is an assessment and reporting platform. Running an assessment does not authorize automatic tenant remediation.
+
+Recommendations should be reviewed against the customer's architecture, licensing, security requirements, exceptions, and change-management process before Microsoft 365 configuration is modified.

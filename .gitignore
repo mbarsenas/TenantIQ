@@ -36,3 +36,5 @@ TenantIQ-License-*.json
 *Private.pem
 LicenseKeys/
 .tenantiq/
+Fulfilled-Licenses/
+Customer-Deliveries/

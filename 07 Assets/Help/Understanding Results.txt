@@ -1,0 +1,24 @@
+# TenantIQ - Understanding Results
+
+TenantIQ uses PASS, WARNING, FAIL, INFO, and NOT EVALUATED statuses.
+
+PASS = evaluated control met the TenantIQ criteria.
+WARNING = evaluated control requires review or improvement.
+FAIL = evaluated control did not meet the TenantIQ criteria.
+INFO = contextual, unscored evidence.
+NOT EVALUATED = required evidence was unavailable or unsupported.
+
+Scoring uses PASS = full credit, WARNING = half credit, FAIL = no credit. INFO and NOT EVALUATED are excluded from scored-control math.
+
+Portfolio labels:
+
+  90-100  Strong Posture
+  75-89   Needs Attention
+  60-74   Elevated Risk
+  0-59    High Risk
+
+A standardized FAIL normally represents a tenant finding, not a TenantIQ runtime failure. Runtime failures appear as authentication errors, missing modules/cmdlets/functions, exceptions, or terminated workload processes.
+
+Review FAIL findings first, followed by high-severity WARNING findings, remaining WARNING findings, NOT EVALUATED coverage gaps, and INFO context.
+
+See Results.txt for the full results interpretation guide.

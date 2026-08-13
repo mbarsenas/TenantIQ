@@ -1,0 +1,15 @@
+# TenantIQ - Microsoft Intune
+
+Microsoft Intune includes 50 registered TenantIQ controls covering device inventory, compliance, configuration, update management, applications, certificates, Wi-Fi/VPN, RBAC, scope tags, and governance posture.
+
+Run Intune from main menu option [6].
+
+TenantIQ primarily uses Microsoft Graph for Intune evidence collection.
+
+Evidence availability depends on Intune licensing, Graph permissions, administrator consent, and whether the corresponding Intune feature is configured.
+
+A tenant with zero managed devices can legitimately return INFO for device-specific controls. Zero devices should not automatically be interpreted as healthy device posture.
+
+The workload exports a timestamped CSV under 06 Output.
+
+Review WARNING results for missing or incomplete policy coverage and review INFO / NOT EVALUATED results for inventory or API limitations.

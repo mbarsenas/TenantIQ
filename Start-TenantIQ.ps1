@@ -8,6 +8,8 @@ $Prereq = Join-Path $Root '01 Framework\Test-TenantIQPrerequisites.ps1'
 $ConfigPath = Join-Path $Root 'TenantIQ.json'
 $FirstRunMarker = Join-Path $Root '.tenantiq-first-run-complete'
 $LicensePath = Join-Path $Root 'TenantIQ-License.json'
+$LicenseTool = Join-Path $Root 'Get-TenantIQLicenseStatus.ps1'
+$LicensePublicKey = Join-Path $Root 'TenantIQ-License-Public.pem'
 
 try { $Host.UI.RawUI.WindowTitle = 'TenantIQ M365 Assessment Tool' } catch {}
 
@@ -42,32 +44,25 @@ Write-Host ('PowerShell       : {0}' -f $PSVersionTable.PSVersion.ToString())
 Write-Host ('Host             : {0}' -f $Host.Name)
 Write-Host ('Working Directory: {0}' -f $Root)
 
-$LicenseState = 'UNLICENSED'
-$LicenseCustomer = ''
-if (Test-Path $LicensePath) {
+$LicenseStatus = $null
+if (Test-Path $LicenseTool) {
     try {
-        $License = Get-Content -Path $LicensePath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
-        $LicenseState = if ($License.Status) { ([string]$License.Status).ToUpperInvariant() } else { 'UNKNOWN' }
-        $LicenseCustomer = [string]$License.CustomerName
-        if ($License.ExpiresAt) {
-            try {
-                if ([datetimeoffset]::Parse([string]$License.ExpiresAt) -lt [datetimeoffset]::Now) {
-                    $LicenseState = 'EXPIRED'
-                }
-            }
-            catch {
-                $LicenseState = 'INVALID'
-            }
-        }
+        $LicenseStatus = & $LicenseTool -LicensePath $LicensePath -PublicKeyPath $LicensePublicKey 6>$null
+        if ($LicenseStatus -is [array]) { $LicenseStatus = $LicenseStatus | Select-Object -Last 1 }
     }
-    catch {
-        $LicenseState = 'INVALID'
-    }
+    catch {}
 }
-Write-Host ('License Status   : {0}' -f $LicenseState) -ForegroundColor $(if ($LicenseState -eq 'ACTIVE') { 'Green' } elseif ($LicenseState -in @('EXPIRED','INVALID')) { 'Yellow' } else { 'DarkGray' })
-if ($LicenseCustomer) {
-    Write-Host ('Licensed To      : {0}' -f $LicenseCustomer)
-}
+
+$LicenseState = if ($LicenseStatus) { [string]$LicenseStatus.State } else { 'UNLICENSED' }
+$LicenseCustomer = if ($LicenseStatus) { [string]$LicenseStatus.CustomerName } else { '' }
+$LicenseEdition = if ($LicenseStatus) { [string]$LicenseStatus.Edition } else { '' }
+$LicenseSignature = if ($LicenseStatus -and $LicenseStatus.SignatureValid) { 'VALID' } else { 'NOT VALIDATED' }
+
+$LicenseColor = if ($LicenseState -eq 'ACTIVE') { 'Green' } elseif ($LicenseState -in @('EXPIRED','INVALID','KEY NOT CONFIGURED')) { 'Yellow' } else { 'DarkGray' }
+Write-Host ('License Status   : {0}' -f $LicenseState) -ForegroundColor $LicenseColor
+Write-Host ('License Signature: {0}' -f $LicenseSignature) -ForegroundColor $(if ($LicenseSignature -eq 'VALID') { 'Green' } else { 'DarkGray' })
+if ($LicenseCustomer) { Write-Host ('Licensed To      : {0}' -f $LicenseCustomer) }
+if ($LicenseEdition) { Write-Host ('Edition          : {0}' -f $LicenseEdition) }
 Write-Host ''
 
 if (Test-Path $Prereq) {
@@ -104,7 +99,6 @@ else {
     Write-Host '[INFO] Output directory will be created on first report export' -ForegroundColor Yellow
 }
 
-# Customer onboarding is intentionally launcher-only. It does not alter assessment modules.
 if (-not (Test-Path $FirstRunMarker)) {
     Write-Host ''
     Write-Host '============================================================' -ForegroundColor DarkCyan
@@ -133,8 +127,9 @@ if (-not (Test-Path $FirstRunMarker)) {
     Write-Host '  Microsoft sign-in prompts can be expected during a full assessment.'
     Write-Host ''
     Write-Host 'Licensing:' -ForegroundColor Cyan
-    Write-Host '  TenantIQ v1.0 records license metadata but does not enforce activation.'
-    Write-Host '  Use .\Get-TenantIQLicenseStatus.ps1 to view license details.'
+    Write-Host '  TenantIQ verifies cryptographically signed local license files.'
+    Write-Host '  Launch enforcement remains disabled for the v1.0 release candidate.'
+    Write-Host '  Use .\Get-TenantIQLicenseStatus.ps1 to view verification details.'
     Write-Host ''
     Write-Host 'Help is always available from main-menu option 10.' -ForegroundColor DarkGray
     Write-Host ''
@@ -144,9 +139,7 @@ if (-not (Test-Path $FirstRunMarker)) {
     try {
         Set-Content -Path $FirstRunMarker -Value ('TenantIQ first run completed: {0}' -f (Get-Date).ToString('o')) -Encoding UTF8 -Force
     }
-    catch {
-        # A read-only install location should not prevent TenantIQ from launching.
-    }
+    catch {}
 }
 
 Write-Host ''

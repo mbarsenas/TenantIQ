@@ -27,3 +27,12 @@ Cleanup-TenantIQEntraScripts.ps1
 # Node / Next.js
 node_modules/
 .next/
+
+# TenantIQ commercial secrets and customer-specific licenses
+TenantIQ-License.json
+TenantIQ-License-*.json
+!TenantIQ-License.template.json
+*.private.pem
+*Private.pem
+LicenseKeys/
+.tenantiq/

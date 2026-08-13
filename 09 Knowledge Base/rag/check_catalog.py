@@ -10,7 +10,6 @@ class CheckDefinition:
     aliases: tuple[str, ...]
 
 
-# Base catalog. Workload-specific catalogs are appended below to keep writes manageable.
 CHECKS: tuple[CheckDefinition, ...] = (
     CheckDefinition("ENTRA-MFA-001", "Entra ID", ("mfa registration", "mfa registration coverage", "multifactor authentication registration", "multi-factor authentication registration")),
     CheckDefinition("ENTRA-AUTH-001", "Entra ID", ("authentication methods", "authentication method registration", "registered authentication methods")),
@@ -151,13 +150,16 @@ try:
     from check_catalog_teams import CHECKS as TEAMS_CHECKS
 except ImportError:
     TEAMS_CHECKS = ()
-
 try:
     from check_catalog_onedrive import CHECKS as ONEDRIVE_CHECKS
 except ImportError:
     ONEDRIVE_CHECKS = ()
+try:
+    from check_catalog_intune import CHECKS as INTUNE_CHECKS
+except ImportError:
+    INTUNE_CHECKS = ()
 
-CHECKS = CHECKS + TEAMS_CHECKS + ONEDRIVE_CHECKS
+CHECKS = CHECKS + TEAMS_CHECKS + ONEDRIVE_CHECKS + INTUNE_CHECKS
 
 CHECK_BY_ID = {check.check_id: check for check in CHECKS}
 CHECK_ID_BY_ALIAS = {alias: check.check_id for check in CHECKS for alias in check.aliases}

@@ -1,300 +1,194 @@
 # TenantIQ - Connecting to Microsoft 365
 
-TenantIQ requires an authenticated administrative connection to the Microsoft 365 workload being assessed.
+TenantIQ establishes authenticated, read-oriented administrative sessions to collect evidence for the workload being assessed.
 
-TenantIQ supports separate connections for:
+TenantIQ v1.0 supports assessment of:
 
   Exchange Online
-  Entra ID / Microsoft Graph
+  Entra ID
   SharePoint Online
+  Microsoft Teams
+  OneDrive
+  Microsoft Intune
+  Microsoft Defender
+  Microsoft Purview
 
-Each workload uses Microsoft's administrative PowerShell modules and authentication services.
+## Connection Model
 
+Start TenantIQ with:
 
-## How TenantIQ Handles Connections
+  .\Start-TenantIQ.ps1
 
-When a workload is selected, TenantIQ can check whether an appropriate authenticated session already exists.
+Select a workload from the main menu. TenantIQ then prepares the Microsoft administrative interface required by that workload and prompts for authentication when necessary.
 
-When an active connection is detected, TenantIQ should reuse that connection.
+Some workloads intentionally run in isolated PowerShell 7 processes. Isolation prevents Microsoft authentication libraries and workload modules from polluting the shared TenantIQ process. Because of this design, a sign-in completed for one workload does not guarantee that another workload will reuse the same authentication context.
 
-When no active connection exists, TenantIQ can launch the appropriate Microsoft authentication process.
+Multiple Microsoft sign-in prompts during a complete 1-through-8 assessment can therefore be expected behavior.
 
-This provides the following workflow:
-
-  1. Select a workload.
-
-  2. TenantIQ checks the connection state.
-
-  3. An existing valid connection is reused when available.
-
-  4. If no connection exists, authentication is started.
-
-  5. TenantIQ verifies the connection.
-
-  6. The workload assessment becomes available.
-
-TIP: You normally do not need to manually reconnect when TenantIQ detects an existing valid session.
-
+TenantIQ does not require administrators to store passwords in TenantIQ configuration files.
 
 ## Exchange Online
 
-Exchange Online uses the ExchangeOnlineManagement PowerShell module.
+Exchange Online uses ExchangeOnlineManagement.
 
-The standard connection command is:
+Microsoft connection command:
 
   Connect-ExchangeOnline
 
-TenantIQ can determine whether an Exchange Online REST connection already exists using:
+Connection information can be inspected with:
 
   Get-ConnectionInformation
 
-A healthy connection normally reports information such as:
+TenantIQ uses isolated execution for Exchange Online assessment so Exchange authentication assemblies remain separate from Microsoft Graph authentication where required.
 
-  State             : Connected
-  TokenStatus       : Active
-  UserPrincipalName : administrator account
-  TenantID          : Microsoft 365 tenant ID
+If Exchange authentication produces Microsoft.Identity.Client, MSAL, WAM, or assembly-manifest errors, close stale PowerShell sessions and verify that the installed ExchangeOnlineManagement version is healthy.
 
-When TenantIQ detects a valid connection, the Exchange Online module displays:
-
-  Status : [OK] Connected
-
-
-## Exchange Online Automatic Connection
-
-When Exchange Online is selected and no valid connection exists, TenantIQ can automatically launch:
-
-  Connect-ExchangeOnline
-
-Complete the Microsoft authentication process when prompted.
-
-After authentication, TenantIQ verifies that the Exchange Online connection was successfully established.
-
-If authentication fails, TenantIQ should return to the menu rather than attempting to run Exchange Online assessments without a valid connection.
-
-
-## Exchange Online Module Versions
-
-TenantIQ requires a supported ExchangeOnlineManagement installation.
-
-Check available versions with:
+Check installed versions with:
 
   Get-Module ExchangeOnlineManagement -ListAvailable
 
-Multiple or obsolete versions of ExchangeOnlineManagement can sometimes contribute to PowerShell dependency or authentication-library conflicts.
-
-If Exchange Online authentication produces unexpected assembly or Microsoft.Identity.Client errors, review the installed ExchangeOnlineManagement versions.
-
-TIP: Restart PowerShell after changing ExchangeOnlineManagement versions. Assemblies already loaded into a PowerShell process may remain loaded until that process is closed.
-
-
 ## Entra ID / Microsoft Graph
 
-TenantIQ uses Microsoft Graph PowerShell for Entra ID assessments.
+Entra ID evidence is collected through Microsoft Graph PowerShell.
 
-The standard connection command is:
+Microsoft connection command:
 
   Connect-MgGraph
 
-Microsoft Graph uses delegated permission scopes to determine which tenant information TenantIQ can retrieve.
-
-The required scopes depend on the Entra ID health checks being executed.
-
-
-## Microsoft Graph Connection State
-
-A Microsoft Graph connection can be inspected with:
+Current Graph context:
 
   Get-MgContext
 
-The Graph context can provide information such as:
+TenantIQ requests delegated Graph scopes needed by its registered controls. Administrator consent may be required for some scopes.
 
-  Connected account
-  Tenant ID
-  Authentication type
-  Granted scopes
-
-A successful Graph connection does not automatically guarantee access to every Entra ID configuration.
-
-The connected account and granted scopes must provide sufficient permission for the health check being executed.
-
-
-## Microsoft Graph Consent
-
-Some Microsoft Graph permission scopes may require administrator consent.
-
-When TenantIQ requests permissions that have not previously been granted, Microsoft may display a consent prompt during authentication.
-
-Review requested permissions before granting consent.
-
-WARNING: TenantIQ should request only the permissions required to perform its assessment operations.
-
+A successful Graph sign-in does not guarantee that every control can retrieve its evidence. Licensing, Graph API availability, tenant configuration, role assignments, and consent can still affect individual controls.
 
 ## SharePoint Online
 
-SharePoint Online uses the SharePoint Online Management Shell.
+SharePoint Online uses the SharePoint Online Management Shell and the tenant administrative endpoint.
 
-The standard connection command is:
+Typical Microsoft connection command:
 
   Connect-SPOService -Url https://<tenant>-admin.sharepoint.com
 
-Replace:
+When TenantIQ requests the SharePoint tenant name, enter either the tenant prefix or the onmicrosoft.com tenant name as requested by the prompt.
 
-  <tenant>
+Example tenant:
 
-with the SharePoint tenant name.
+  contoso.onmicrosoft.com
 
-For example:
+Some SharePoint evidence can require site-level administrative access in addition to tenant-level SharePoint administration. TenantIQ reports unavailable evidence rather than assuming inaccessible configuration is healthy.
 
-  Connect-SPOService -Url https://contoso-admin.sharepoint.com
+## Microsoft Teams
 
+Microsoft Teams assessment uses the MicrosoftTeams PowerShell module together with Microsoft Graph evidence where required by individual controls.
 
-## SharePoint Administrative Connection
+The Microsoft Teams module must be installed before TenantIQ starts:
 
-A successful SharePoint Online connection allows TenantIQ to retrieve tenant-level configuration using commands such as:
+  Install-Module MicrosoftTeams -Scope CurrentUser
 
-  Get-SPOTenant
-  Get-SPOSite
+Complete Microsoft authentication when TenantIQ launches the Teams assessment. Permissions and tenant licensing determine which Teams configuration objects can be evaluated.
 
-TenantIQ can then perform SharePoint Online configuration and site assessments.
+## OneDrive
 
+OneDrive for Business is built on SharePoint Online infrastructure. TenantIQ therefore uses SharePoint administrative connectivity and Microsoft Graph evidence where required for OneDrive controls.
 
-## SharePoint Site-Level Permissions
+TenantIQ may request the SharePoint tenant name before running OneDrive assessment.
 
-Some SharePoint health checks retrieve information from individual site collections.
+The administrative endpoint follows the same format:
 
-These operations can have additional permission requirements beyond establishing the tenant administrative connection.
+  https://<tenant>-admin.sharepoint.com
 
-For example:
+OneDrive evidence availability can depend on SharePoint administrative access, Graph permissions, licensing, and whether OneDrive resources have been provisioned in the tenant.
 
-  Get-SPOUser -Site <site URL>
+## Microsoft Intune
 
-may require appropriate administrative access to the site being queried.
+Microsoft Intune assessment primarily uses Microsoft Graph.
 
-TenantIQ may therefore successfully connect to SharePoint Online while still being unable to evaluate certain individual sites.
+TenantIQ prepares the required Graph authentication context and requests access appropriate to its Intune evidence collection.
 
-When this occurs, inaccessible sites should be identified separately rather than automatically classified as unhealthy.
+Evidence availability depends on Intune licensing, Graph permissions, administrator consent, and whether the corresponding Intune feature is configured in the tenant.
 
+A tenant with no managed devices or no configured policy of a particular type can legitimately produce informational or warning findings; that does not indicate an authentication failure.
 
-## Multi-Factor Authentication
+## Microsoft Defender
 
-TenantIQ supports Microsoft 365 accounts protected by multi-factor authentication through the authentication mechanisms provided by Microsoft's PowerShell modules.
+Microsoft Defender assessment can require both Exchange Online security-policy cmdlets and Microsoft Graph evidence.
 
-When authentication is required, complete the Microsoft sign-in and MFA process normally.
+TenantIQ runs Defender in an isolated PowerShell process so Exchange Online policy cmdlets can be loaded without contaminating the shared Graph/MSAL session.
 
-TenantIQ should not require storing an administrator password locally.
+During Defender assessment, TenantIQ may launch an Exchange Online sign-in specifically for Defender policy checks and separately establish Graph evidence collection. These prompts are expected when the isolated process does not already have the required authentication context.
 
+## Microsoft Purview
 
-## Conditional Access
+Microsoft Purview assessment uses Microsoft compliance/security administrative capabilities exposed through supported Microsoft PowerShell interfaces.
 
-Microsoft Entra Conditional Access policies can affect TenantIQ authentication.
+Some Purview evidence depends on which compliance cmdlets Microsoft exposes in the active session, tenant licensing, roles, and service-side availability.
 
-Depending on organizational policy, authentication may require:
+If a supported evidence source is unavailable, TenantIQ can return NOT EVALUATED or INFO rather than fabricating a scored result. For example, an audit-search readiness control may be unscored when no supported Purview audit-search cmdlet is available in the session.
 
-  Multi-factor authentication
-  Compliant device
-  Managed device
-  Approved client
+## MFA and Conditional Access
+
+TenantIQ uses Microsoft's interactive authentication mechanisms and supports accounts protected by MFA.
+
+TenantIQ does not bypass Conditional Access. The administrative account and workstation must satisfy organizational requirements such as:
+
+  MFA
+  Authentication strength
+  Compliant or managed device
   Trusted location
-  Authentication strength requirements
+  Approved client requirements
 
-TenantIQ does not bypass Conditional Access.
+If Microsoft rejects authentication because of Conditional Access, resolve the Microsoft access requirement rather than weakening the policy for TenantIQ.
 
-The administrative workstation and account must satisfy the organization's authentication policies.
+## Multiple Tenants
 
+Always verify the tenant used during Microsoft authentication before running an assessment. This is especially important for consultants and administrators who manage multiple Microsoft 365 tenants.
 
-## Using Multiple Tenants
+Workload CSV files and the Portfolio Report represent the tenant from which their source evidence was collected. Do not combine assessment files from different customer tenants into one portfolio report.
 
-Always verify which Microsoft 365 tenant is connected before running an assessment.
+## Manual Connection Diagnostics
 
-This is particularly important for administrators who manage multiple organizations or test tenants.
-
-TenantIQ assessment results apply to the tenant associated with the active workload connection.
-
-WARNING: Verify the tenant before running a Full Assessment or generating a customer assessment report.
-
-
-## Disconnecting Exchange Online
-
-To manually disconnect Exchange Online:
-
-  Disconnect-ExchangeOnline -Confirm:$false
-
-
-## Disconnecting Microsoft Graph
-
-To manually disconnect Microsoft Graph:
-
-  Disconnect-MgGraph
-
-
-## SharePoint Online Sessions
-
-SharePoint Online administrative connections are managed through the SharePoint Online Management Shell.
-
-If you need to change tenants or administrative contexts, establish a new connection using the appropriate SharePoint admin center URL.
-
-
-## Troubleshooting Connections
-
-If TenantIQ reports that a workload is not connected:
-
-  1. Verify the required PowerShell module is installed.
-
-  2. Close and reopen PowerShell.
-
-  3. Verify Internet connectivity.
-
-  4. Attempt the workload connection manually.
-
-  5. Complete any MFA or Conditional Access requirements.
-
-  6. Verify the connected account has the required administrative permissions.
-
-  7. Check for conflicting or obsolete PowerShell module versions.
-
-  8. Review TenantIQ logs for the underlying error.
-
-TIP: When troubleshooting authentication, first test the Microsoft connection command outside TenantIQ. If the Microsoft command itself fails, resolve that problem before troubleshooting the TenantIQ assessment logic.
-
-
-## Connection Commands Quick Reference
+When troubleshooting, these Microsoft commands can help determine whether the underlying Microsoft module can authenticate independently of TenantIQ.
 
 Exchange Online:
 
   Connect-ExchangeOnline
-
-Check Exchange connection:
-
   Get-ConnectionInformation
 
-Entra ID / Microsoft Graph:
+Microsoft Graph:
 
   Connect-MgGraph
-
-Check Graph connection:
-
   Get-MgContext
 
 SharePoint Online:
 
   Connect-SPOService -Url https://<tenant>-admin.sharepoint.com
+  Get-SPOTenant
 
+Teams:
+
+  Connect-MicrosoftTeams
+
+If the Microsoft connection command itself fails, resolve the module, network, account, consent, Conditional Access, or Microsoft service problem before treating it as a TenantIQ assessment-engine defect.
+
+## Troubleshooting Authentication
+
+Check, in order:
+
+  1. Run TenantIQ from PowerShell 7.
+  2. Confirm .\Start-TenantIQ.ps1 reports all required dependencies as [OK].
+  3. Verify Internet and DNS connectivity.
+  4. Complete all Microsoft MFA and Conditional Access prompts.
+  5. Verify the correct tenant and administrator account were selected.
+  6. Verify required administrator roles and Graph consent.
+  7. Check tenant licensing for the evidence being queried.
+  8. Check Microsoft service/API availability.
+  9. For Exchange/MSAL assembly problems, close stale PowerShell processes and inspect installed ExchangeOnlineManagement versions.
+  10. Re-run only the affected workload after correcting the underlying condition.
 
 ## Security
 
-TenantIQ uses authenticated Microsoft administrative sessions to retrieve configuration information.
+Do not place passwords, access tokens, client secrets, refresh tokens, private keys, or other credentials in the TenantIQ repository, scripts, reports, or documentation.
 
-TenantIQ should never require administrators to place passwords in scripts, configuration files, documentation files, or source control.
-
-Do not store:
-
-  Passwords
-  Authentication tokens
-  Client secrets
-  Certificates containing private keys
-  Other authentication credentials
-
-in the TenantIQ Git repository.
-
-TIP: Authentication and authorization should remain delegated to Microsoft's supported identity and administrative PowerShell mechanisms.
+TenantIQ delegates interactive authentication to Microsoft's supported administrative modules and identity platform.

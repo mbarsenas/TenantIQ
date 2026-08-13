@@ -140,13 +140,25 @@ def main() -> None:
 
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn:
         ensure_schema(conn)
+        indexed_paths: set[str] = set()
+
         for path in files:
             raw_text = path.read_text(encoding="utf-8")
             front_matter, text = parse_front_matter(raw_text)
             metadata = infer_metadata(path, front_matter)
+            source_path = metadata["source_path"]
+            indexed_paths.add(source_path)
+
+            # Replace all chunks for this source atomically at the source-path level.
+            # This prevents stale chunks from surviving when a document is edited,
+            # shortened, or re-chunked.
+            conn.execute(
+                "DELETE FROM tenantiq_knowledge_chunks WHERE source_path = %s",
+                (source_path,),
+            )
 
             for index, chunk in enumerate(chunk_text(text)):
-                stable = f"{metadata['source_path']}:{index}:{chunk}".encode("utf-8")
+                stable = f"{source_path}:{index}".encode("utf-8")
                 chunk_id = hashlib.sha256(stable).hexdigest()
                 vector = embed(chunk)
                 conn.execute(
@@ -166,7 +178,7 @@ def main() -> None:
                     """,
                     (
                         chunk_id,
-                        metadata["source_path"],
+                        source_path,
                         metadata.get("workload"),
                         metadata.get("content_type"),
                         index,
@@ -175,7 +187,20 @@ def main() -> None:
                         json.dumps(metadata),
                     ),
                 )
-            print(f"Indexed {metadata['source_path']}")
+            print(f"Indexed {source_path}")
+
+        # Remove knowledge rows for Markdown sources that no longer exist in the KB.
+        rows = conn.execute(
+            "SELECT DISTINCT source_path FROM tenantiq_knowledge_chunks"
+        ).fetchall()
+        current_sources = {str(row[0]) for row in rows}
+        stale_sources = current_sources - indexed_paths
+        for source_path in stale_sources:
+            conn.execute(
+                "DELETE FROM tenantiq_knowledge_chunks WHERE source_path = %s",
+                (source_path,),
+            )
+            print(f"Removed stale source {source_path}")
 
 
 if __name__ == "__main__":

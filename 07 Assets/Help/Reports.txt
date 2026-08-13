@@ -1,0 +1,57 @@
+# TenantIQ - Reports
+
+TenantIQ produces workload assessment CSV files and an executive Portfolio Report.
+
+## Workload Reports
+Each workload writes a timestamped CSV under:
+
+  06 Output
+
+The CSV contains standardized fields such as workload, check, category, status, severity, finding, evidence, and recommendation where available.
+
+## Portfolio Report
+After running the desired workloads, select:
+
+  [9] Portfolio Report
+
+TenantIQ reads the latest available CSV for each supported workload and generates:
+
+  TenantIQ-Portfolio-Assessment-<timestamp>.html
+  TenantIQ-Portfolio-Assessment-<timestamp>.csv
+
+The HTML report includes:
+
+  Portfolio posture score
+  Coverage across up to 8 workloads
+  Assessment snapshot
+  Per-workload posture table
+  Priority FAIL and WARNING findings
+  Recommended next steps
+
+## Scoring
+PASS = full credit
+WARNING = half credit
+FAIL = no credit
+INFO and NOT EVALUATED = unscored context
+
+Posture labels:
+
+  90-100  Strong Posture
+  75-89   Needs Attention
+  60-74   Elevated Risk
+  0-59    High Risk
+
+## Important Reporting Rules
+The Portfolio Report uses the latest available workload CSV by timestamp.
+
+Do not mix CSV files from different customer tenants in the same 06 Output set before generating a portfolio report.
+
+INFO and NOT EVALUATED remain visible as unscored context and are not allowed to distort the posture score.
+
+Individual FAIL findings remain prioritized even when the overall score is relatively high.
+
+## PDF Output
+Open the generated HTML report in a browser and use Print to save it as PDF when a PDF deliverable is required.
+
+## Reassessment
+After remediation, rerun the affected workload and regenerate the Portfolio Report. Keep previous reports when historical comparison, audit evidence, or engagement records are required.

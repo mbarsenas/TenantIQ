@@ -11,6 +11,8 @@ from openai import OpenAI
 from pgvector import Vector
 from pgvector.psycopg import register_vector
 
+from assessment_loader import load_assessment, select_finding
+
 load_dotenv()
 
 DATABASE_URL = os.environ["DATABASE_URL"]
@@ -112,7 +114,7 @@ def answer(
         finding_check_id = finding.get("check_id") or finding.get("checkId")
         if effective_check_id and finding_check_id and effective_check_id != finding_check_id:
             raise SystemExit(
-                f"Check ID mismatch: --check-id is {effective_check_id}, but finding file contains {finding_check_id}."
+                f"Check ID mismatch: --check-id is {effective_check_id}, but finding evidence contains {finding_check_id}."
             )
         effective_check_id = effective_check_id or finding_check_id
 
@@ -155,11 +157,24 @@ if __name__ == "__main__":
     parser.add_argument(
         "--finding-file",
         default=None,
-        help="Path to a JSON file containing tenant-specific assessment finding evidence.",
+        help="Path to a JSON file containing one tenant-specific finding.",
+    )
+    parser.add_argument(
+        "--assessment-file",
+        default=None,
+        help="Path to a TenantIQ assessment .csv or .json file containing multiple findings.",
     )
     args = parser.parse_args()
 
+    if args.finding_file and args.assessment_file:
+        raise SystemExit("Use either --finding-file or --assessment-file, not both.")
+
     finding = load_finding(args.finding_file)
+    if args.assessment_file:
+        if not args.check_id:
+            raise SystemExit("--assessment-file requires --check-id so TenantIQ can select one finding.")
+        finding = select_finding(load_assessment(args.assessment_file), args.check_id)
+
     print(
         answer(
             args.question,

@@ -22,8 +22,10 @@ $RequiredFiles = @(
     'Start-TenantIQ.ps1',
     'TenantIQ.ps1',
     'TenantIQ.json',
+    'TenantIQ-License.template.json',
     'Install-TenantIQPrerequisites.ps1',
     'Get-TenantIQVersion.ps1',
+    'Get-TenantIQLicenseStatus.ps1',
     'QUICKSTART.md',
     'CUSTOMER-README.md',
     'CHANGELOG.md'
@@ -110,6 +112,12 @@ foreach ($Pattern in $PatternsToRemove) {
         Remove-Item -Force -ErrorAction SilentlyContinue
 }
 
+# Never ship a development/customer-specific license file from the build workspace.
+$PackagedLicense = Join-Path $PackageRoot 'TenantIQ-License.json'
+if (Test-Path $PackagedLicense) {
+    Remove-Item -Path $PackagedLicense -Force
+}
+
 # Remove Git metadata if packaging from a working tree copy.
 Get-ChildItem -Path $PackageRoot -Recurse -Force -Directory -Filter '.git' -ErrorAction SilentlyContinue |
     Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
@@ -125,6 +133,8 @@ $BuildInfo = [ordered]@{
     Controls             = 416
     Workloads            = 8
     MinimumPowerShell    = '7.0'
+    LicensingMode        = 'ScaffoldingOnly'
+    LicenseEnforcement   = $false
     OptionalPnPRequested = [bool]$IncludeOptionalPnP
 }
 $BuildInfo | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $PackageRoot 'PACKAGE-INFO.json') -Encoding UTF8
@@ -153,17 +163,19 @@ Write-Host ("ZIP SHA256  : {0}" -f $ZipHash) -ForegroundColor Cyan
 Write-Host ''
 Write-Host 'Customer support/version command:' -ForegroundColor Yellow
 Write-Host '  .\Get-TenantIQVersion.ps1'
+Write-Host '  .\Get-TenantIQLicenseStatus.ps1'
 Write-Host ''
 Write-Host 'Customer first-run commands:' -ForegroundColor Yellow
 Write-Host '  .\Install-TenantIQPrerequisites.ps1'
 Write-Host '  .\Start-TenantIQ.ps1'
 
 [pscustomobject]@{
-    Version      = $Version
+    Version        = $Version
     ReleaseChannel = [string]$Config.ReleaseChannel
-    BuildCommit  = $BuildCommit
-    PackageRoot  = $PackageRoot
-    ZipPath      = $ZipPath
-    ZipSha256    = $ZipHash
-    ZipHashPath  = $ZipHashPath
+    BuildCommit    = $BuildCommit
+    PackageRoot    = $PackageRoot
+    ZipPath        = $ZipPath
+    ZipSha256      = $ZipHash
+    ZipHashPath    = $ZipHashPath
+    LicensingMode  = 'ScaffoldingOnly'
 }

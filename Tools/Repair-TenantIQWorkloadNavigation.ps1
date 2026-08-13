@@ -13,7 +13,7 @@ $content = Get-Content -LiteralPath $TenantIQPath -Raw
 $backup = "$TenantIQPath.navigation-backup-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 Copy-Item -LiteralPath $TenantIQPath -Destination $backup -Force
 
-$new = @'
+$helper = @'
 function Start-TenantIQWorkloadModule {
     param(
         [Parameter(Mandatory)][string]$Title,
@@ -50,43 +50,76 @@ function Start-TenantIQWorkloadModule {
     }
 }
 
+'@
+
+$replacements = [ordered]@{
+    'Start-TenantIQSharePointModule' = @'
 function Start-TenantIQSharePointModule {
     Start-TenantIQWorkloadModule -Title 'SharePoint Online' -Assessment { Start-TenantIQSharePointAssessment } -Checks $TenantIQSharePointHealthChecks -EnsureConnection { Ensure-TenantIQSharePointConnection }
 }
+'@
+    'Start-TenantIQTeamsModule' = @'
 function Start-TenantIQTeamsModule {
     Start-TenantIQWorkloadModule -Title 'Microsoft Teams' -Assessment { Start-TenantIQTeamsAssessment } -Checks $TenantIQTeamsHealthChecks
 }
+'@
+    'Start-TenantIQOneDriveModule' = @'
 function Start-TenantIQOneDriveModule {
     Start-TenantIQWorkloadModule -Title 'OneDrive' -Assessment { Start-TenantIQOneDriveAssessment } -Checks $TenantIQOneDriveHealthChecks -EnsureConnection { Ensure-TenantIQSharePointConnection }
 }
+'@
+    'Start-TenantIQIntuneModule' = @'
 function Start-TenantIQIntuneModule {
     Start-TenantIQWorkloadModule -Title 'Microsoft Intune' -Assessment { Start-TenantIQIntuneAssessment } -Checks $TenantIQIntuneHealthChecks
 }
+'@
+    'Start-TenantIQDefenderModule' = @'
 function Start-TenantIQDefenderModule {
     Start-TenantIQWorkloadModule -Title 'Microsoft Defender' -Assessment { Start-TenantIQDefenderAssessment } -Checks $TenantIQDefenderHealthChecks
 }
+'@
+    'Start-TenantIQPurviewModule' = @'
 function Start-TenantIQPurviewModule {
     Start-TenantIQWorkloadModule -Title 'Microsoft Purview' -Assessment { Start-TenantIQPurviewAssessment } -Checks $TenantIQPurviewHealthChecks
 }
 '@
-
-# Match the six current one-line wrappers regardless of CRLF/LF line endings or minor spacing differences.
-$pattern = '(?ms)^function\s+Start-TenantIQSharePointModule\s*\{[^\r\n]*\}\s*\r?\n' +
-           '^function\s+Start-TenantIQTeamsModule\s*\{[^\r\n]*\}\s*\r?\n' +
-           '^function\s+Start-TenantIQOneDriveModule\s*\{[^\r\n]*\}\s*\r?\n' +
-           '^function\s+Start-TenantIQIntuneModule\s*\{[^\r\n]*\}\s*\r?\n' +
-           '^function\s+Start-TenantIQDefenderModule\s*\{[^\r\n]*\}\s*\r?\n' +
-           '^function\s+Start-TenantIQPurviewModule\s*\{[^\r\n]*\}'
-
-$matches = [regex]::Matches($content, $pattern)
-if ($matches.Count -ne 1) {
-    throw "Expected one block containing the six one-shot workload module functions, but found $($matches.Count). No changes were made."
 }
 
-$content = [regex]::Replace($content, $pattern, [System.Text.RegularExpressions.MatchEvaluator]{ param($m) $new }, 1)
+# If the shared helper already exists, treat the repair as already applied.
+if ($content -match '(?m)^function\s+Start-TenantIQWorkloadModule\b') {
+    Write-Host '[OK] TenantIQ workload navigation repair is already applied.' -ForegroundColor Green
+    Write-Host "Backup: $backup" -ForegroundColor DarkGray
+    return
+}
+
+$first = $true
+foreach ($name in $replacements.Keys) {
+    # The current affected wrappers are single-line function definitions. Match each independently so
+    # differences in neighboring whitespace or line endings cannot block the entire repair.
+    $pattern = "(?m)^function\\s+$([regex]::Escape($name))\\s*\\{[^\\r\\n]*\\}\\s*$"
+    $matches = [regex]::Matches($content, $pattern)
+    if ($matches.Count -ne 1) {
+        Copy-Item -LiteralPath $backup -Destination $TenantIQPath -Force
+        throw "Expected exactly one $name wrapper but found $($matches.Count). No changes were made."
+    }
+
+    $replacement = $replacements[$name]
+    if ($first) {
+        $replacement = $helper + $replacement
+        $first = $false
+    }
+
+    $content = [regex]::Replace(
+        $content,
+        $pattern,
+        [System.Text.RegularExpressions.MatchEvaluator]{ param($m) $replacement },
+        1
+    )
+}
+
 Set-Content -LiteralPath $TenantIQPath -Value $content -Encoding utf8
 
-# Verify the shared menu function and all six wrappers are now present.
+$updated = Get-Content -LiteralPath $TenantIQPath -Raw
 $requiredFunctions = @(
     'Start-TenantIQWorkloadModule',
     'Start-TenantIQSharePointModule',
@@ -97,7 +130,6 @@ $requiredFunctions = @(
     'Start-TenantIQPurviewModule'
 )
 
-$updated = Get-Content -LiteralPath $TenantIQPath -Raw
 foreach ($functionName in $requiredFunctions) {
     if ($updated -notmatch "(?m)^function\s+$([regex]::Escape($functionName))\b") {
         Copy-Item -LiteralPath $backup -Destination $TenantIQPath -Force

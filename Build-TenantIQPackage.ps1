@@ -23,7 +23,8 @@ $RequiredFiles = @(
     'TenantIQ.ps1',
     'TenantIQ.json',
     'Install-TenantIQPrerequisites.ps1',
-    'QUICKSTART.md'
+    'QUICKSTART.md',
+    'CUSTOMER-README.md'
 )
 
 $RequiredDirectories = @(

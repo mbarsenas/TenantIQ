@@ -1,0 +1,23 @@
+# TenantIQ - Exchange Online
+
+Exchange Online includes 50 registered TenantIQ controls covering messaging configuration, transport, authentication, protection, governance, and operational posture.
+
+TenantIQ runs Exchange Online assessment in an isolated PowerShell 7 process to keep Exchange Online authentication libraries separate from Microsoft Graph where required.
+
+Required module:
+
+  ExchangeOnlineManagement
+
+Typical authentication:
+
+  Connect-ExchangeOnline
+
+Run Exchange Online from main menu option [1]. Complete Microsoft authentication when prompted and allow all 50 checks to finish.
+
+The workload exports a timestamped CSV under 06 Output.
+
+A FAIL result represents a tenant finding when the control completed successfully. Authentication, missing-module, or runtime errors are separate execution problems.
+
+If Exchange authentication fails with Microsoft.Identity.Client, MSAL, WAM, or assembly-manifest errors, close stale PowerShell sessions, inspect installed ExchangeOnlineManagement versions, and retry from PowerShell 7.
+
+For Microsoft Defender policy checks, TenantIQ may establish a separate Exchange Online context inside the Defender isolated runner. That does not mean the Exchange Online workload itself is broken.

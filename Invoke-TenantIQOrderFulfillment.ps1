@@ -12,7 +12,6 @@ $ErrorActionPreference = 'Stop'
 if (-not $SubscriptionId.StartsWith('sub_')) { throw 'SubscriptionId must begin with sub_.' }
 if ([string]::IsNullOrWhiteSpace($StripeSecretKey)) { throw 'STRIPE_SECRET_KEY is not set.' }
 if ([string]::IsNullOrWhiteSpace($FulfillmentApiKey)) { throw 'TENANTIQ_FULFILLMENT_API_KEY is not set.' }
-if (-not (Test-Path $PrivateKeyPath -PathType Leaf)) { throw "TenantIQ private signing key not found: $PrivateKeyPath" }
 
 $SiteUrl = $SiteUrl.TrimEnd('/')
 if ($SiteUrl -notmatch '^https://') { throw 'TENANTIQ_SITE_URL must use HTTPS for automated fulfillment.' }
@@ -20,6 +19,70 @@ if ($SiteUrl -notmatch '^https://') { throw 'TENANTIQ_SITE_URL must use HTTPS fo
 function Invoke-StripeGet {
     param([Parameter(Mandatory)][string]$Path)
     Invoke-RestMethod -Method Get -Uri ("https://api.stripe.com/v1/{0}" -f $Path) -Headers @{ Authorization = "Bearer $StripeSecretKey" }
+}
+
+function Invoke-StripePost {
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][hashtable]$Body
+    )
+    Invoke-RestMethod -Method Post `
+        -Uri ("https://api.stripe.com/v1/{0}" -f $Path) `
+        -Headers @{ Authorization = "Bearer $StripeSecretKey" } `
+        -ContentType 'application/x-www-form-urlencoded' `
+        -Body $Body
+}
+
+function New-TenantIQClaimUrl {
+    param([Parameter(Mandatory)][string]$SubscriptionId)
+
+    $tokenBytes = New-Object byte[] 32
+    [System.Security.Cryptography.RandomNumberGenerator]::Fill($tokenBytes)
+    $claimToken = [Convert]::ToBase64String($tokenBytes).TrimEnd('=').Replace('+','-').Replace('/','_')
+    $claimTokenHash = [Convert]::ToHexString(
+        [System.Security.Cryptography.SHA256]::HashData(
+            [System.Text.Encoding]::UTF8.GetBytes($claimToken)
+        )
+    ).ToLowerInvariant()
+    $claimExpiresAt = [datetimeoffset]::UtcNow.AddDays(7)
+
+    Invoke-StripePost -Path ("subscriptions/{0}" -f $SubscriptionId) -Body @{
+        'metadata[tenantiq_claim_token_sha256]' = $claimTokenHash
+        'metadata[tenantiq_claim_expires_at]' = $claimExpiresAt.ToString('o')
+        'metadata[tenantiq_delivery_email_status]' = 'pending'
+        'metadata[tenantiq_delivery_email_retry_prepared_at]' = [datetimeoffset]::UtcNow.ToString('o')
+    } | Out-Null
+
+    [pscustomobject]@{
+        ClaimUrl       = "$SiteUrl/claim?token=$claimToken"
+        ClaimExpiresAt = $claimExpiresAt
+    }
+}
+
+function Send-TenantIQDeliveryEmail {
+    param(
+        [Parameter(Mandatory)][string]$SubscriptionId,
+        [Parameter(Mandatory)][string]$ClaimUrl
+    )
+
+    $emailUri = "$SiteUrl/api/fulfillment/delivery-email"
+    $emailBody = @{
+        subscriptionId = $SubscriptionId
+        claimUrl = $ClaimUrl
+    } | ConvertTo-Json -Compress
+
+    $response = Invoke-RestMethod `
+        -Method Post `
+        -Uri $emailUri `
+        -Headers @{ Authorization = "Bearer $FulfillmentApiKey" } `
+        -ContentType 'application/json' `
+        -Body $emailBody
+
+    if (-not $response.sent) {
+        throw "TenantIQ delivery email endpoint did not confirm delivery. Status: $($response.status)"
+    }
+
+    return $response
 }
 
 function Get-LastResult {
@@ -48,12 +111,64 @@ if ([string]$metadata.tenantiq_delivery_email_status -eq 'sent') {
     }
 }
 
+if ([string]$metadata.tenantiq_delivery_email_status -eq 'sending') {
+    throw 'Stripe shows delivery email status sending. Refusing to rotate the claim token while a previous send may still be unresolved.'
+}
+
 $customerDomain = ([string]$metadata.tenantiq_customer_domain).Trim().ToLowerInvariant()
 if ([string]::IsNullOrWhiteSpace($customerDomain)) {
     throw 'Stripe subscription metadata does not contain tenantiq_customer_domain. Checkout must collect the licensed Microsoft 365 domain before fulfillment can run.'
 }
 if ($customerDomain -match '^[a-z]+://' -or $customerDomain -notmatch '^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?)+$') {
     throw "Stripe contains an invalid TenantIQ customer domain: '$customerDomain'"
+}
+
+$isDownloadReady = (
+    [string]$metadata.tenantiq_fulfillment_status -eq 'license_issued' -and
+    [string]$metadata.tenantiq_delivery_status -eq 'download_ready' -and
+    [string]$metadata.tenantiq_storage_provider -eq 'cloudflare_r2' -and
+    -not [string]::IsNullOrWhiteSpace([string]$metadata.tenantiq_storage_object)
+)
+
+if ($isDownloadReady) {
+    Write-Host ''
+    Write-Host 'TenantIQ Fulfillment Resume' -ForegroundColor Cyan
+    Write-Host '===========================' -ForegroundColor Cyan
+    Write-Host ('Subscription : {0}' -f $SubscriptionId)
+    Write-Host ('License ID   : {0}' -f ([string]$metadata.tenantiq_license_id))
+    Write-Host ('Delivery ID  : {0}' -f ([string]$metadata.tenantiq_delivery_id))
+    Write-Host ('R2 Object    : {0}' -f ([string]$metadata.tenantiq_storage_object))
+    Write-Host ''
+    Write-Host 'Existing package is already download_ready. Skipping license generation, ZIP build, and R2 upload.' -ForegroundColor Yellow
+    Write-Host 'Rotating the claim token and retrying only the delivery email.' -ForegroundColor Yellow
+
+    $claim = New-TenantIQClaimUrl -SubscriptionId $SubscriptionId
+    $emailResponse = Send-TenantIQDeliveryEmail -SubscriptionId $SubscriptionId -ClaimUrl $claim.ClaimUrl
+
+    Write-Host ''
+    Write-Host 'TenantIQ Fulfillment Resume Complete' -ForegroundColor Green
+    Write-Host '====================================' -ForegroundColor Green
+    Write-Host ('Subscription : {0}' -f $SubscriptionId)
+    Write-Host ('License ID   : {0}' -f ([string]$metadata.tenantiq_license_id))
+    Write-Host ('Delivery ID  : {0}' -f ([string]$metadata.tenantiq_delivery_id))
+    Write-Host ('Email Status : {0}' -f $emailResponse.status) -ForegroundColor Green
+    Write-Host ('Email ID     : {0}' -f $emailResponse.emailId)
+
+    return [pscustomobject]@{
+        SubscriptionId = $SubscriptionId
+        CustomerDomain = $customerDomain
+        Edition = [string]$metadata.tenantiq_edition
+        LicenseId = [string]$metadata.tenantiq_license_id
+        DeliveryId = [string]$metadata.tenantiq_delivery_id
+        R2Object = [string]$metadata.tenantiq_storage_object
+        EmailStatus = [string]$emailResponse.status
+        EmailId = [string]$emailResponse.emailId
+        Status = 'fulfilled_resume'
+    }
+}
+
+if (-not (Test-Path $PrivateKeyPath -PathType Leaf)) {
+    throw "TenantIQ private signing key not found: $PrivateKeyPath"
 }
 
 $buildScript = Join-Path $PSScriptRoot 'Build-TenantIQPackage.ps1'
@@ -97,15 +212,7 @@ if (-not $published -or [string]$published.DeliveryStatus -ne 'download_ready') 
 }
 
 Write-Host '[5/5] Sending secure TenantIQ claim email...' -ForegroundColor Cyan
-$emailUri = "$SiteUrl/api/fulfillment/delivery-email"
-$emailBody = @{
-    subscriptionId = $SubscriptionId
-    claimUrl = [string]$delivery.ClaimUrl
-} | ConvertTo-Json -Compress
-$emailResponse = Invoke-RestMethod -Method Post -Uri $emailUri -Headers @{ Authorization = "Bearer $FulfillmentApiKey" } -ContentType 'application/json' -Body $emailBody
-if (-not $emailResponse.sent) {
-    throw "TenantIQ delivery email endpoint did not confirm delivery. Status: $($emailResponse.status)"
-}
+$emailResponse = Send-TenantIQDeliveryEmail -SubscriptionId $SubscriptionId -ClaimUrl ([string]$delivery.ClaimUrl)
 
 Write-Host ''
 Write-Host 'TenantIQ Automated Fulfillment Complete' -ForegroundColor Green

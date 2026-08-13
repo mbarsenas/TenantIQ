@@ -102,7 +102,31 @@ function Start-TenantIQIntuneModule {
 }
 
 function Start-TenantIQDefenderAssessment {
-    Invoke-TenantIQRegisteredAssessment -Workload 'Microsoft Defender' -HealthChecks $TenantIQDefenderHealthChecks
+    $Runner = Join-Path (Split-Path $PSScriptRoot -Parent) '00 Runtime\Tools\Invoke-TenantIQDefenderAssessmentIsolated.ps1'
+    $ShellCommand = Get-Command pwsh.exe -ErrorAction SilentlyContinue
+
+    if (-not (Test-Path $Runner)) {
+        Write-Host ''
+        Write-Host '[ERROR] Isolated Microsoft Defender runner was not found.' -ForegroundColor Red
+        Write-Host $Runner -ForegroundColor DarkGray
+        return
+    }
+    if (-not $ShellCommand) {
+        Write-Host ''
+        Write-Host '[ERROR] PowerShell 7 (pwsh.exe) is required for the isolated Microsoft Defender assessment.' -ForegroundColor Red
+        return
+    }
+
+    Write-Host ''
+    Write-Host 'Starting Microsoft Defender in an isolated PowerShell process...' -ForegroundColor Cyan
+    Write-Host 'This keeps Defender Exchange policy cmdlets and Graph authentication out of the shared TenantIQ process.' -ForegroundColor DarkGray
+    Write-Host ''
+
+    & $ShellCommand.Source -NoProfile -ExecutionPolicy Bypass -File $Runner
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host ''
+        Write-Host ("[ERROR] Isolated Microsoft Defender assessment exited with code {0}." -f $LASTEXITCODE) -ForegroundColor Red
+    }
 }
 
 function Start-TenantIQDefenderModule {
@@ -115,7 +139,7 @@ function Start-TenantIQDefenderModule {
         Write-Host '[0] Back to Modules'
         Write-Host ""
         switch (Read-Host 'Select') {
-            '1' { Invoke-TenantIQRegisteredAssessment -Workload 'Microsoft Defender' -HealthChecks $TenantIQDefenderHealthChecks; Wait-TenantIQ }
+            '1' { Start-TenantIQDefenderAssessment; Wait-TenantIQ }
             '2' { Show-TenantIQAdditionalHealthChecks -Workload 'Microsoft Defender' -HealthChecks $TenantIQDefenderHealthChecks }
             '0' { return }
             default { Write-Host 'Invalid selection.' -ForegroundColor Red; Start-Sleep -Seconds 1 }

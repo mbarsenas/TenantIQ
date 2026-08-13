@@ -126,6 +126,91 @@ CHECKS: tuple[CheckDefinition, ...] = (
             "identity protection conditional access",
         ),
     ),
+    CheckDefinition(
+        check_id="ENTRA-APP-001",
+        workload="Entra ID",
+        aliases=(
+            "admin consent request policy",
+            "admin consent requests",
+        ),
+    ),
+    CheckDefinition(
+        check_id="ENTRA-APP-002",
+        workload="Entra ID",
+        aliases=(
+            "admin consent workflow",
+            "admin consent request workflow",
+        ),
+    ),
+    CheckDefinition(
+        check_id="ENTRA-APP-003",
+        workload="Entra ID",
+        aliases=(
+            "app registrations",
+            "application registrations",
+        ),
+    ),
+    CheckDefinition(
+        check_id="ENTRA-APP-004",
+        workload="Entra ID",
+        aliases=(
+            "application credentials",
+            "app credentials",
+        ),
+    ),
+    CheckDefinition(
+        check_id="ENTRA-APP-005",
+        workload="Entra ID",
+        aliases=(
+            "application ownership",
+            "app ownership",
+            "application owners",
+        ),
+    ),
+    CheckDefinition(
+        check_id="ENTRA-APP-006",
+        workload="Entra ID",
+        aliases=(
+            "application proxy",
+            "entra application proxy",
+            "app proxy",
+        ),
+    ),
+    CheckDefinition(
+        check_id="ENTRA-APP-007",
+        workload="Entra ID",
+        aliases=(
+            "enterprise app permissions",
+            "enterprise application permissions",
+            "service principal permissions",
+        ),
+    ),
+    CheckDefinition(
+        check_id="ENTRA-APP-008",
+        workload="Entra ID",
+        aliases=(
+            "service principal credentials",
+            "service principal secrets",
+            "service principal certificates",
+        ),
+    ),
+    CheckDefinition(
+        check_id="ENTRA-APP-009",
+        workload="Entra ID",
+        aliases=(
+            "service principals",
+            "enterprise applications",
+        ),
+    ),
+    CheckDefinition(
+        check_id="ENTRA-APP-010",
+        workload="Entra ID",
+        aliases=(
+            "tenant app management policy",
+            "tenant application management policy",
+            "app management policy",
+        ),
+    ),
 )
 
 

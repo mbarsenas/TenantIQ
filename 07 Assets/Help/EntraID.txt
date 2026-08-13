@@ -1,0 +1,15 @@
+# TenantIQ - Entra ID
+
+Entra ID includes 66 registered TenantIQ controls covering identity, authentication, access, applications, groups, governance, roles, and tenant security posture.
+
+TenantIQ uses Microsoft Graph PowerShell for Entra ID evidence collection.
+
+Required Graph modules include Authentication, Reports, Users, Groups, Applications, Identity.SignIns, Identity.Governance, and Identity.DirectoryManagement.
+
+Run Entra ID from main menu option [2]. TenantIQ prepares Microsoft Graph and requests the delegated scopes required by the registered checks.
+
+A successful Graph sign-in does not guarantee that every control can retrieve evidence. Licensing, Graph API availability, administrator consent, role assignments, and tenant configuration can affect individual results.
+
+The workload exports a timestamped CSV under 06 Output.
+
+INFO and NOT EVALUATED results are unscored. Review NOT EVALUATED findings to determine whether a missing permission, API, license, or evidence source limited assessment coverage.

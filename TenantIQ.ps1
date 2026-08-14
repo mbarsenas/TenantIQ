@@ -331,10 +331,24 @@ function Start-TenantIQPurviewModule { Start-TenantIQPurviewAssessment; Wait-Ten
 
 function Show-Banner {
     Clear-Host
-    Write-Host ''
-    Write-Host '┌────────────────────────────────────────────────────────────┐' -ForegroundColor Cyan
-    Write-Host '│              TenantIQ - M365 Assessment Tool              │' -ForegroundColor Cyan
-    Write-Host '└────────────────────────────────────────────────────────────┘' -ForegroundColor Cyan
+
+    $width = 80
+    try {
+        $hostWidth = [int]$Host.UI.RawUI.WindowSize.Width
+        if ($hostWidth -gt 20) { $width = $hostWidth - 1 }
+    }
+    catch {}
+
+    $width = [Math]::Max(60, [Math]::Min($width, 120))
+    $innerWidth = $width - 2
+    $title = 'TenantIQ - M365 Assessment Tool'
+    if ($title.Length -gt $innerWidth) { $title = $title.Substring(0, $innerWidth) }
+    $leftPad = [Math]::Floor(($innerWidth - $title.Length) / 2)
+    $rightPad = $innerWidth - $title.Length - $leftPad
+
+    Write-Host ('+' + ('-' * $innerWidth) + '+') -ForegroundColor Cyan
+    Write-Host ('|' + (' ' * $leftPad) + $title + (' ' * $rightPad) + '|') -ForegroundColor Cyan
+    Write-Host ('+' + ('-' * $innerWidth) + '+') -ForegroundColor Cyan
     Write-Host ''
     Write-Host 'Version : 1.0.0' -ForegroundColor DarkGray
     Write-Host ''

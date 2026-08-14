@@ -16,8 +16,9 @@ from assessment_store import latest_assessment_id, load_finding_from_db
 
 load_dotenv()
 
-ROOT = Path(__file__).resolve().parents[2]
-OUTPUT_ROOT = ROOT / "06 Output"
+RAG_DIR = Path(__file__).resolve().parent
+ROOT = RAG_DIR.parents[1] if len(RAG_DIR.parents) > 1 else RAG_DIR
+OUTPUT_ROOT = Path(os.getenv("TENANTIQ_OUTPUT_ROOT", str(ROOT / "06 Output")))
 DATABASE_URL = os.environ["DATABASE_URL"]
 EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
 CHAT_MODEL = os.getenv("OPENAI_CHAT_MODEL", "gpt-5")
@@ -218,34 +219,32 @@ if __name__ == "__main__":
         assessment_path = str(latest)
         print(f"Using latest assessment file: {latest}")
 
-    if assessment_path:
-        if not args.check_id:
-            raise SystemExit("Assessment queries require --check-id so TenantIQ can select one finding.")
-        finding = select_finding(load_assessment(assessment_path), args.check_id)
-
-    effective_assessment_id = args.assessment_id
     if args.latest_stored_assessment:
-        if not args.check_id:
-            raise SystemExit("--latest-stored-assessment requires --check-id.")
-        effective_assessment_id = latest_assessment_id()
-        if not effective_assessment_id:
-            raise SystemExit("No TenantIQ assessments are stored in PostgreSQL yet.")
-        print(f"Using latest stored assessment: {effective_assessment_id}")
+        assessment_id = latest_assessment_id()
+        if not assessment_id:
+            raise SystemExit("No stored TenantIQ assessments were found in PostgreSQL.")
+        args.assessment_id = assessment_id
+        print(f"Using latest stored assessment: {assessment_id}")
 
-    if effective_assessment_id:
+    if args.assessment_id:
         if not args.check_id:
-            raise SystemExit("--assessment-id requires --check-id.")
-        finding = load_finding_from_db(effective_assessment_id, args.check_id)
+            raise SystemExit("--assessment-id requires --check-id so TenantIQ can select a specific finding.")
+        finding = load_finding_from_db(args.assessment_id, args.check_id)
         if not finding:
             raise SystemExit(
-                f"Finding not found in PostgreSQL for assessment {effective_assessment_id} and check {args.check_id}."
+                f"Finding not found for assessment {args.assessment_id} and check {args.check_id}."
             )
+        print(f"Using stored assessment evidence: {args.assessment_id} / {args.check_id}")
 
-    print(
-        answer(
-            args.question,
-            workload=args.workload,
-            check_id=args.check_id,
-            finding=finding,
-        )
-    )
+    if assessment_path:
+        findings = load_assessment(assessment_path)
+        finding = select_finding(findings, check_id=args.check_id, question=args.question)
+        if finding:
+            print(
+                "Using assessment finding evidence: "
+                f"{finding.get('check_id') or finding.get('title') or 'matched finding'}"
+            )
+        elif args.check_id:
+            raise SystemExit(f"Check ID {args.check_id} was not found in {assessment_path}.")
+
+    print(answer(args.question, workload=args.workload, check_id=args.check_id, finding=finding))

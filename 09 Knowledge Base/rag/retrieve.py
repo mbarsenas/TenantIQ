@@ -12,7 +12,7 @@ from pgvector import Vector
 from pgvector.psycopg import register_vector
 
 from assessment_loader import load_assessment, select_finding
-from assessment_store import load_finding_from_db
+from assessment_store import latest_assessment_id, load_finding_from_db
 
 load_dotenv()
 
@@ -186,6 +186,11 @@ if __name__ == "__main__":
         default=None,
         help="Load tenant-specific finding evidence from PostgreSQL by assessment ID.",
     )
+    parser.add_argument(
+        "--latest-stored-assessment",
+        action="store_true",
+        help="Load tenant-specific finding evidence from the newest assessment stored in PostgreSQL.",
+    )
     args = parser.parse_args()
 
     source_count = sum(
@@ -195,11 +200,12 @@ if __name__ == "__main__":
             args.assessment_file,
             args.latest_assessment,
             args.assessment_id,
+            args.latest_stored_assessment,
         )
     )
     if source_count > 1:
         raise SystemExit(
-            "Use only one finding source: --finding-file, --assessment-file, --latest-assessment, or --assessment-id."
+            "Use only one finding source: --finding-file, --assessment-file, --latest-assessment, --assessment-id, or --latest-stored-assessment."
         )
 
     finding = load_finding(args.finding_file)
@@ -210,20 +216,29 @@ if __name__ == "__main__":
         if not latest:
             raise SystemExit(f"No TenantIQ portfolio assessment found under {OUTPUT_ROOT}.")
         assessment_path = str(latest)
-        print(f"Using latest assessment: {latest}")
+        print(f"Using latest assessment file: {latest}")
 
     if assessment_path:
         if not args.check_id:
             raise SystemExit("Assessment queries require --check-id so TenantIQ can select one finding.")
         finding = select_finding(load_assessment(assessment_path), args.check_id)
 
-    if args.assessment_id:
+    effective_assessment_id = args.assessment_id
+    if args.latest_stored_assessment:
+        if not args.check_id:
+            raise SystemExit("--latest-stored-assessment requires --check-id.")
+        effective_assessment_id = latest_assessment_id()
+        if not effective_assessment_id:
+            raise SystemExit("No TenantIQ assessments are stored in PostgreSQL yet.")
+        print(f"Using latest stored assessment: {effective_assessment_id}")
+
+    if effective_assessment_id:
         if not args.check_id:
             raise SystemExit("--assessment-id requires --check-id.")
-        finding = load_finding_from_db(args.assessment_id, args.check_id)
+        finding = load_finding_from_db(effective_assessment_id, args.check_id)
         if not finding:
             raise SystemExit(
-                f"Finding not found in PostgreSQL for assessment {args.assessment_id} and check {args.check_id}."
+                f"Finding not found in PostgreSQL for assessment {effective_assessment_id} and check {args.check_id}."
             )
 
     print(

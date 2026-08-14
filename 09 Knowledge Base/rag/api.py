@@ -1,16 +1,19 @@
 from __future__ import annotations
 
 import os
+import tempfile
+from pathlib import Path
 from typing import Any, Literal
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from assessment_insights import answer as answer_insights
 from assessment_store import (
     assessment_metadata,
+    import_assessment,
     latest_assessment_id,
     list_assessments,
     load_finding_from_db,
@@ -31,9 +34,12 @@ configured_origins = tuple(
 )
 ALLOWED_ORIGINS = configured_origins or DEFAULT_ORIGINS
 
+MAX_UPLOAD_BYTES = int(os.getenv("TENANTIQ_MAX_ASSESSMENT_UPLOAD_BYTES", str(20 * 1024 * 1024)))
+ALLOWED_UPLOAD_SUFFIXES = {".csv", ".json"}
+
 app = FastAPI(
     title="TenantIQ Knowledge Assistant API",
-    version="1.2.0",
+    version="1.3.0",
     description="Read-only API for grounded TenantIQ Microsoft 365 assessment questions.",
 )
 
@@ -74,6 +80,7 @@ class RootResponse(BaseModel):
     ask: str
     assessments: str
     latest_assessment: str
+    upload_assessment: str
 
 
 class AssessmentSummary(BaseModel):
@@ -84,23 +91,28 @@ class AssessmentSummary(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class AssessmentUploadResponse(AssessmentSummary):
+    imported: Literal[True] = True
+
+
 @app.get("/", response_model=RootResponse)
 def root() -> RootResponse:
     return RootResponse(
         service="TenantIQ Knowledge Assistant API",
-        version="1.2.0",
+        version="1.3.0",
         status="ok",
         health="/health",
         docs="/docs",
         ask="POST /ask",
         assessments="/assessments",
         latest_assessment="/assessments/latest",
+        upload_assessment="POST /assessments/upload",
     )
 
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
-    return HealthResponse(status="ok", service="tenantiq-rag", version="1.2.0")
+    return HealthResponse(status="ok", service="tenantiq-rag", version="1.3.0")
 
 
 @app.get("/assessments", response_model=list[AssessmentSummary])
@@ -117,6 +129,43 @@ def latest_assessment() -> AssessmentSummary:
     if not item:
         raise HTTPException(status_code=404, detail="Latest TenantIQ assessment could not be loaded.")
     return AssessmentSummary(**item)
+
+
+@app.post("/assessments/upload", response_model=AssessmentUploadResponse)
+async def upload_assessment(file: UploadFile = File(...)) -> AssessmentUploadResponse:
+    original_name = Path(file.filename or "assessment.csv").name
+    suffix = Path(original_name).suffix.lower()
+    if suffix not in ALLOWED_UPLOAD_SUFFIXES:
+        raise HTTPException(status_code=400, detail="TenantIQ assessment uploads must be CSV or JSON files.")
+
+    contents = await file.read(MAX_UPLOAD_BYTES + 1)
+    if not contents:
+        raise HTTPException(status_code=400, detail="Uploaded assessment file is empty.")
+    if len(contents) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Uploaded assessment file exceeds the TenantIQ size limit.")
+
+    temp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(prefix="tenantiq-upload-", suffix=suffix, delete=False) as handle:
+            handle.write(contents)
+            temp_path = Path(handle.name)
+
+        assessment_id, finding_count = import_assessment(str(temp_path))
+        item = assessment_metadata(assessment_id)
+        if not item:
+            raise RuntimeError("Imported TenantIQ assessment metadata could not be loaded.")
+
+        # Preserve the customer's original filename instead of the temporary server filename.
+        item["source_name"] = original_name
+        item["finding_count"] = finding_count
+        return AssessmentUploadResponse(**item)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"TenantIQ could not import this assessment: {exc}") from exc
+    finally:
+        if temp_path:
+            temp_path.unlink(missing_ok=True)
 
 
 @app.post("/ask", response_model=AskResponse)

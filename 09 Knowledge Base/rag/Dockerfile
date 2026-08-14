@@ -7,10 +7,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-COPY "09 Knowledge Base/rag/requirements.txt" ./requirements.txt
+COPY ["09 Knowledge Base/rag/requirements.txt", "./requirements.txt"]
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY "09 Knowledge Base/rag" ./rag
+COPY ["09 Knowledge Base/rag", "./rag"]
 WORKDIR /app/rag
 
 EXPOSE 8787

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, HTTPException, Query, UploadFile
+from fastapi import FastAPI, File, Header, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -38,6 +38,7 @@ configured_origins = tuple(
     if origin.strip()
 )
 ALLOWED_ORIGINS = configured_origins or DEFAULT_ORIGINS
+DEFAULT_CUSTOMER_ID = os.getenv("TENANTIQ_DEFAULT_CUSTOMER_ID", "local-dev").strip() or "local-dev"
 
 MAX_UPLOAD_BYTES = int(os.getenv("TENANTIQ_MAX_ASSESSMENT_UPLOAD_BYTES", str(20 * 1024 * 1024)))
 ALLOWED_UPLOAD_SUFFIXES = {".csv", ".json"}
@@ -46,11 +47,11 @@ ALLOWED_SEVERITIES = {"CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO", "NONE"}
 CANONICAL_CHECK_IDS = {item.check_id for item in CHECKS}
 CANONICAL_WORKLOADS = {item.workload for item in CHECKS}
 MIN_CANONICAL_RATIO = float(os.getenv("TENANTIQ_UPLOAD_MIN_CANONICAL_RATIO", "0.6"))
-CHECK_ID_PATTERN = re.compile(r"\b(?:ENTRA|EXO|SPO|TEAMS|ONEDRIVE|INTUNE|DEFENDER|PUR)-[A-Z0-9]+-\d{3}\b", re.IGNORECASE)
+CHECK_ID_PATTERN = re.compile(r"\b(?:ENTRA|EXO|SPO|TEAMS|ONEDRIVE|OD|INTUNE|DEFENDER|PUR)-[A-Z0-9]+-\d{3}\b", re.IGNORECASE)
 
 app = FastAPI(
     title="TenantIQ Knowledge Assistant API",
-    version="1.5.1",
+    version="1.6.0",
     description="Read-only API for grounded TenantIQ Microsoft 365 assessment questions.",
 )
 
@@ -59,7 +60,7 @@ app.add_middleware(
     allow_origins=list(ALLOWED_ORIGINS),
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type"],
+    allow_headers=["Content-Type", "X-TenantIQ-Customer-ID"],
 )
 
 
@@ -99,6 +100,7 @@ class RootResponse(BaseModel):
 
 class AssessmentSummary(BaseModel):
     assessment_id: str
+    customer_id: str | None = None
     source_name: str | None = None
     imported_at: str | None = None
     finding_count: int
@@ -107,6 +109,10 @@ class AssessmentSummary(BaseModel):
 
 class AssessmentUploadResponse(AssessmentSummary):
     imported: Literal[True] = True
+
+
+def _customer_id(value: str | None) -> str:
+    return (value or DEFAULT_CUSTOMER_ID).strip() or DEFAULT_CUSTOMER_ID
 
 
 def _normalized_status(value: Any) -> str:
@@ -141,21 +147,15 @@ def _finding_map(assessment_id: str) -> tuple[list[dict[str, Any]], dict[str, di
 
 def _answer_check_ids(answer: str, finding_map: dict[str, dict[str, Any]]) -> list[str]:
     check_ids: list[str] = []
-
-    # Full canonical IDs first.
     for candidate in CHECK_ID_PATTERN.findall(answer):
         normalized = candidate.upper()
         if normalized in finding_map and normalized not in check_ids:
             check_ids.append(normalized)
-
-    # The model sometimes shortens ENTRA IDs in prose, e.g. APP-007 or ID-001.
-    # Resolve those only when they map uniquely to a finding in this assessment.
     for short in re.findall(r"\b([A-Z][A-Z0-9]+-\d{3})\b", answer, flags=re.IGNORECASE):
         normalized_short = short.upper()
         matches = [check_id for check_id in finding_map if check_id.endswith(f"-{normalized_short}")]
         if len(matches) == 1 and matches[0] not in check_ids:
             check_ids.append(matches[0])
-
     return check_ids
 
 
@@ -166,12 +166,10 @@ def _assessment_evidence(
 ) -> tuple[int, list[str], list[str]]:
     findings, finding_map = _finding_map(assessment_id)
     check_ids = _answer_check_ids(answer, finding_map)
-
     if explicit_check_id:
         normalized = explicit_check_id.upper()
         if normalized in finding_map and normalized not in check_ids:
             check_ids.insert(0, normalized)
-
     sources = _answer_sources(answer)
     return len(findings), check_ids, sources
 
@@ -199,14 +197,11 @@ def _validate_tenantiq_assessment(path: Path) -> tuple[list[dict[str, Any]], dic
         title = str(finding.get("title") or "").strip()
         status = _normalized_status(finding.get("status"))
         severity = _normalized_severity(finding.get("severity"))
-
         canonical = canonical_check_id(check_id) if check_id else None
         if canonical and canonical in CANONICAL_CHECK_IDS:
             canonical_count += 1
-
         if not title or not status or not (check_id or canonical):
             missing_core_fields += 1
-
         if status and status not in {item.replace("_", " ") for item in ALLOWED_STATUSES}:
             invalid_statuses.add(status)
         if severity and severity not in ALLOWED_SEVERITIES:
@@ -216,51 +211,26 @@ def _validate_tenantiq_assessment(path: Path) -> tuple[list[dict[str, Any]], dic
 
     canonical_ratio = canonical_count / len(findings)
     if canonical_count == 0:
-        raise HTTPException(
-            status_code=400,
-            detail="This file is not a recognized TenantIQ assessment. No canonical TenantIQ check IDs were found.",
-        )
+        raise HTTPException(status_code=400, detail="This file is not a recognized TenantIQ assessment. No canonical TenantIQ check IDs were found.")
     if canonical_ratio < MIN_CANONICAL_RATIO:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "This file does not look like a valid TenantIQ assessment. "
-                f"Only {canonical_count} of {len(findings)} findings mapped to TenantIQ checks."
-            ),
-        )
+        raise HTTPException(status_code=400, detail=f"This file does not look like a valid TenantIQ assessment. Only {canonical_count} of {len(findings)} findings mapped to TenantIQ checks.")
     if missing_core_fields > max(3, int(len(findings) * 0.1)):
-        raise HTTPException(
-            status_code=400,
-            detail="This file is missing required TenantIQ finding fields such as check ID, title, or status.",
-        )
+        raise HTTPException(status_code=400, detail="This file is missing required TenantIQ finding fields such as check ID, title, or status.")
     if invalid_statuses:
-        raise HTTPException(
-            status_code=400,
-            detail="Unsupported TenantIQ status value(s): " + ", ".join(sorted(invalid_statuses)[:8]),
-        )
+        raise HTTPException(status_code=400, detail="Unsupported TenantIQ status value(s): " + ", ".join(sorted(invalid_statuses)[:8]))
     if invalid_severities:
-        raise HTTPException(
-            status_code=400,
-            detail="Unsupported TenantIQ severity value(s): " + ", ".join(sorted(invalid_severities)[:8]),
-        )
+        raise HTTPException(status_code=400, detail="Unsupported TenantIQ severity value(s): " + ", ".join(sorted(invalid_severities)[:8]))
     if unknown_workloads:
-        raise HTTPException(
-            status_code=400,
-            detail="Unsupported TenantIQ workload value(s): " + ", ".join(sorted(unknown_workloads)[:8]),
-        )
+        raise HTTPException(status_code=400, detail="Unsupported TenantIQ workload value(s): " + ", ".join(sorted(unknown_workloads)[:8]))
 
-    return findings, {
-        "validated": True,
-        "canonical_findings": canonical_count,
-        "canonical_ratio": round(canonical_ratio, 4),
-    }
+    return findings, {"validated": True, "canonical_findings": canonical_count, "canonical_ratio": round(canonical_ratio, 4)}
 
 
 @app.get("/", response_model=RootResponse)
 def root() -> RootResponse:
     return RootResponse(
         service="TenantIQ Knowledge Assistant API",
-        version="1.5.1",
+        version="1.6.0",
         status="ok",
         health="/health",
         docs="/docs",
@@ -273,32 +243,40 @@ def root() -> RootResponse:
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
-    return HealthResponse(status="ok", service="tenantiq-rag", version="1.5.1")
+    return HealthResponse(status="ok", service="tenantiq-rag", version="1.6.0")
 
 
 @app.get("/assessments", response_model=list[AssessmentSummary])
-def assessments(limit: int = Query(default=25, ge=1, le=100)) -> list[AssessmentSummary]:
-    return [AssessmentSummary(**item) for item in list_assessments(limit=limit)]
+def assessments(
+    limit: int = Query(default=25, ge=1, le=100),
+    x_tenantiq_customer_id: str | None = Header(default=None),
+) -> list[AssessmentSummary]:
+    customer = _customer_id(x_tenantiq_customer_id)
+    return [AssessmentSummary(**item) for item in list_assessments(limit=limit, customer_id=customer)]
 
 
 @app.get("/assessments/latest", response_model=AssessmentSummary)
-def latest_assessment() -> AssessmentSummary:
-    assessment_id = latest_assessment_id()
+def latest_assessment(x_tenantiq_customer_id: str | None = Header(default=None)) -> AssessmentSummary:
+    customer = _customer_id(x_tenantiq_customer_id)
+    assessment_id = latest_assessment_id(customer_id=customer)
     if not assessment_id:
-        raise HTTPException(status_code=404, detail="No TenantIQ assessments are stored in PostgreSQL yet.")
-    item = assessment_metadata(assessment_id)
+        raise HTTPException(status_code=404, detail="No TenantIQ assessments are stored for this customer yet.")
+    item = assessment_metadata(assessment_id, customer_id=customer)
     if not item:
         raise HTTPException(status_code=404, detail="Latest TenantIQ assessment could not be loaded.")
     return AssessmentSummary(**item)
 
 
 @app.post("/assessments/upload", response_model=AssessmentUploadResponse)
-async def upload_assessment(file: UploadFile = File(...)) -> AssessmentUploadResponse:
+async def upload_assessment(
+    file: UploadFile = File(...),
+    x_tenantiq_customer_id: str | None = Header(default=None),
+) -> AssessmentUploadResponse:
+    customer = _customer_id(x_tenantiq_customer_id)
     original_name = Path(file.filename or "assessment.csv").name
     suffix = Path(original_name).suffix.lower()
     if suffix not in ALLOWED_UPLOAD_SUFFIXES:
         raise HTTPException(status_code=400, detail="TenantIQ assessment uploads must be CSV or JSON files.")
-
     contents = await file.read(MAX_UPLOAD_BYTES + 1)
     if not contents:
         raise HTTPException(status_code=400, detail="Uploaded assessment file is empty.")
@@ -310,14 +288,10 @@ async def upload_assessment(file: UploadFile = File(...)) -> AssessmentUploadRes
         with tempfile.NamedTemporaryFile(prefix="tenantiq-upload-", suffix=suffix, delete=False) as handle:
             handle.write(contents)
             temp_path = Path(handle.name)
-
         _, validation_metadata = _validate_tenantiq_assessment(temp_path)
-        stored_metadata = {
-            **validation_metadata,
-            "original_filename": original_name,
-        }
-        assessment_id, finding_count = import_assessment(str(temp_path), metadata=stored_metadata)
-        item = assessment_metadata(assessment_id)
+        stored_metadata = {**validation_metadata, "original_filename": original_name}
+        assessment_id, finding_count = import_assessment(str(temp_path), metadata=stored_metadata, customer_id=customer)
+        item = assessment_metadata(assessment_id, customer_id=customer)
         if not item:
             raise RuntimeError("Imported TenantIQ assessment metadata could not be loaded.")
         item["finding_count"] = finding_count
@@ -332,26 +306,26 @@ async def upload_assessment(file: UploadFile = File(...)) -> AssessmentUploadRes
 
 
 @app.post("/ask", response_model=AskResponse)
-def ask(request: AskRequest) -> AskResponse:
+def ask(
+    request: AskRequest,
+    x_tenantiq_customer_id: str | None = Header(default=None),
+) -> AskResponse:
+    customer = _customer_id(x_tenantiq_customer_id)
     question = request.question.strip()
-    assessment_id = request.assessment_id or latest_assessment_id()
+    assessment_id = request.assessment_id or latest_assessment_id(customer_id=customer)
     if not assessment_id:
-        raise HTTPException(status_code=409, detail="No TenantIQ assessments are stored in PostgreSQL yet.")
+        raise HTTPException(status_code=409, detail="No TenantIQ assessments are stored for this customer yet.")
+    if not assessment_metadata(assessment_id, customer_id=customer):
+        raise HTTPException(status_code=404, detail="Assessment not found for this customer.")
 
     route, detected_check_id = route_question(question, explicit_check_id=request.check_id)
-
     if route == "check":
         check_id = detected_check_id or detect_check_id(question)
         if not check_id:
             raise HTTPException(status_code=400, detail="A specific-finding request requires a check ID.")
-
-        finding = load_finding_from_db(assessment_id, check_id)
+        finding = load_finding_from_db(assessment_id, check_id, customer_id=customer)
         if not finding:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Finding not found for assessment {assessment_id} and check {check_id}.",
-            )
-
+            raise HTTPException(status_code=404, detail=f"Finding not found for assessment {assessment_id} and check {check_id}.")
         result = answer_check(question, check_id=check_id, finding=finding)
         finding_count, check_ids, sources = _assessment_evidence(assessment_id, result, explicit_check_id=check_id)
         return AskResponse(
@@ -379,7 +353,6 @@ def ask(request: AskRequest) -> AskResponse:
 
 if __name__ == "__main__":
     import uvicorn
-
     host = os.getenv("TENANTIQ_API_HOST", "127.0.0.1")
     port = int(os.getenv("PORT") or os.getenv("TENANTIQ_API_PORT", "8787"))
     uvicorn.run("api:app", host=host, port=port, reload=False)

@@ -73,12 +73,6 @@ def _json_value(value: Any) -> str:
 
 
 def _merge_duplicate_findings(findings: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Collapse duplicate canonical check IDs into one stable finding per assessment.
-
-    Portfolio assessments can surface the same canonical control more than once
-    (for example, from multiple source rows that normalize to the same check ID).
-    Keep a single row so the database primary key remains deterministic.
-    """
     merged: dict[str, dict[str, Any]] = {}
 
     for finding in findings:
@@ -91,8 +85,6 @@ def _merge_duplicate_findings(findings: list[dict[str, Any]]) -> list[dict[str, 
             merged[check_id] = dict(finding)
             continue
 
-        # Prefer populated fields from the newer duplicate while retaining any
-        # useful values already collected from the first occurrence.
         combined = dict(existing)
         for key, value in finding.items():
             if value not in (None, "", [], {}):
@@ -183,6 +175,20 @@ def import_assessment(path: str) -> tuple[str, int]:
             )
 
     return assessment_id, len(canonical_findings)
+
+
+def latest_assessment_id() -> str | None:
+    with psycopg.connect(DATABASE_URL) as conn:
+        ensure_schema(conn)
+        row = conn.execute(
+            """
+            SELECT assessment_id
+            FROM tenantiq_assessments
+            ORDER BY imported_at DESC, assessment_id DESC
+            LIMIT 1
+            """
+        ).fetchone()
+    return str(row[0]) if row else None
 
 
 def load_finding_from_db(assessment_id: str, check_id: str) -> dict[str, Any] | None:

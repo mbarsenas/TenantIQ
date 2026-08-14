@@ -14,7 +14,7 @@ function Get-AccessClassification {
     param([string]$Message)
     $m = [string]$Message
     if ([string]::IsNullOrWhiteSpace($m)) { return 'ERROR' }
-    if ($m -match '(?i)not connected|not authenticated|authentication|sign.?in|login|session is not established|before requesting access token|must (?:first )?call\s+Connect-|call\s+Connect-[A-Za-z0-9-]+\s+before|connect-[A-Za-z0-9-]+\s+before') { return 'SIGN-IN REQUIRED' }
+    if ($m -match '(?i)not connected|not authenticated|authentication|sign.?in|login|session is not established|before requesting access token|must (?:first )?call\s+Connect-|call\s+Connect-[A-Za-z0-9-]+\s+before|connect-[A-Za-z0-9-]+\s+before|no valid oauth 2\.0 authentication session exists') { return 'SIGN-IN REQUIRED' }
     if ($m -match '(?i)access denied|forbidden|unauthorized|insufficient privileges|does not have permission|permission.*denied|403|401') { return 'DENIED' }
     if ($m -match '(?i)not licensed|license|service.*not.*available|not provisioned|resource.*not.*found|404') { return 'UNAVAILABLE' }
     return 'ERROR'
@@ -82,7 +82,7 @@ function Invoke-TenantIQAccessProbe {
         if($spoStatus -eq 'ERROR' -and [string]::IsNullOrWhiteSpace($spoError)){$spoStatus='SIGN-IN REQUIRED'}
         $category=switch($spoStatus){'SIGN-IN REQUIRED'{'Authentication required'}'DENIED'{'Permission denied'}'UNAVAILABLE'{'Service or licensing unavailable'}default{'Query failure'}}
         $detail=if($spoStatus -eq 'SIGN-IN REQUIRED'){'Please sign in to SharePoint Online.'}elseif($spoError){$spoError}else{'SharePoint Online tenant query did not succeed.'}
-        $results.Add((New-AccessResult 'SharePoint Online' $spoStatus $category $detail 'Run Connect-SPOService -Url https://<tenant>-admin.sharepoint.com and authenticate.'))
+        $results.Add((New-AccessResult 'SharePoint Online' $spoStatus $category $detail 'Run Connect-SPOService -Url https://<tenant>-admin.sharepoint.com -UseSystemBrowser $true and authenticate.'))
     }
 
     $teamsConnected=$false;$teamsError=''
@@ -140,17 +140,20 @@ function Invoke-TenantIQInteractiveSignIn {
             $adminUrl="https://$tenantStem-admin.sharepoint.com"
             Write-Host ("Signing in to SharePoint Online: {0}" -f $adminUrl) -ForegroundColor Cyan
             try {
-                if (-not (Get-CommandAvailable 'Connect-SPOService')) {
-                    Import-Module Microsoft.Online.SharePoint.PowerShell -ErrorAction Stop
+                if (-not (Get-CommandAvailable 'Connect-SPOService')) { Import-Module Microsoft.Online.SharePoint.PowerShell -ErrorAction Stop }
+                if (-not (Get-CommandAvailable 'Connect-SPOService')) { throw 'Microsoft.Online.SharePoint.PowerShell loaded, but Connect-SPOService is unavailable.' }
+                $spoCommand = Get-Command Connect-SPOService -ErrorAction Stop
+                if ($spoCommand.Parameters.ContainsKey('UseSystemBrowser')) {
+                    Connect-SPOService -Url $adminUrl -UseSystemBrowser $true -ErrorAction Stop
+                } elseif ($spoCommand.Parameters.ContainsKey('ModernAuth') -and $spoCommand.Parameters.ContainsKey('AuthenticationUrl')) {
+                    Connect-SPOService -Url $adminUrl -ModernAuth $true -AuthenticationUrl 'https://login.microsoftonline.com/organizations' -ErrorAction Stop
+                } else {
+                    Connect-SPOService -Url $adminUrl -ErrorAction Stop
                 }
-                if (-not (Get-CommandAvailable 'Connect-SPOService')) {
-                    throw 'Microsoft.Online.SharePoint.PowerShell is installed but Connect-SPOService is still unavailable in this PowerShell session.'
-                }
-                Connect-SPOService -Url $adminUrl -ErrorAction Stop
                 Write-Host '[OK] SharePoint Online sign-in completed.' -ForegroundColor Green
             } catch {
                 Write-Host ('[WARNING] SharePoint Online sign-in did not complete: {0}' -f $_.Exception.Message) -ForegroundColor Yellow
-                Write-Host '          Try opening Windows PowerShell 5.1 if your installed SharePoint module cannot load in PowerShell 7.' -ForegroundColor DarkGray
+                Write-Host '          TenantIQ attempted the SharePoint system-browser / modern-auth flow supported by the installed module.' -ForegroundColor DarkGray
             }
         }else{Write-Host '[WARNING] Could not determine the SharePoint tenant name. SharePoint sign-in skipped.' -ForegroundColor Yellow}
     }

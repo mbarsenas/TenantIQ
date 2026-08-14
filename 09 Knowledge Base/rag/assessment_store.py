@@ -253,12 +253,12 @@ def load_finding_from_db(assessment_id: str, check_id: str, customer_id: str | N
     return {key: value for key, value in zip(keys, row) if value not in (None, "")}
 
 
-def claim_assessments(source_customer_id: str, target_customer_id: str) -> int:
+def claim_assessments(source_customer_id: str, target_customer_id: str, *, allow_explicit_source: bool = False) -> int:
     source = _customer_id(source_customer_id)
     target = _customer_id(target_customer_id)
     if source == target:
         return 0
-    if source != "local-dev":
+    if not allow_explicit_source and source != "local-dev":
         raise ValueError("Assessment claiming is restricted to the local-dev source identity.")
     if target == "local-dev":
         raise ValueError("Target customer identity must not be local-dev.")
@@ -293,11 +293,21 @@ if __name__ == "__main__":
     claim_parser = subparsers.add_parser("claim-local", help="Move local-dev assessments to an authenticated customer identity.")
     claim_parser.add_argument("--target-customer-id", required=True)
 
+    migrate_parser = subparsers.add_parser("migrate-customer", help="Move assessments from one explicit customer identity to another.")
+    migrate_parser.add_argument("--source-customer-id", required=True)
+    migrate_parser.add_argument("--target-customer-id", required=True)
+    migrate_parser.add_argument("--confirm", action="store_true", help="Required safety confirmation for explicit customer migration.")
+
     args = parser.parse_args()
 
     if args.command == "claim-local":
         moved = claim_assessments("local-dev", args.target_customer_id)
         print(f"Claimed {moved} local assessment(s) for {args.target_customer_id}.")
+    elif args.command == "migrate-customer":
+        if not args.confirm:
+            parser.error("migrate-customer requires --confirm.")
+        moved = claim_assessments(args.source_customer_id, args.target_customer_id, allow_explicit_source=True)
+        print(f"Migrated {moved} assessment(s) from {args.source_customer_id} to {args.target_customer_id}.")
     else:
         assessment_file = getattr(args, "assessment_file", None)
         customer_id = getattr(args, "customer_id", None)

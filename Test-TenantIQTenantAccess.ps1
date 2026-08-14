@@ -28,52 +28,15 @@ function Get-CommandAvailable {
     return $null -ne (Get-Command $Name -ErrorAction SilentlyContinue)
 }
 
-function Get-TenantIQFailureCategory {
-    param([Parameter(Mandatory)][string]$Message)
+function Get-AccessClassification {
+    param([string]$Message)
 
-    $m = $Message.ToLowerInvariant()
-    if ($m -match 'not connected|connect-|no active session|authentication|login|sign.?in|token|account.*not found') { return 'Not authenticated' }
-    if ($m -match '403|forbidden|unauthorized|access denied|insufficient privileges|authorization_requestdenied|permission') { return 'Permission denied' }
-    if ($m -match 'license|licensing|service plan|not enabled|not available|not provisioned|subscription') { return 'Service or license unavailable' }
-    if ($m -match '404|not found|resource.*does not exist|endpoint') { return 'API or service unavailable' }
-    if ($m -match 'timeout|timed out|network|name resolution|remote name|connection.*failed|temporarily unavailable|503|502|500|429|throttl') { return 'Query or API failure' }
-    return 'Query or API failure'
-}
-
-function New-TenantIQProbeResult {
-    param(
-        [Parameter(Mandatory)][string]$Workload,
-        [Parameter(Mandatory)][scriptblock]$Probe,
-        [Parameter(Mandatory)][string]$SuccessDetail,
-        [Parameter(Mandatory)][string]$DefaultFix,
-        [string]$NotConnectedFix = '',
-        [string]$PermissionFix = '',
-        [string]$LicenseFix = ''
-    )
-
-    try {
-        & $Probe | Out-Null
-        Add-TenantIQAccessResult -Workload $Workload -Status 'OK' -Category 'Access confirmed' -Detail $SuccessDetail
-    }
-    catch {
-        $message = $_.Exception.Message
-        $category = Get-TenantIQFailureCategory -Message $message
-        $status = switch ($category) {
-            'Not authenticated'             { 'NOT CONNECTED' }
-            'Permission denied'              { 'DENIED' }
-            'Service or license unavailable' { 'UNAVAILABLE' }
-            default                         { 'ERROR' }
-        }
-
-        $fix = switch ($category) {
-            'Not authenticated'             { if ($NotConnectedFix) { $NotConnectedFix } else { $DefaultFix } }
-            'Permission denied'              { if ($PermissionFix) { $PermissionFix } else { $DefaultFix } }
-            'Service or license unavailable' { if ($LicenseFix) { $LicenseFix } else { $DefaultFix } }
-            default                         { $DefaultFix }
-        }
-
-        Add-TenantIQAccessResult -Workload $Workload -Status $status -Category $category -Detail $message -Fix $fix
-    }
+    $m = [string]$Message
+    if ([string]::IsNullOrWhiteSpace($m)) { return 'ERROR' }
+    if ($m -match '(?i)not connected|not authenticated|authentication|sign.?in|login|session is not established|before requesting access token') { return 'SIGN-IN REQUIRED' }
+    if ($m -match '(?i)access denied|forbidden|unauthorized|insufficient privileges|does not have permission|permission.*denied|403|401') { return 'DENIED' }
+    if ($m -match '(?i)not licensed|license|service.*not.*available|not provisioned|resource.*not.*found|404') { return 'UNAVAILABLE' }
+    return 'ERROR'
 }
 
 Write-Host ''
@@ -89,152 +52,206 @@ if (Get-CommandAvailable 'Get-MgContext') {
 if ($graphContext -and $graphContext.Account) {
     Add-TenantIQAccessResult -Workload 'Entra ID / Graph' -Status 'OK' -Category 'Access confirmed' -Detail ("Connected as {0}; TenantId={1}" -f $graphContext.Account,$graphContext.TenantId)
 } else {
-    Add-TenantIQAccessResult -Workload 'Entra ID / Graph' -Status 'NOT CONNECTED' -Category 'Not authenticated' -Detail 'No active Microsoft Graph session detected.' -Fix 'Run Connect-MgGraph with the TenantIQ-required read scopes.'
+    Add-TenantIQAccessResult -Workload 'Entra ID / Graph' -Status 'SIGN-IN REQUIRED' -Category 'Authentication required' -Detail 'Please sign in to Microsoft Graph.' -Fix 'Run Connect-MgGraph with the TenantIQ-required read scopes.'
 }
 
 # Exchange Online
-if (Get-CommandAvailable 'Get-EXOMailbox') {
-    New-TenantIQProbeResult -Workload 'Exchange Online' `
-        -Probe { Get-EXOMailbox -ResultSize 1 -ErrorAction Stop } `
-        -SuccessDetail 'Exchange Online query succeeded.' `
-        -DefaultFix 'Verify Exchange Online connectivity and retry the query.' `
-        -NotConnectedFix 'Run Connect-ExchangeOnline and authenticate.' `
-        -PermissionFix 'Use an account with sufficient Exchange Online read permissions.' `
-        -LicenseFix 'Verify Exchange Online is provisioned for this tenant.'
+$exoConnected = $false
+$exoDetail = ''
+$exoError = ''
+if (Get-CommandAvailable 'Get-ConnectionInformation') {
+    try {
+        $exo = @(Get-ConnectionInformation -ErrorAction Stop | Where-Object { $_.State -eq 'Connected' -or $_.ConnectionStatus -eq 'Connected' })
+        if ($exo.Count -gt 0) {
+            $exoConnected = $true
+            $exoDetail = (($exo | Select-Object -First 1 | ForEach-Object { if ($_.UserPrincipalName) { "Connected as $($_.UserPrincipalName)" } else { 'Connected session detected' } }))
+        }
+    } catch { $exoError = $_.Exception.Message }
+}
+if (-not $exoConnected -and (Get-CommandAvailable 'Get-EXOMailbox')) {
+    try {
+        Get-EXOMailbox -ResultSize 1 -ErrorAction Stop | Out-Null
+        $exoConnected = $true
+        $exoDetail = 'Exchange Online query succeeded.'
+    } catch { $exoError = $_.Exception.Message }
+}
+if ($exoConnected) {
+    Add-TenantIQAccessResult -Workload 'Exchange Online' -Status 'OK' -Category 'Access confirmed' -Detail $exoDetail
 } else {
-    Add-TenantIQAccessResult -Workload 'Exchange Online' -Status 'NOT CONNECTED' -Category 'Not authenticated' -Detail 'Exchange Online cmdlets are not available in the current session.' -Fix 'Run Connect-ExchangeOnline and authenticate.'
+    $status = if ([string]::IsNullOrWhiteSpace($exoError)) { 'SIGN-IN REQUIRED' } else { Get-AccessClassification $exoError }
+    $category = switch ($status) {
+        'SIGN-IN REQUIRED' { 'Authentication required' }
+        'DENIED' { 'Permission denied' }
+        'UNAVAILABLE' { 'Service or licensing unavailable' }
+        default { 'Query failure' }
+    }
+    $detail = if ($status -eq 'SIGN-IN REQUIRED') { 'Please sign in to Exchange Online.' } elseif ($exoError) { $exoError } else { 'No usable Exchange Online session detected.' }
+    Add-TenantIQAccessResult -Workload 'Exchange Online' -Status $status -Category $category -Detail $detail -Fix 'Run Connect-ExchangeOnline and authenticate with an account that can read Exchange configuration.'
 }
 
 # SharePoint Online
 $spoConnected = $false
-$spoCategory = ''
+$spoError = ''
 if (Get-CommandAvailable 'Get-SPOTenant') {
     try {
         $tenant = Get-SPOTenant -ErrorAction Stop
-        if ($tenant) {
-            $spoConnected = $true
-            Add-TenantIQAccessResult -Workload 'SharePoint Online' -Status 'OK' -Category 'Access confirmed' -Detail 'SharePoint Online tenant query succeeded.'
-        }
-    }
-    catch {
-        $spoCategory = Get-TenantIQFailureCategory -Message $_.Exception.Message
-        $spoStatus = switch ($spoCategory) {
-            'Not authenticated'             { 'NOT CONNECTED' }
-            'Permission denied'              { 'DENIED' }
-            'Service or license unavailable' { 'UNAVAILABLE' }
-            default                         { 'ERROR' }
-        }
-        $spoFix = switch ($spoCategory) {
-            'Not authenticated'             { 'Run Connect-SPOService -Url https://<tenant>-admin.sharepoint.com and authenticate.' }
-            'Permission denied'              { 'Authenticate with SharePoint Administrator or equivalent read access.' }
-            'Service or license unavailable' { 'Verify SharePoint Online is provisioned and licensed for this tenant.' }
-            default                         { 'Retry Get-SPOTenant and review the returned SharePoint Online error.' }
-        }
-        Add-TenantIQAccessResult -Workload 'SharePoint Online' -Status $spoStatus -Category $spoCategory -Detail $_.Exception.Message -Fix $spoFix
-    }
+        if ($tenant) { $spoConnected = $true }
+    } catch { $spoError = $_.Exception.Message }
 } else {
-    $spoCategory = 'Not authenticated'
-    Add-TenantIQAccessResult -Workload 'SharePoint Online' -Status 'NOT CONNECTED' -Category $spoCategory -Detail 'SharePoint Online cmdlets are not available in the current session.' -Fix 'Run Connect-SPOService -Url https://<tenant>-admin.sharepoint.com and authenticate.'
+    $spoError = 'SharePoint Online cmdlets are not available in the current session.'
+}
+if ($spoConnected) {
+    Add-TenantIQAccessResult -Workload 'SharePoint Online' -Status 'OK' -Category 'Access confirmed' -Detail 'SharePoint Online tenant query succeeded.'
+} else {
+    $status = if ($spoError -match '(?i)cmdlets are not available') { 'SIGN-IN REQUIRED' } else { Get-AccessClassification $spoError }
+    if ($status -eq 'ERROR' -and [string]::IsNullOrWhiteSpace($spoError)) { $status = 'SIGN-IN REQUIRED' }
+    $category = switch ($status) {
+        'SIGN-IN REQUIRED' { 'Authentication required' }
+        'DENIED' { 'Permission denied' }
+        'UNAVAILABLE' { 'Service or licensing unavailable' }
+        default { 'Query failure' }
+    }
+    $detail = if ($status -eq 'SIGN-IN REQUIRED') { 'Please sign in to SharePoint Online.' } elseif ($spoError) { $spoError } else { 'SharePoint Online tenant query did not succeed.' }
+    Add-TenantIQAccessResult -Workload 'SharePoint Online' -Status $status -Category $category -Detail $detail -Fix 'Run Connect-SPOService -Url https://<tenant>-admin.sharepoint.com and authenticate.'
 }
 
 # Microsoft Teams
+$teamsConnected = $false
+$teamsError = ''
 if (Get-CommandAvailable 'Get-CsTenant') {
-    New-TenantIQProbeResult -Workload 'Microsoft Teams' `
-        -Probe { Get-CsTenant -ErrorAction Stop } `
-        -SuccessDetail 'Microsoft Teams tenant query succeeded.' `
-        -DefaultFix 'Retry the Teams tenant query and review the returned API error.' `
-        -NotConnectedFix 'Run Connect-MicrosoftTeams and authenticate.' `
-        -PermissionFix 'Use an account with sufficient Teams read/admin permissions.' `
-        -LicenseFix 'Verify Microsoft Teams is provisioned and licensed for this tenant.'
+    try {
+        $csTenant = Get-CsTenant -ErrorAction Stop
+        if ($csTenant) { $teamsConnected = $true }
+    } catch { $teamsError = $_.Exception.Message }
 } else {
-    Add-TenantIQAccessResult -Workload 'Microsoft Teams' -Status 'NOT CONNECTED' -Category 'Not authenticated' -Detail 'Microsoft Teams cmdlets are not available in the current session.' -Fix 'Run Connect-MicrosoftTeams and authenticate.'
+    $teamsError = 'Microsoft Teams cmdlets are not available in the current session.'
+}
+if ($teamsConnected) {
+    Add-TenantIQAccessResult -Workload 'Microsoft Teams' -Status 'OK' -Category 'Access confirmed' -Detail 'Microsoft Teams tenant query succeeded.'
+} else {
+    $status = if ($teamsError -match '(?i)cmdlets are not available') { 'SIGN-IN REQUIRED' } else { Get-AccessClassification $teamsError }
+    if ($status -eq 'ERROR' -and [string]::IsNullOrWhiteSpace($teamsError)) { $status = 'SIGN-IN REQUIRED' }
+    $category = switch ($status) {
+        'SIGN-IN REQUIRED' { 'Authentication required' }
+        'DENIED' { 'Permission denied' }
+        'UNAVAILABLE' { 'Service or licensing unavailable' }
+        default { 'Query failure' }
+    }
+    $detail = if ($status -eq 'SIGN-IN REQUIRED') { 'Please sign in to Microsoft Teams.' } elseif ($teamsError) { $teamsError } else { 'Microsoft Teams tenant query did not succeed.' }
+    Add-TenantIQAccessResult -Workload 'Microsoft Teams' -Status $status -Category $category -Detail $detail -Fix 'Run Connect-MicrosoftTeams and authenticate.'
 }
 
-# OneDrive depends on SharePoint Online administrative access.
+# OneDrive is assessed through SharePoint Online APIs in TenantIQ.
 if ($spoConnected) {
     Add-TenantIQAccessResult -Workload 'OneDrive' -Status 'OK' -Category 'Access confirmed' -Detail 'Available through the active SharePoint Online administrative connection.'
 } else {
-    $odCategory = if ($spoCategory) { $spoCategory } else { 'Dependency blocked' }
-    Add-TenantIQAccessResult -Workload 'OneDrive' -Status 'BLOCKED' -Category $odCategory -Detail 'TenantIQ OneDrive checks depend on SharePoint Online administrative access.' -Fix 'Resolve the SharePoint Online result first.'
+    Add-TenantIQAccessResult -Workload 'OneDrive' -Status 'BLOCKED' -Category 'Dependency blocked' -Detail 'TenantIQ OneDrive checks depend on SharePoint Online administrative access.' -Fix 'Sign in to SharePoint Online first.'
 }
 
 # Intune / Graph
+$intuneOk = $false
+$intuneError = ''
 if ($graphContext -and $graphContext.Account -and (Get-CommandAvailable 'Invoke-MgGraphRequest')) {
-    New-TenantIQProbeResult -Workload 'Microsoft Intune' `
-        -Probe { Invoke-MgGraphRequest -Method GET -Uri 'https://graph.microsoft.com/v1.0/deviceManagement/managedDevices?$top=1' -OutputType PSObject -ErrorAction Stop } `
-        -SuccessDetail 'Microsoft Graph deviceManagement query succeeded.' `
-        -DefaultFix 'Retry the Microsoft Graph deviceManagement query and review the returned API error.' `
-        -NotConnectedFix 'Reconnect Microsoft Graph with the required DeviceManagement read scopes.' `
-        -PermissionFix 'Grant or consent the required DeviceManagement read permissions.' `
-        -LicenseFix 'Verify Intune is licensed and provisioned for this tenant.'
+    try {
+        Invoke-MgGraphRequest -Method GET -Uri 'https://graph.microsoft.com/v1.0/deviceManagement/managedDevices?$top=1' -OutputType PSObject -ErrorAction Stop | Out-Null
+        $intuneOk = $true
+    } catch { $intuneError = $_.Exception.Message }
+}
+if ($intuneOk) {
+    Add-TenantIQAccessResult -Workload 'Microsoft Intune' -Status 'OK' -Category 'Access confirmed' -Detail 'Microsoft Graph deviceManagement query succeeded.'
+} elseif (-not ($graphContext -and $graphContext.Account)) {
+    Add-TenantIQAccessResult -Workload 'Microsoft Intune' -Status 'SIGN-IN REQUIRED' -Category 'Authentication required' -Detail 'Please sign in to Microsoft Graph before checking Intune.' -Fix 'Run Connect-MgGraph, then rerun this pre-check.'
 } else {
-    Add-TenantIQAccessResult -Workload 'Microsoft Intune' -Status 'BLOCKED' -Category 'Not authenticated' -Detail 'Microsoft Graph is not connected or Invoke-MgGraphRequest is unavailable.' -Fix 'Connect Microsoft Graph first, then verify Intune read permissions.'
+    $status = Get-AccessClassification $intuneError
+    $category = switch ($status) {
+        'DENIED' { 'Permission denied' }
+        'UNAVAILABLE' { 'Service or licensing unavailable' }
+        'SIGN-IN REQUIRED' { 'Authentication required' }
+        default { 'Query failure' }
+    }
+    Add-TenantIQAccessResult -Workload 'Microsoft Intune' -Status $status -Category $category -Detail $intuneError -Fix 'Verify Intune licensing and the required DeviceManagement read permissions.'
 }
 
 # Defender / Security data via Graph
+$defenderOk = $false
+$defenderError = ''
 if ($graphContext -and $graphContext.Account -and (Get-CommandAvailable 'Invoke-MgGraphRequest')) {
-    New-TenantIQProbeResult -Workload 'Microsoft Defender' `
-        -Probe { Invoke-MgGraphRequest -Method GET -Uri 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=1' -OutputType PSObject -ErrorAction Stop } `
-        -SuccessDetail 'Microsoft Graph security query succeeded.' `
-        -DefaultFix 'Retry the Microsoft Graph Security query and review the returned API error.' `
-        -NotConnectedFix 'Reconnect Microsoft Graph with the required Security read scopes.' `
-        -PermissionFix 'Grant or consent the required Security read permissions.' `
-        -LicenseFix 'Verify the required Microsoft Defender service is licensed and provisioned.'
+    try {
+        Invoke-MgGraphRequest -Method GET -Uri 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=1' -OutputType PSObject -ErrorAction Stop | Out-Null
+        $defenderOk = $true
+    } catch { $defenderError = $_.Exception.Message }
+}
+if ($defenderOk) {
+    Add-TenantIQAccessResult -Workload 'Microsoft Defender' -Status 'OK' -Category 'Access confirmed' -Detail 'Microsoft Graph security query succeeded.'
+} elseif (-not ($graphContext -and $graphContext.Account)) {
+    Add-TenantIQAccessResult -Workload 'Microsoft Defender' -Status 'SIGN-IN REQUIRED' -Category 'Authentication required' -Detail 'Please sign in to Microsoft Graph before checking Defender.' -Fix 'Run Connect-MgGraph, then rerun this pre-check.'
 } else {
-    Add-TenantIQAccessResult -Workload 'Microsoft Defender' -Status 'BLOCKED' -Category 'Not authenticated' -Detail 'Microsoft Graph is not connected or Invoke-MgGraphRequest is unavailable.' -Fix 'Connect Microsoft Graph first, then verify Security read permissions.'
+    $status = Get-AccessClassification $defenderError
+    $category = switch ($status) {
+        'DENIED' { 'Permission denied' }
+        'UNAVAILABLE' { 'Service or licensing unavailable' }
+        'SIGN-IN REQUIRED' { 'Authentication required' }
+        default { 'Query failure' }
+    }
+    Add-TenantIQAccessResult -Workload 'Microsoft Defender' -Status $status -Category $category -Detail $defenderError -Fix 'Verify Security read permissions and Defender licensing for the data being assessed.'
 }
 
-# Purview feature availability varies by tenant licensing and enabled compliance workloads.
-if ($graphContext -and $graphContext.Account) {
-    Add-TenantIQAccessResult -Workload 'Microsoft Purview' -Status 'REVIEW' -Category 'Feature validation required' -Detail 'Microsoft Graph is connected. Purview-specific feature, role, and licensing availability should be validated during the Purview assessment.' -Fix 'Verify the Purview features used by TenantIQ are licensed and the signed-in account has the corresponding read permissions.'
+# Purview availability varies by licensing and API surface.
+if (-not ($graphContext -and $graphContext.Account)) {
+    Add-TenantIQAccessResult -Workload 'Microsoft Purview' -Status 'SIGN-IN REQUIRED' -Category 'Authentication required' -Detail 'Please sign in to Microsoft Graph before validating Purview access.' -Fix 'Run Connect-MgGraph, then validate Purview permissions and licensing.'
 } else {
-    Add-TenantIQAccessResult -Workload 'Microsoft Purview' -Status 'BLOCKED' -Category 'Not authenticated' -Detail 'Microsoft Graph is not connected.' -Fix 'Connect Microsoft Graph first, then validate Purview permissions and licensing.'
+    Add-TenantIQAccessResult -Workload 'Microsoft Purview' -Status 'REVIEW' -Category 'Feature validation required' -Detail 'Graph connectivity is healthy. Purview-specific feature availability should still be validated during the Purview assessment.' -Fix 'Verify the tenant has the Purview features used by TenantIQ and that the signed-in account has the required read permissions.'
 }
 
 Write-Host 'Workload Access Status' -ForegroundColor Cyan
 Write-Host '----------------------' -ForegroundColor Cyan
 foreach ($Result in $Results) {
     $Color = switch ($Result.Status) {
-        'OK'            { 'Green' }
-        'REVIEW'        { 'Yellow' }
-        'NOT CONNECTED' { 'Yellow' }
-        'DENIED'        { 'Red' }
-        'UNAVAILABLE'   { 'Yellow' }
-        'ERROR'         { 'Red' }
-        'BLOCKED'       { 'Red' }
-        default         { 'Gray' }
+        'OK'               { 'Green' }
+        'SIGN-IN REQUIRED' { 'Yellow' }
+        'REVIEW'           { 'Yellow' }
+        'DENIED'           { 'Red' }
+        'UNAVAILABLE'      { 'Yellow' }
+        'ERROR'            { 'Red' }
+        'BLOCKED'          { 'Red' }
+        default            { 'Gray' }
     }
 
     Write-Host ('[{0}] {1}' -f $Result.Status,$Result.Workload) -ForegroundColor $Color
     if ($Result.Category) { Write-Host ('     Category : {0}' -f $Result.Category) -ForegroundColor DarkGray }
-    if ($Result.Detail)   { Write-Host ('     Detail   : {0}' -f $Result.Detail) -ForegroundColor DarkGray }
-    if ($Result.Fix)      { Write-Host ('     Fix      : {0}' -f $Result.Fix) -ForegroundColor Yellow }
+    if ($Result.Detail)   { Write-Host ('     Status   : {0}' -f $Result.Detail) -ForegroundColor DarkGray }
+    if ($Result.Fix)      { Write-Host ('     Action   : {0}' -f $Result.Fix) -ForegroundColor Yellow }
 }
 
 $OkCount = @($Results | Where-Object Status -eq 'OK').Count
-$ReviewCount = @($Results | Where-Object { $_.Status -in @('REVIEW','NOT CONNECTED','UNAVAILABLE') }).Count
-$BlockedCount = @($Results | Where-Object { $_.Status -in @('BLOCKED','DENIED','ERROR') }).Count
+$SignInCount = @($Results | Where-Object Status -eq 'SIGN-IN REQUIRED').Count
+$ReviewCount = @($Results | Where-Object Status -eq 'REVIEW').Count
+$ProblemCount = @($Results | Where-Object { $_.Status -in @('DENIED','UNAVAILABLE','ERROR','BLOCKED') }).Count
 
 Write-Host ''
 Write-Host 'Summary' -ForegroundColor Cyan
 Write-Host '-------' -ForegroundColor Cyan
-Write-Host ('OK       : {0}' -f $OkCount) -ForegroundColor Green
-Write-Host ('Review   : {0}' -f $ReviewCount) -ForegroundColor Yellow
-Write-Host ('Blocked  : {0}' -f $BlockedCount) -ForegroundColor $(if ($BlockedCount -gt 0) { 'Red' } else { 'Green' })
+Write-Host ('OK                : {0}' -f $OkCount) -ForegroundColor Green
+Write-Host ('Sign-in required  : {0}' -f $SignInCount) -ForegroundColor Yellow
+Write-Host ('Review            : {0}' -f $ReviewCount) -ForegroundColor Yellow
+Write-Host ('Problems          : {0}' -f $ProblemCount) -ForegroundColor $(if ($ProblemCount -gt 0) { 'Red' } else { 'Green' })
 Write-Host ''
 
-if ($BlockedCount -eq 0 -and $ReviewCount -eq 0) {
-    Write-Host '[READY] All TenantIQ workload access checks passed.' -ForegroundColor Green
-} elseif ($BlockedCount -eq 0) {
-    Write-Host '[REVIEW] Core access is available, but one or more workloads need review before a full assessment.' -ForegroundColor Yellow
+if ($ProblemCount -gt 0) {
+    Write-Host '[NOT READY] One or more workload access problems need attention.' -ForegroundColor Red
+} elseif ($SignInCount -gt 0) {
+    Write-Host '[ACTION REQUIRED] Please sign in to the workloads listed above, then run this pre-check again.' -ForegroundColor Yellow
+} elseif ($ReviewCount -gt 0) {
+    Write-Host '[REVIEW] Core access is available, but one or more workloads still need feature validation.' -ForegroundColor Yellow
 } else {
-    Write-Host '[NOT READY] One or more workload dependencies are blocked.' -ForegroundColor Red
+    Write-Host '[READY] All TenantIQ workload access checks passed.' -ForegroundColor Green
 }
 
 [pscustomobject]@{
-    Ready = ($BlockedCount -eq 0 -and $ReviewCount -eq 0)
+    Ready = ($ProblemCount -eq 0 -and $SignInCount -eq 0 -and $ReviewCount -eq 0)
     OK = $OkCount
+    SignInRequired = $SignInCount
     Review = $ReviewCount
-    Blocked = $BlockedCount
+    Problems = $ProblemCount
     Results = $Results
 }

@@ -8,9 +8,11 @@ $ErrorActionPreference = 'Stop'
 $Root = $PSScriptRoot
 $ConfigPath = Join-Path $Root 'TenantIQ.json'
 $ValidatorPath = Join-Path $Root 'Test-TenantIQReleasePackage.ps1'
+$SmokeTestPath = Join-Path $Root 'Test-TenantIQReleaseCandidate.ps1'
 
 if (-not (Test-Path $ConfigPath)) { throw "TenantIQ.json was not found at $ConfigPath" }
 if (-not (Test-Path $ValidatorPath)) { throw "Release package validator was not found at $ValidatorPath" }
+if (-not (Test-Path $SmokeTestPath)) { throw "Release candidate smoke test was not found at $SmokeTestPath" }
 
 $Config = Get-Content -Path $ConfigPath -Raw | ConvertFrom-Json
 $Version = if ($Config.Version) { [string]$Config.Version } else { '0.0.0' }
@@ -110,15 +112,23 @@ $ZipHashPath = "$ZipPath.sha256"
 Write-Host ''
 Write-Host 'Running release package validation...' -ForegroundColor Cyan
 $Validation = & $ValidatorPath -PackageRoot $PackageRoot -ZipPath $ZipPath
+if ($Validation -is [array]) { $Validation = $Validation | Select-Object -Last 1 }
 if (-not $Validation.Ready) { throw 'TenantIQ customer package failed release validation.' }
 
 Write-Host ''
-Write-Host '[OK] Customer package created and validated.' -ForegroundColor Green
+Write-Host 'Running release candidate smoke test...' -ForegroundColor Cyan
+$SmokeTest = & $SmokeTestPath -PackageRoot $PackageRoot -ZipPath $ZipPath
+if ($SmokeTest -is [array]) { $SmokeTest = $SmokeTest | Select-Object -Last 1 }
+if (-not $SmokeTest.Ready) { throw 'TenantIQ customer package failed release candidate smoke testing.' }
+
+Write-Host ''
+Write-Host '[OK] Customer package created, validated, and smoke tested.' -ForegroundColor Green
 Write-Host ("Folder      : {0}" -f $PackageRoot) -ForegroundColor Cyan
 Write-Host ("ZIP         : {0}" -f $ZipPath) -ForegroundColor Cyan
 Write-Host ("ZIP SHA256  : {0}" -f $ZipHash) -ForegroundColor Cyan
 Write-Host ("License Key : {0}" -f $LicenseKeyId) -ForegroundColor Cyan
 Write-Host ("Validation  : RELEASE READY ({0} checks passed)" -f $Validation.Passed) -ForegroundColor Green
+Write-Host ("Smoke Test  : RELEASE CANDIDATE READY ({0} checks passed)" -f $SmokeTest.Passed) -ForegroundColor Green
 Write-Host ''
 Write-Host 'Customer support/version commands:' -ForegroundColor Yellow
 Write-Host '  .\Get-TenantIQVersion.ps1'
@@ -131,4 +141,18 @@ Write-Host 'Customer first-run commands:' -ForegroundColor Yellow
 Write-Host '  .\Install-TenantIQPrerequisites.ps1'
 Write-Host '  .\Start-TenantIQ.ps1'
 
-[pscustomobject]@{ Version=$Version; ReleaseChannel=[string]$Config.ReleaseChannel; BuildCommit=$BuildCommit; PackageRoot=$PackageRoot; ZipPath=$ZipPath; ZipSha256=$ZipHash; ZipHashPath=$ZipHashPath; LicensingMode='SignedLicenseVerification'; LicenseKeyId=$LicenseKeyId; ReleaseReady=$true; ValidationPass=$Validation.Passed }
+[pscustomobject]@{
+    Version=$Version
+    ReleaseChannel=[string]$Config.ReleaseChannel
+    BuildCommit=$BuildCommit
+    PackageRoot=$PackageRoot
+    ZipPath=$ZipPath
+    ZipSha256=$ZipHash
+    ZipHashPath=$ZipHashPath
+    LicensingMode='SignedLicenseVerification'
+    LicenseKeyId=$LicenseKeyId
+    ReleaseReady=$true
+    ValidationPass=$Validation.Passed
+    SmokeTestPass=$SmokeTest.Passed
+    SmokeTestReady=[bool]$SmokeTest.Ready
+}

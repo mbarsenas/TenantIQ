@@ -17,7 +17,5 @@ services:
         value: gpt-5
       - key: TENANTIQ_API_HOST
         value: 0.0.0.0
-      - key: TENANTIQ_API_PORT
-        value: "8787"
       - key: TENANTIQ_ALLOWED_ORIGINS
         value: https://tenantiq365.com,https://www.tenantiq365.com

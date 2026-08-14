@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Literal
+from typing import Literal
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from assessment_insights import answer as answer_insights
@@ -14,10 +15,29 @@ from retrieve import answer as answer_check
 
 load_dotenv()
 
+DEFAULT_ORIGINS = (
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+)
+configured_origins = tuple(
+    origin.strip()
+    for origin in os.getenv("TENANTIQ_ALLOWED_ORIGINS", "").split(",")
+    if origin.strip()
+)
+ALLOWED_ORIGINS = configured_origins or DEFAULT_ORIGINS
+
 app = FastAPI(
     title="TenantIQ Knowledge Assistant API",
-    version="1.0.0",
+    version="1.1.0",
     description="Read-only API for grounded TenantIQ Microsoft 365 assessment questions.",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=list(ALLOWED_ORIGINS),
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type"],
 )
 
 
@@ -37,11 +57,33 @@ class AskResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: Literal["ok"]
     service: str
+    version: str
+
+
+class RootResponse(BaseModel):
+    service: str
+    version: str
+    status: Literal["ok"]
+    health: str
+    docs: str
+    ask: str
+
+
+@app.get("/", response_model=RootResponse)
+def root() -> RootResponse:
+    return RootResponse(
+        service="TenantIQ Knowledge Assistant API",
+        version="1.1.0",
+        status="ok",
+        health="/health",
+        docs="/docs",
+        ask="POST /ask",
+    )
 
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
-    return HealthResponse(status="ok", service="tenantiq-rag")
+    return HealthResponse(status="ok", service="tenantiq-rag", version="1.1.0")
 
 
 @app.post("/ask", response_model=AskResponse)

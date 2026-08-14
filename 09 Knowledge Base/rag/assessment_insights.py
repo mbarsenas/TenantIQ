@@ -31,6 +31,7 @@ If evidence or knowledge is insufficient for a claim, say so.
 Keep tenant-specific claims tied to the supplied findings.
 Prefer remediation language already supported by the supplied TenantIQ knowledge.
 Include a short Sources section listing the TenantIQ knowledge source paths actually used.
+Keep the response concise and operationally focused.
 """
 
 
@@ -47,6 +48,7 @@ class ConsoleProgress:
         self._kernel32 = None
         self._stdout_handle = None
         self._default_attributes = None
+        self._phase_started = time.monotonic()
         self._init_windows_console()
 
     def _init_windows_console(self) -> None:
@@ -107,6 +109,8 @@ class ConsoleProgress:
 
     def update(self, phase: str, percent: int) -> None:
         with self._lock:
+            if phase != self._phase:
+                self._phase_started = time.monotonic()
             self._phase = phase
             self._percent = max(0, min(100, percent))
         if not sys.stdout.isatty():
@@ -134,6 +138,7 @@ class ConsoleProgress:
         with self._lock:
             percent = self._percent
             phase = self._phase
+            phase_started = self._phase_started
 
         terminal_width = shutil.get_terminal_size(fallback=(120, 20)).columns
         bar_width = 28
@@ -143,9 +148,11 @@ class ConsoleProgress:
         else:
             bar = "=" * bar_width
 
+        elapsed = int(time.monotonic() - phase_started)
+        phase_with_time = phase if final else f"{phase} ({elapsed}s)"
         prefix = f"{self.label}: [{bar}] {percent:3d}%  "
         max_phase_width = max(8, terminal_width - len(prefix) - 1)
-        display_phase = phase
+        display_phase = phase_with_time
         if len(display_phase) > max_phase_width:
             display_phase = display_phase[: max(5, max_phase_width - 3)] + "..."
 
@@ -155,13 +162,44 @@ class ConsoleProgress:
         self._last_render_width = len(line)
 
         color = "red" if final and phase == "Failed" else "green" if final else "yellow"
-
-        # PowerShell/Windows terminals can display raw ANSI escape sequences when
-        # VT processing is disabled. Use native console attributes on Windows and
-        # avoid embedding ANSI codes in the output entirely.
         self._set_color(color)
         print("\r" + (" " * padded_width) + "\r" + padded_line, end="", flush=True)
         self._reset_color()
+
+
+def _trim_text(value: Any, limit: int) -> Any:
+    if not isinstance(value, str):
+        return value
+    text = value.strip()
+    if len(text) <= limit:
+        return text
+    return text[: max(0, limit - 3)].rstrip() + "..."
+
+
+def _compact_finding(finding: dict[str, Any]) -> dict[str, Any]:
+    keep = (
+        "check_id",
+        "workload",
+        "category",
+        "status",
+        "severity",
+        "title",
+        "evidence",
+        "recommendation",
+    )
+    compact: dict[str, Any] = {}
+    for key in keep:
+        if key not in finding or finding[key] in (None, ""):
+            continue
+        value = finding[key]
+        if key == "evidence":
+            value = _trim_text(value, 700)
+        elif key == "recommendation":
+            value = _trim_text(value, 500)
+        elif key == "title":
+            value = _trim_text(value, 180)
+        compact[key] = value
+    return compact
 
 
 def _knowledge_for_finding(finding: dict[str, Any]) -> list[dict[str, Any]]:
@@ -177,13 +215,13 @@ def _knowledge_for_finding(finding: dict[str, Any]) -> list[dict[str, Any]]:
         question,
         workload=str(finding.get("workload")) if finding.get("workload") else None,
         check_id=check_id,
-        limit=3,
+        limit=1,
     )
     return [
         {
             "source_path": match.source_path,
             "workload": match.workload,
-            "content": match.content,
+            "content": _trim_text(match.content, 1200),
         }
         for match in matches
     ]
@@ -221,13 +259,13 @@ def build_payload(
             progress(f"Retrieving knowledge for {check_id} ({index}/{total})", percent)
         grounded_priority_findings.append(
             {
-                "finding": finding,
+                "finding": _compact_finding(finding),
                 "knowledge_context": _knowledge_for_finding(finding),
             }
         )
 
     if progress:
-        progress("Preparing grounded prompt", 80)
+        progress("Preparing compact grounded prompt", 80)
     return {
         "assessment_id": assessment_id,
         "finding_count": summary.get("finding_count", 0),
@@ -251,9 +289,10 @@ def answer(
         instructions=SYSTEM_PROMPT,
         input=(
             "Stored TenantIQ assessment summary, finding evidence, and grounded knowledge:\n\n"
-            + json.dumps(payload, indent=2, default=str)
+            + json.dumps(payload, separators=(",", ":"), default=str)
             + f"\n\nUser question:\n{question}"
         ),
+        max_output_tokens=1400,
     )
     if progress:
         progress("Finalizing response", 98)

@@ -105,12 +105,15 @@ def _merge_duplicate_findings(findings: list[dict[str, Any]]) -> list[dict[str, 
     return list(merged.values())
 
 
-def import_assessment(path: str) -> tuple[str, int]:
+def import_assessment(path: str, metadata: dict[str, Any] | None = None) -> tuple[str, int]:
     assessment_path = Path(path)
     findings = load_assessment(str(assessment_path))
     assessment_id = assessment_id_for(assessment_path)
 
     canonical_findings = _merge_duplicate_findings(findings)
+    stored_metadata = {"input_type": assessment_path.suffix.lower()}
+    if metadata:
+        stored_metadata.update({k: v for k, v in metadata.items() if v not in (None, "")})
 
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn:
         ensure_schema(conn)
@@ -131,7 +134,7 @@ def import_assessment(path: str) -> tuple[str, int]:
                 str(assessment_path.resolve()),
                 assessment_path.name,
                 len(canonical_findings),
-                json.dumps({"input_type": assessment_path.suffix.lower()}),
+                json.dumps(stored_metadata),
             ),
         )
 
@@ -189,6 +192,63 @@ def latest_assessment_id() -> str | None:
             """
         ).fetchone()
     return str(row[0]) if row else None
+
+
+def assessment_exists(assessment_id: str) -> bool:
+    with psycopg.connect(DATABASE_URL) as conn:
+        ensure_schema(conn)
+        row = conn.execute(
+            "SELECT 1 FROM tenantiq_assessments WHERE assessment_id = %s LIMIT 1",
+            (assessment_id,),
+        ).fetchone()
+    return row is not None
+
+
+def assessment_metadata(assessment_id: str) -> dict[str, Any] | None:
+    with psycopg.connect(DATABASE_URL) as conn:
+        ensure_schema(conn)
+        row = conn.execute(
+            """
+            SELECT assessment_id, source_name, imported_at, finding_count, metadata
+            FROM tenantiq_assessments
+            WHERE assessment_id = %s
+            """,
+            (assessment_id,),
+        ).fetchone()
+    if not row:
+        return None
+    return {
+        "assessment_id": str(row[0]),
+        "source_name": row[1],
+        "imported_at": row[2].isoformat() if row[2] else None,
+        "finding_count": int(row[3] or 0),
+        "metadata": row[4] or {},
+    }
+
+
+def list_assessments(limit: int = 25) -> list[dict[str, Any]]:
+    safe_limit = max(1, min(int(limit), 100))
+    with psycopg.connect(DATABASE_URL) as conn:
+        ensure_schema(conn)
+        rows = conn.execute(
+            """
+            SELECT assessment_id, source_name, imported_at, finding_count, metadata
+            FROM tenantiq_assessments
+            ORDER BY imported_at DESC, assessment_id DESC
+            LIMIT %s
+            """,
+            (safe_limit,),
+        ).fetchall()
+    return [
+        {
+            "assessment_id": str(row[0]),
+            "source_name": row[1],
+            "imported_at": row[2].isoformat() if row[2] else None,
+            "finding_count": int(row[3] or 0),
+            "metadata": row[4] or {},
+        }
+        for row in rows
+    ]
 
 
 def load_finding_from_db(assessment_id: str, check_id: str) -> dict[str, Any] | None:

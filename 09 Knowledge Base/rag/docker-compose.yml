@@ -39,5 +39,5 @@ services:
 
 volumes:
   tenantiq_pgdata:
-    name: ${TENANTIQ_POSTGRES_VOLUME:-tenantiq_pgdata}
+    name: ${TENANTIQ_POSTGRES_VOLUME:-rag_tenantiq_pgdata}
     external: true

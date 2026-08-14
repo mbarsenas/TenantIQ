@@ -290,42 +290,62 @@ def build_payload(
     }
 
 
-def _fallback_answer(payload: dict[str, Any]) -> str:
+def _deterministic_answer(payload: dict[str, Any]) -> str:
     finding_count = payload.get("finding_count", 0)
     status_counts = payload.get("status_counts", {}) or {}
     severity_counts = payload.get("severity_counts", {}) or {}
+    workloads = payload.get("workloads", {}) or {}
     priority_findings = payload.get("priority_findings", []) or []
 
     lines = [
-        "TenantIQ completed the assessment review, but the language model returned no displayable text.",
+        "Biggest problems in this tenant",
         "",
-        f"Assessment findings: {finding_count}",
+        f"TenantIQ reviewed {finding_count} findings.",
     ]
 
-    if status_counts:
+    fail_count = status_counts.get("FAIL", 0)
+    warning_count = status_counts.get("WARNING", 0)
+    high_count = severity_counts.get("High", 0) or severity_counts.get("HIGH", 0)
+    if fail_count or warning_count or high_count:
         lines.append(
-            "Status summary: "
-            + ", ".join(f"{key}: {value}" for key, value in status_counts.items())
-        )
-    if severity_counts:
-        lines.append(
-            "Severity summary: "
-            + ", ".join(f"{key}: {value}" for key, value in severity_counts.items())
+            f"Current risk posture: {fail_count} FAIL, {warning_count} WARNING, {high_count} High-severity findings."
         )
 
+    if workloads:
+        ranked = sorted(
+            workloads.items(),
+            key=lambda item: (
+                (item[1] or {}).get("FAIL", 0) + (item[1] or {}).get("WARNING", 0),
+                (item[1] or {}).get("High", 0) + (item[1] or {}).get("HIGH", 0),
+            ),
+            reverse=True,
+        )
+        if ranked:
+            lines.extend(["", "Highest-priority workload areas:"])
+            for workload, counts in ranked[:3]:
+                counts = counts or {}
+                lines.append(
+                    f"- {workload}: {counts.get('FAIL', 0)} FAIL, {counts.get('WARNING', 0)} WARNING"
+                )
+
     if priority_findings:
-        lines.extend(["", "Priority findings:"])
-        for item in priority_findings[:5]:
+        lines.extend(["", "What should be fixed first:"])
+        for index, item in enumerate(priority_findings[:5], start=1):
             finding = item.get("finding", {}) or {}
             check_id = finding.get("check_id", "Unknown")
             title = finding.get("title") or "Untitled finding"
             status = finding.get("status") or "Unknown"
             severity = finding.get("severity") or "Unknown"
-            lines.append(f"- {check_id}: {title} ({status}, {severity})")
+            lines.append(f"{index}. {check_id}: {title} ({status}, {severity})")
+            recommendation = finding.get("recommendation")
+            if recommendation:
+                lines.append(f"   Recommended action: {_trim_text(recommendation, 320)}")
 
     lines.extend([
         "",
-        "The underlying assessment data was loaded successfully. Retry the question to regenerate the narrative response.",
+        "Why this matters",
+        "",
+        "The items above are prioritized from the stored TenantIQ assessment evidence. TenantIQ is not claiming remediation has been performed.",
     ])
     return "\n".join(lines)
 
@@ -345,23 +365,26 @@ def answer(
         + f"\n\nUser question:\n{question}"
     )
 
-    completion = client.chat.completions.create(
-        model=CHAT_MODEL,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_input},
-        ],
-        max_completion_tokens=1800,
-    )
+    try:
+        completion = client.chat.completions.create(
+            model=CHAT_MODEL,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_input},
+            ],
+            max_completion_tokens=1800,
+        )
+        content = completion.choices[0].message.content if completion.choices else None
+        if isinstance(content, str) and content.strip():
+            if progress:
+                progress("Finalizing response", 98)
+            return content.strip()
+    except Exception:
+        pass
 
     if progress:
-        progress("Finalizing response", 98)
-
-    content = completion.choices[0].message.content if completion.choices else None
-    if isinstance(content, str) and content.strip():
-        return content.strip()
-
-    return _fallback_answer(payload)
+        progress("Using deterministic grounded summary", 98)
+    return _deterministic_answer(payload)
 
 
 def main() -> None:

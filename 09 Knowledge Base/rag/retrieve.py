@@ -15,6 +15,8 @@ from assessment_loader import load_assessment, select_finding
 
 load_dotenv()
 
+ROOT = Path(__file__).resolve().parents[2]
+OUTPUT_ROOT = ROOT / "06 Output"
 DATABASE_URL = os.environ["DATABASE_URL"]
 EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
 CHAT_MODEL = os.getenv("OPENAI_CHAT_MODEL", "gpt-5")
@@ -63,6 +65,15 @@ def load_finding(path: str | None) -> dict | None:
         raise SystemExit("Finding file must contain a JSON object.")
 
     return finding
+
+
+def latest_portfolio_assessment() -> Path | None:
+    candidates = sorted(
+        OUTPUT_ROOT.glob("TenantIQ-Portfolio-Assessment-*.csv"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    return candidates[0] if candidates else None
 
 
 def retrieve(
@@ -164,16 +175,32 @@ if __name__ == "__main__":
         default=None,
         help="Path to a TenantIQ assessment .csv or .json file containing multiple findings.",
     )
+    parser.add_argument(
+        "--latest-assessment",
+        action="store_true",
+        help="Use the newest TenantIQ portfolio assessment found under 06 Output.",
+    )
     args = parser.parse_args()
 
-    if args.finding_file and args.assessment_file:
-        raise SystemExit("Use either --finding-file or --assessment-file, not both.")
+    if args.finding_file and (args.assessment_file or args.latest_assessment):
+        raise SystemExit("Use --finding-file by itself, or use an assessment source.")
+    if args.assessment_file and args.latest_assessment:
+        raise SystemExit("Use either --assessment-file or --latest-assessment, not both.")
 
     finding = load_finding(args.finding_file)
-    if args.assessment_file:
+    assessment_path: str | None = args.assessment_file
+
+    if args.latest_assessment:
+        latest = latest_portfolio_assessment()
+        if not latest:
+            raise SystemExit(f"No TenantIQ portfolio assessment found under {OUTPUT_ROOT}.")
+        assessment_path = str(latest)
+        print(f"Using latest assessment: {latest}")
+
+    if assessment_path:
         if not args.check_id:
-            raise SystemExit("--assessment-file requires --check-id so TenantIQ can select one finding.")
-        finding = select_finding(load_assessment(args.assessment_file), args.check_id)
+            raise SystemExit("Assessment queries require --check-id so TenantIQ can select one finding.")
+        finding = select_finding(load_assessment(assessment_path), args.check_id)
 
     print(
         answer(

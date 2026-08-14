@@ -38,3 +38,7 @@ LicenseKeys/
 .tenantiq/
 Fulfilled-Licenses/
 Customer-Deliveries/
+09 Knowledge Base/rag/.env
+
+.tenantiq-first-run-complete
+dist/

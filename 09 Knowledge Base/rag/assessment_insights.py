@@ -9,6 +9,7 @@ import threading
 import time
 from typing import Any, Callable
 
+import psycopg
 from dotenv import load_dotenv
 from openai import OpenAI
 
@@ -19,6 +20,7 @@ from retrieve import retrieve
 load_dotenv()
 
 CHAT_MODEL = os.getenv("OPENAI_CHAT_MODEL", "gpt-5")
+DATABASE_URL = os.environ["DATABASE_URL"]
 client = OpenAI()
 
 SYSTEM_PROMPT = """You are the TenantIQ Microsoft 365 assessment assistant.
@@ -202,7 +204,22 @@ def _compact_finding(finding: dict[str, Any]) -> dict[str, Any]:
     return compact
 
 
+def _knowledge_index_available() -> bool:
+    try:
+        with psycopg.connect(DATABASE_URL) as conn:
+            row = conn.execute("SELECT to_regclass('public.tenantiq_knowledge_chunks')").fetchone()
+            if not row or row[0] is None:
+                return False
+            count = conn.execute("SELECT COUNT(*) FROM tenantiq_knowledge_chunks").fetchone()
+            return bool(count and count[0])
+    except Exception:
+        return False
+
+
 def _knowledge_for_finding(finding: dict[str, Any]) -> list[dict[str, Any]]:
+    if not _knowledge_index_available():
+        return []
+
     check_id = str(finding.get("check_id", "")).strip()
     if not check_id:
         return []
@@ -211,12 +228,16 @@ def _knowledge_for_finding(finding: dict[str, Any]) -> list[dict[str, Any]]:
         f"Explain the risk and recommended remediation for TenantIQ check {check_id}: "
         f"{finding.get('title', '')}"
     )
-    matches = retrieve(
-        question,
-        workload=str(finding.get("workload")) if finding.get("workload") else None,
-        check_id=check_id,
-        limit=1,
-    )
+    try:
+        matches = retrieve(
+            question,
+            workload=str(finding.get("workload")) if finding.get("workload") else None,
+            check_id=check_id,
+            limit=1,
+        )
+    except Exception:
+        return []
+
     return [
         {
             "source_path": match.source_path,
@@ -235,7 +256,7 @@ def build_payload(
         progress("Loading stored findings", 10)
     findings = load_findings(assessment_id)
     if not findings:
-        raise SystemExit(f"No findings stored for assessment {assessment_id}.")
+        raise RuntimeError(f"No findings stored for assessment {assessment_id}.")
 
     if progress:
         progress("Summarizing assessment", 20)

@@ -27,13 +27,35 @@ def _normalized_workload(finding: dict[str, Any]) -> str:
     return "Unknown"
 
 
+def _raw_evidence(raw: Any) -> Any:
+    if not isinstance(raw, dict):
+        return None
+
+    # Current rows store the normalized finding object in raw, with the
+    # original assessment CSV row nested under raw["raw"]. Older rows may
+    # instead contain the original row directly. Recover tenant-specific
+    # evidence from either shape so previously imported assessments do not
+    # need to be uploaded again.
+    candidates: list[dict[str, Any]] = [raw]
+    nested = raw.get("raw")
+    if isinstance(nested, dict):
+        candidates.insert(0, nested)
+
+    for candidate in candidates:
+        for key in ("Evidence", "evidence", "Details", "details", "Observed", "observed", "Output", "output", "Finding", "finding"):
+            value = candidate.get(key)
+            if value not in (None, "", [], {}):
+                return value
+    return None
+
+
 def load_findings(assessment_id: str) -> list[dict[str, Any]]:
     with psycopg.connect(DATABASE_URL) as conn:
         ensure_schema(conn)
         rows = conn.execute(
             """
             SELECT check_id, workload, category, status, severity, title,
-                   evidence, recommendation, source_assessment_file
+                   evidence, recommendation, source_assessment_file, raw
             FROM tenantiq_assessment_findings
             WHERE assessment_id = %s
             ORDER BY workload NULLS LAST, category NULLS LAST, check_id
@@ -43,7 +65,7 @@ def load_findings(assessment_id: str) -> list[dict[str, Any]]:
 
     keys = [
         "check_id", "workload", "category", "status", "severity", "title",
-        "evidence", "recommendation", "source_assessment_file",
+        "evidence", "recommendation", "source_assessment_file", "raw",
     ]
     findings = [
         {key: value for key, value in zip(keys, row) if value not in (None, "")}
@@ -51,6 +73,11 @@ def load_findings(assessment_id: str) -> list[dict[str, Any]]:
     ]
 
     for finding in findings:
+        if finding.get("evidence") in (None, "", [], {}):
+            recovered = _raw_evidence(finding.get("raw"))
+            if recovered not in (None, "", [], {}):
+                finding["evidence"] = recovered
+        finding.pop("raw", None)
         finding["workload"] = _normalized_workload(finding)
 
     return findings

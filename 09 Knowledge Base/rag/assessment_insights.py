@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import sys
 import threading
 import time
@@ -46,6 +47,8 @@ class ConsoleProgress:
         self._phase = "Starting"
         self._percent = 0
         self._color_enabled = self._supports_color()
+        self._lock = threading.Lock()
+        self._last_render_width = 0
 
     @staticmethod
     def _supports_color() -> bool:
@@ -64,14 +67,16 @@ class ConsoleProgress:
         self._thread.start()
 
     def update(self, phase: str, percent: int) -> None:
-        self._phase = phase
-        self._percent = max(0, min(100, percent))
+        with self._lock:
+            self._phase = phase
+            self._percent = max(0, min(100, percent))
         if not sys.stdout.isatty():
             print(f"{self.label}: {self._percent:3d}% - {self._phase}")
 
     def finish(self, phase: str = "Complete") -> None:
-        self._phase = phase
-        self._percent = 100
+        with self._lock:
+            self._phase = phase
+            self._percent = 100
         self._stop.set()
         if self._thread:
             self._thread.join(timeout=1)
@@ -87,24 +92,39 @@ class ConsoleProgress:
             time.sleep(0.15)
 
     def _render(self, final: bool = False) -> None:
-        width = 28
-        filled = int(width * self._percent / 100)
-        if self._percent < 100 and filled < width:
-            bar = "=" * filled + ">" + " " * max(0, width - filled - 1)
-        else:
-            bar = "=" * width
+        with self._lock:
+            percent = self._percent
+            phase = self._phase
 
-        line = f"{self.label}: [{bar}] {self._percent:3d}%  {self._phase}"
+        terminal_width = shutil.get_terminal_size(fallback=(120, 20)).columns
+        bar_width = 28
+        filled = int(bar_width * percent / 100)
+        if percent < 100 and filled < bar_width:
+            bar = "=" * filled + ">" + " " * max(0, bar_width - filled - 1)
+        else:
+            bar = "=" * bar_width
+
+        prefix = f"{self.label}: [{bar}] {percent:3d}%  "
+        max_phase_width = max(8, terminal_width - len(prefix) - 1)
+        display_phase = phase
+        if len(display_phase) > max_phase_width:
+            display_phase = display_phase[: max(5, max_phase_width - 3)] + "..."
+
+        line = prefix + display_phase
+        padded_width = max(self._last_render_width, len(line))
+        padded_line = line.ljust(padded_width)
+        self._last_render_width = len(line)
+
         if final:
-            color = self.ANSI_RED if self._phase == "Failed" else self.ANSI_GREEN
+            color = self.ANSI_RED if phase == "Failed" else self.ANSI_GREEN
         else:
             color = self.ANSI_YELLOW
 
-        print(
-            "\r" + self._colorize(line, color),
-            end="",
-            flush=True,
-        )
+        # Clear the entire terminal line before redrawing. This prevents text from
+        # a longer previous phase (for example "Retrieving knowledge ...") from
+        # remaining visible after the shorter "Complete" message.
+        rendered = "\r\033[2K" + self._colorize(padded_line, color)
+        print(rendered, end="", flush=True)
 
 
 def _knowledge_for_finding(finding: dict[str, Any]) -> list[dict[str, Any]]:

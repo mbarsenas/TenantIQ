@@ -37,8 +37,21 @@ def normalize_finding(row: dict[str, Any]) -> dict[str, Any]:
     status = _first_present(row, "status", "result", "state")
     workload = _first_present(row, "workload", "module", "service")
     category = _first_present(row, "category", "area")
-    title = _first_present(row, "title", "check", "checkname", "name", "finding")
+
+    # TenantIQ assessment CSVs commonly use Check for the control title and
+    # Finding for the tenant-specific observed evidence. Preserve that
+    # distinction. For older inputs that only have Finding, continue using it
+    # as the title without duplicating it into evidence.
+    finding_text = _first_present(row, "finding")
+    title = _first_present(row, "title", "check", "checkname", "name")
+    if not title:
+        title = finding_text
+
     evidence = _first_present(row, "evidence", "details", "detail", "observed", "output")
+    if not evidence and finding_text:
+        if not title or str(finding_text).strip() != str(title).strip():
+            evidence = finding_text
+
     recommendation = _first_present(row, "recommendation", "remediation", "action")
     severity = _first_present(row, "severity", "risk", "priority")
     check_id = _infer_check_id(row, title)

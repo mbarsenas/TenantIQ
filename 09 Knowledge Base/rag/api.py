@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import os
 import re
@@ -39,6 +41,7 @@ configured_origins = tuple(
 )
 ALLOWED_ORIGINS = configured_origins or DEFAULT_ORIGINS
 DEFAULT_CUSTOMER_ID = os.getenv("TENANTIQ_DEFAULT_CUSTOMER_ID", "local-dev").strip() or "local-dev"
+INTERNAL_API_SECRET = os.getenv("TENANTIQ_INTERNAL_API_SECRET", "").strip()
 
 MAX_UPLOAD_BYTES = int(os.getenv("TENANTIQ_MAX_ASSESSMENT_UPLOAD_BYTES", str(20 * 1024 * 1024)))
 ALLOWED_UPLOAD_SUFFIXES = {".csv", ".json"}
@@ -51,7 +54,7 @@ CHECK_ID_PATTERN = re.compile(r"\b(?:ENTRA|EXO|SPO|TEAMS|ONEDRIVE|OD|INTUNE|DEFE
 
 app = FastAPI(
     title="TenantIQ Knowledge Assistant API",
-    version="1.6.0",
+    version="1.7.0",
     description="Read-only API for grounded TenantIQ Microsoft 365 assessment questions.",
 )
 
@@ -60,7 +63,7 @@ app.add_middleware(
     allow_origins=list(ALLOWED_ORIGINS),
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "X-TenantIQ-Customer-ID"],
+    allow_headers=["Content-Type", "X-TenantIQ-Customer-ID", "X-TenantIQ-Identity-Signature"],
 )
 
 
@@ -111,8 +114,23 @@ class AssessmentUploadResponse(AssessmentSummary):
     imported: Literal[True] = True
 
 
-def _customer_id(value: str | None) -> str:
-    return (value or DEFAULT_CUSTOMER_ID).strip() or DEFAULT_CUSTOMER_ID
+def _customer_id(value: str | None, signature: str | None) -> str:
+    customer = (value or DEFAULT_CUSTOMER_ID).strip() or DEFAULT_CUSTOMER_ID
+
+    if INTERNAL_API_SECRET:
+        if not signature:
+            raise HTTPException(status_code=401, detail="Missing TenantIQ server identity signature.")
+        expected = hmac.new(
+            INTERNAL_API_SECRET.encode("utf-8"),
+            customer.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+        if not hmac.compare_digest(signature.strip(), expected):
+            raise HTTPException(status_code=401, detail="Invalid TenantIQ server identity signature.")
+    elif customer != DEFAULT_CUSTOMER_ID:
+        raise HTTPException(status_code=503, detail="TenantIQ internal identity signing is not configured.")
+
+    return customer
 
 
 def _normalized_status(value: Any) -> str:
@@ -230,7 +248,7 @@ def _validate_tenantiq_assessment(path: Path) -> tuple[list[dict[str, Any]], dic
 def root() -> RootResponse:
     return RootResponse(
         service="TenantIQ Knowledge Assistant API",
-        version="1.6.0",
+        version="1.7.0",
         status="ok",
         health="/health",
         docs="/docs",
@@ -243,21 +261,25 @@ def root() -> RootResponse:
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
-    return HealthResponse(status="ok", service="tenantiq-rag", version="1.6.0")
+    return HealthResponse(status="ok", service="tenantiq-rag", version="1.7.0")
 
 
 @app.get("/assessments", response_model=list[AssessmentSummary])
 def assessments(
     limit: int = Query(default=25, ge=1, le=100),
     x_tenantiq_customer_id: str | None = Header(default=None),
+    x_tenantiq_identity_signature: str | None = Header(default=None),
 ) -> list[AssessmentSummary]:
-    customer = _customer_id(x_tenantiq_customer_id)
+    customer = _customer_id(x_tenantiq_customer_id, x_tenantiq_identity_signature)
     return [AssessmentSummary(**item) for item in list_assessments(limit=limit, customer_id=customer)]
 
 
 @app.get("/assessments/latest", response_model=AssessmentSummary)
-def latest_assessment(x_tenantiq_customer_id: str | None = Header(default=None)) -> AssessmentSummary:
-    customer = _customer_id(x_tenantiq_customer_id)
+def latest_assessment(
+    x_tenantiq_customer_id: str | None = Header(default=None),
+    x_tenantiq_identity_signature: str | None = Header(default=None),
+) -> AssessmentSummary:
+    customer = _customer_id(x_tenantiq_customer_id, x_tenantiq_identity_signature)
     assessment_id = latest_assessment_id(customer_id=customer)
     if not assessment_id:
         raise HTTPException(status_code=404, detail="No TenantIQ assessments are stored for this customer yet.")
@@ -271,8 +293,9 @@ def latest_assessment(x_tenantiq_customer_id: str | None = Header(default=None))
 async def upload_assessment(
     file: UploadFile = File(...),
     x_tenantiq_customer_id: str | None = Header(default=None),
+    x_tenantiq_identity_signature: str | None = Header(default=None),
 ) -> AssessmentUploadResponse:
-    customer = _customer_id(x_tenantiq_customer_id)
+    customer = _customer_id(x_tenantiq_customer_id, x_tenantiq_identity_signature)
     original_name = Path(file.filename or "assessment.csv").name
     suffix = Path(original_name).suffix.lower()
     if suffix not in ALLOWED_UPLOAD_SUFFIXES:
@@ -309,8 +332,9 @@ async def upload_assessment(
 def ask(
     request: AskRequest,
     x_tenantiq_customer_id: str | None = Header(default=None),
+    x_tenantiq_identity_signature: str | None = Header(default=None),
 ) -> AskResponse:
-    customer = _customer_id(x_tenantiq_customer_id)
+    customer = _customer_id(x_tenantiq_customer_id, x_tenantiq_identity_signature)
     question = request.question.strip()
     assessment_id = request.assessment_id or latest_assessment_id(customer_id=customer)
     if not assessment_id:

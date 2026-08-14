@@ -72,12 +72,53 @@ def _json_value(value: Any) -> str:
     return json.dumps(str(value))
 
 
+def _merge_duplicate_findings(findings: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Collapse duplicate canonical check IDs into one stable finding per assessment.
+
+    Portfolio assessments can surface the same canonical control more than once
+    (for example, from multiple source rows that normalize to the same check ID).
+    Keep a single row so the database primary key remains deterministic.
+    """
+    merged: dict[str, dict[str, Any]] = {}
+
+    for finding in findings:
+        check_id = finding.get("check_id")
+        if not check_id:
+            continue
+
+        existing = merged.get(check_id)
+        if existing is None:
+            merged[check_id] = dict(finding)
+            continue
+
+        # Prefer populated fields from the newer duplicate while retaining any
+        # useful values already collected from the first occurrence.
+        combined = dict(existing)
+        for key, value in finding.items():
+            if value not in (None, "", [], {}):
+                combined[key] = value
+
+        duplicate_sources = list(combined.get("duplicate_source_files", []))
+        for candidate in (
+            existing.get("source_assessment_file"),
+            finding.get("source_assessment_file"),
+        ):
+            if candidate and candidate not in duplicate_sources:
+                duplicate_sources.append(candidate)
+        if duplicate_sources:
+            combined["duplicate_source_files"] = duplicate_sources
+
+        merged[check_id] = combined
+
+    return list(merged.values())
+
+
 def import_assessment(path: str) -> tuple[str, int]:
     assessment_path = Path(path)
     findings = load_assessment(str(assessment_path))
     assessment_id = assessment_id_for(assessment_path)
 
-    canonical_findings = [finding for finding in findings if finding.get("check_id")]
+    canonical_findings = _merge_duplicate_findings(findings)
 
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn:
         ensure_schema(conn)
@@ -114,6 +155,17 @@ def import_assessment(path: str) -> tuple[str, int]:
                     (assessment_id, check_id, workload, category, status, severity,
                      title, evidence, recommendation, source_assessment_file, raw, imported_at)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s::jsonb, NOW())
+                ON CONFLICT (assessment_id, check_id) DO UPDATE SET
+                    workload = EXCLUDED.workload,
+                    category = EXCLUDED.category,
+                    status = EXCLUDED.status,
+                    severity = EXCLUDED.severity,
+                    title = EXCLUDED.title,
+                    evidence = EXCLUDED.evidence,
+                    recommendation = EXCLUDED.recommendation,
+                    source_assessment_file = EXCLUDED.source_assessment_file,
+                    raw = EXCLUDED.raw,
+                    imported_at = NOW()
                 """,
                 (
                     assessment_id,
@@ -126,7 +178,7 @@ def import_assessment(path: str) -> tuple[str, int]:
                     _json_value(finding.get("evidence")),
                     finding.get("recommendation"),
                     finding.get("source_assessment_file"),
-                    json.dumps(finding.get("raw", {})),
+                    json.dumps(finding),
                 ),
             )
 

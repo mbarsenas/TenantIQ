@@ -14,6 +14,11 @@ from assessment_loader import load_assessment
 load_dotenv()
 
 DATABASE_URL = os.environ["DATABASE_URL"]
+DEFAULT_CUSTOMER_ID = os.getenv("TENANTIQ_DEFAULT_CUSTOMER_ID", "local-dev").strip() or "local-dev"
+
+
+def _customer_id(value: str | None) -> str:
+    return (value or DEFAULT_CUSTOMER_ID).strip() or DEFAULT_CUSTOMER_ID
 
 
 def ensure_schema(conn: psycopg.Connection) -> None:
@@ -21,6 +26,7 @@ def ensure_schema(conn: psycopg.Connection) -> None:
         """
         CREATE TABLE IF NOT EXISTS tenantiq_assessments (
             assessment_id TEXT PRIMARY KEY,
+            customer_id TEXT NOT NULL DEFAULT 'local-dev',
             source_file TEXT NOT NULL,
             source_name TEXT NOT NULL,
             imported_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -29,6 +35,10 @@ def ensure_schema(conn: psycopg.Connection) -> None:
         )
         """
     )
+    conn.execute("ALTER TABLE tenantiq_assessments ADD COLUMN IF NOT EXISTS customer_id TEXT")
+    conn.execute("UPDATE tenantiq_assessments SET customer_id = %s WHERE customer_id IS NULL OR BTRIM(customer_id) = ''", (DEFAULT_CUSTOMER_ID,))
+    conn.execute("ALTER TABLE tenantiq_assessments ALTER COLUMN customer_id SET DEFAULT 'local-dev'")
+    conn.execute("ALTER TABLE tenantiq_assessments ALTER COLUMN customer_id SET NOT NULL")
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS tenantiq_assessment_findings (
@@ -49,12 +59,13 @@ def ensure_schema(conn: psycopg.Connection) -> None:
         """
     )
     conn.execute(
-        "CREATE INDEX IF NOT EXISTS tenantiq_assessment_findings_workload_idx "
-        "ON tenantiq_assessment_findings (assessment_id, workload)"
+        "CREATE INDEX IF NOT EXISTS tenantiq_assessments_customer_idx ON tenantiq_assessments (customer_id, imported_at DESC)"
     )
     conn.execute(
-        "CREATE INDEX IF NOT EXISTS tenantiq_assessment_findings_status_idx "
-        "ON tenantiq_assessment_findings (assessment_id, status)"
+        "CREATE INDEX IF NOT EXISTS tenantiq_assessment_findings_workload_idx ON tenantiq_assessment_findings (assessment_id, workload)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS tenantiq_assessment_findings_status_idx ON tenantiq_assessment_findings (assessment_id, status)"
     )
 
 
@@ -74,47 +85,37 @@ def _json_value(value: Any) -> str:
 
 def _merge_duplicate_findings(findings: list[dict[str, Any]]) -> list[dict[str, Any]]:
     merged: dict[str, dict[str, Any]] = {}
-
     for finding in findings:
         check_id = finding.get("check_id")
         if not check_id:
             continue
-
         existing = merged.get(check_id)
         if existing is None:
             merged[check_id] = dict(finding)
             continue
-
         combined = dict(existing)
         for key, value in finding.items():
             if value not in (None, "", [], {}):
                 combined[key] = value
-
         duplicate_sources = list(combined.get("duplicate_source_files", []))
-        for candidate in (
-            existing.get("source_assessment_file"),
-            finding.get("source_assessment_file"),
-        ):
+        for candidate in (existing.get("source_assessment_file"), finding.get("source_assessment_file")):
             if candidate and candidate not in duplicate_sources:
                 duplicate_sources.append(candidate)
         if duplicate_sources:
             combined["duplicate_source_files"] = duplicate_sources
-
         merged[check_id] = combined
-
     return list(merged.values())
 
 
-def import_assessment(path: str, metadata: dict[str, Any] | None = None) -> tuple[str, int]:
+def import_assessment(path: str, metadata: dict[str, Any] | None = None, customer_id: str | None = None) -> tuple[str, int]:
     assessment_path = Path(path)
     findings = load_assessment(str(assessment_path))
     assessment_id = assessment_id_for(assessment_path)
-
+    customer = _customer_id(customer_id)
     canonical_findings = _merge_duplicate_findings(findings)
     stored_metadata = {"input_type": assessment_path.suffix.lower()}
     if metadata:
         stored_metadata.update({k: v for k, v in metadata.items() if v not in (None, "")})
-
     source_name = str(stored_metadata.get("original_filename") or assessment_path.name)
 
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn:
@@ -122,29 +123,19 @@ def import_assessment(path: str, metadata: dict[str, Any] | None = None) -> tupl
         conn.execute(
             """
             INSERT INTO tenantiq_assessments
-                (assessment_id, source_file, source_name, finding_count, metadata, imported_at)
-            VALUES (%s, %s, %s, %s, %s, NOW())
+                (assessment_id, customer_id, source_file, source_name, finding_count, metadata, imported_at)
+            VALUES (%s, %s, %s, %s, %s, %s, NOW())
             ON CONFLICT (assessment_id) DO UPDATE SET
+                customer_id = EXCLUDED.customer_id,
                 source_file = EXCLUDED.source_file,
                 source_name = EXCLUDED.source_name,
                 finding_count = EXCLUDED.finding_count,
                 metadata = EXCLUDED.metadata,
                 imported_at = NOW()
             """,
-            (
-                assessment_id,
-                str(assessment_path.resolve()),
-                source_name,
-                len(canonical_findings),
-                json.dumps(stored_metadata),
-            ),
+            (assessment_id, customer, str(assessment_path.resolve()), source_name, len(canonical_findings), json.dumps(stored_metadata)),
         )
-
-        conn.execute(
-            "DELETE FROM tenantiq_assessment_findings WHERE assessment_id = %s",
-            (assessment_id,),
-        )
-
+        conn.execute("DELETE FROM tenantiq_assessment_findings WHERE assessment_id = %s", (assessment_id,))
         for finding in canonical_findings:
             conn.execute(
                 """
@@ -166,122 +157,107 @@ def import_assessment(path: str, metadata: dict[str, Any] | None = None) -> tupl
                 """,
                 (
                     assessment_id,
-                    finding.get("check_id"),
-                    finding.get("workload"),
-                    finding.get("category"),
-                    finding.get("status"),
-                    finding.get("severity"),
-                    finding.get("title"),
-                    _json_value(finding.get("evidence")),
-                    finding.get("recommendation"),
-                    finding.get("source_assessment_file"),
-                    json.dumps(finding),
+                    finding.get("check_id"), finding.get("workload"), finding.get("category"), finding.get("status"),
+                    finding.get("severity"), finding.get("title"), _json_value(finding.get("evidence")),
+                    finding.get("recommendation"), finding.get("source_assessment_file"), json.dumps(finding),
                 ),
             )
-
     return assessment_id, len(canonical_findings)
 
 
-def latest_assessment_id() -> str | None:
+def latest_assessment_id(customer_id: str | None = None) -> str | None:
+    customer = _customer_id(customer_id)
     with psycopg.connect(DATABASE_URL) as conn:
         ensure_schema(conn)
         row = conn.execute(
-            """
-            SELECT assessment_id
-            FROM tenantiq_assessments
-            ORDER BY imported_at DESC, assessment_id DESC
-            LIMIT 1
-            """
+            "SELECT assessment_id FROM tenantiq_assessments WHERE customer_id = %s ORDER BY imported_at DESC, assessment_id DESC LIMIT 1",
+            (customer,),
         ).fetchone()
     return str(row[0]) if row else None
 
 
-def assessment_exists(assessment_id: str) -> bool:
+def assessment_exists(assessment_id: str, customer_id: str | None = None) -> bool:
+    customer = _customer_id(customer_id)
     with psycopg.connect(DATABASE_URL) as conn:
         ensure_schema(conn)
         row = conn.execute(
-            "SELECT 1 FROM tenantiq_assessments WHERE assessment_id = %s LIMIT 1",
-            (assessment_id,),
+            "SELECT 1 FROM tenantiq_assessments WHERE assessment_id = %s AND customer_id = %s LIMIT 1",
+            (assessment_id, customer),
         ).fetchone()
     return row is not None
 
 
-def assessment_metadata(assessment_id: str) -> dict[str, Any] | None:
+def assessment_metadata(assessment_id: str, customer_id: str | None = None) -> dict[str, Any] | None:
+    customer = _customer_id(customer_id)
     with psycopg.connect(DATABASE_URL) as conn:
         ensure_schema(conn)
         row = conn.execute(
             """
-            SELECT assessment_id, source_name, imported_at, finding_count, metadata
+            SELECT assessment_id, customer_id, source_name, imported_at, finding_count, metadata
             FROM tenantiq_assessments
-            WHERE assessment_id = %s
+            WHERE assessment_id = %s AND customer_id = %s
             """,
-            (assessment_id,),
+            (assessment_id, customer),
         ).fetchone()
     if not row:
         return None
     return {
-        "assessment_id": str(row[0]),
-        "source_name": row[1],
-        "imported_at": row[2].isoformat() if row[2] else None,
-        "finding_count": int(row[3] or 0),
-        "metadata": row[4] or {},
+        "assessment_id": str(row[0]), "customer_id": row[1], "source_name": row[2],
+        "imported_at": row[3].isoformat() if row[3] else None, "finding_count": int(row[4] or 0),
+        "metadata": row[5] or {},
     }
 
 
-def list_assessments(limit: int = 25) -> list[dict[str, Any]]:
+def list_assessments(limit: int = 25, customer_id: str | None = None) -> list[dict[str, Any]]:
     safe_limit = max(1, min(int(limit), 100))
+    customer = _customer_id(customer_id)
     with psycopg.connect(DATABASE_URL) as conn:
         ensure_schema(conn)
         rows = conn.execute(
             """
-            SELECT assessment_id, source_name, imported_at, finding_count, metadata
+            SELECT assessment_id, customer_id, source_name, imported_at, finding_count, metadata
             FROM tenantiq_assessments
+            WHERE customer_id = %s
             ORDER BY imported_at DESC, assessment_id DESC
             LIMIT %s
             """,
-            (safe_limit,),
+            (customer, safe_limit),
         ).fetchall()
     return [
         {
-            "assessment_id": str(row[0]),
-            "source_name": row[1],
-            "imported_at": row[2].isoformat() if row[2] else None,
-            "finding_count": int(row[3] or 0),
-            "metadata": row[4] or {},
+            "assessment_id": str(row[0]), "customer_id": row[1], "source_name": row[2],
+            "imported_at": row[3].isoformat() if row[3] else None, "finding_count": int(row[4] or 0),
+            "metadata": row[5] or {},
         }
         for row in rows
     ]
 
 
-def load_finding_from_db(assessment_id: str, check_id: str) -> dict[str, Any] | None:
+def load_finding_from_db(assessment_id: str, check_id: str, customer_id: str | None = None) -> dict[str, Any] | None:
+    customer = _customer_id(customer_id)
     with psycopg.connect(DATABASE_URL) as conn:
         ensure_schema(conn)
         row = conn.execute(
             """
-            SELECT check_id, workload, category, status, severity, title,
-                   evidence, recommendation, source_assessment_file, raw
-            FROM tenantiq_assessment_findings
-            WHERE assessment_id = %s AND check_id = %s
+            SELECT f.check_id, f.workload, f.category, f.status, f.severity, f.title,
+                   f.evidence, f.recommendation, f.source_assessment_file, f.raw
+            FROM tenantiq_assessment_findings f
+            JOIN tenantiq_assessments a ON a.assessment_id = f.assessment_id
+            WHERE f.assessment_id = %s AND f.check_id = %s AND a.customer_id = %s
             """,
-            (assessment_id, check_id),
+            (assessment_id, check_id, customer),
         ).fetchone()
-
     if not row:
         return None
-
-    keys = [
-        "check_id", "workload", "category", "status", "severity", "title",
-        "evidence", "recommendation", "source_assessment_file", "raw",
-    ]
+    keys = ["check_id", "workload", "category", "status", "severity", "title", "evidence", "recommendation", "source_assessment_file", "raw"]
     return {key: value for key, value in zip(keys, row) if value not in (None, "")}
 
 
 if __name__ == "__main__":
     import argparse
-
     parser = argparse.ArgumentParser(description="Persist a TenantIQ assessment into PostgreSQL.")
     parser.add_argument("assessment_file")
+    parser.add_argument("--customer-id", default=None)
     args = parser.parse_args()
-
-    assessment_id, count = import_assessment(args.assessment_file)
+    assessment_id, count = import_assessment(args.assessment_file, customer_id=args.customer_id)
     print(f"Imported assessment {assessment_id} with {count} canonical findings.")

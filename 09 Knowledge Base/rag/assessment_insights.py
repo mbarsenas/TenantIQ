@@ -82,11 +82,7 @@ class ConsoleProgress:
     def _set_color(self, color: str) -> None:
         if not self._windows_console or not self._kernel32 or self._stdout_handle is None:
             return
-        attributes = {
-            "yellow": 14,
-            "green": 10,
-            "red": 12,
-        }.get(color)
+        attributes = {"yellow": 14, "green": 10, "red": 12}.get(color)
         if attributes is not None:
             self._kernel32.SetConsoleTextAttribute(self._stdout_handle, attributes)
 
@@ -97,10 +93,7 @@ class ConsoleProgress:
             and self._stdout_handle is not None
             and self._default_attributes is not None
         ):
-            self._kernel32.SetConsoleTextAttribute(
-                self._stdout_handle,
-                self._default_attributes,
-            )
+            self._kernel32.SetConsoleTextAttribute(self._stdout_handle, self._default_attributes)
 
     def start(self) -> None:
         if not sys.stdout.isatty():
@@ -337,27 +330,6 @@ def _fallback_answer(payload: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _response_text(response: Any) -> str:
-    direct = getattr(response, "output_text", None)
-    if isinstance(direct, str) and direct.strip():
-        return direct.strip()
-
-    output = getattr(response, "output", None) or []
-    parts: list[str] = []
-    for item in output:
-        content = getattr(item, "content", None) or []
-        for block in content:
-            text = getattr(block, "text", None)
-            if isinstance(text, str) and text.strip():
-                parts.append(text.strip())
-                continue
-            value = getattr(text, "value", None) if text is not None else None
-            if isinstance(value, str) and value.strip():
-                parts.append(value.strip())
-
-    return "\n\n".join(parts).strip()
-
-
 def answer(
     question: str,
     assessment_id: str,
@@ -367,23 +339,27 @@ def answer(
     if progress:
         progress("Generating TenantIQ insights", 90)
 
-    response = client.responses.create(
+    user_input = (
+        "Stored TenantIQ assessment summary, finding evidence, and grounded knowledge:\n\n"
+        + json.dumps(payload, separators=(",", ":"), default=str)
+        + f"\n\nUser question:\n{question}"
+    )
+
+    completion = client.chat.completions.create(
         model=CHAT_MODEL,
-        instructions=SYSTEM_PROMPT,
-        input=(
-            "Stored TenantIQ assessment summary, finding evidence, and grounded knowledge:\n\n"
-            + json.dumps(payload, separators=(",", ":"), default=str)
-            + f"\n\nUser question:\n{question}"
-        ),
-        max_output_tokens=1800,
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_input},
+        ],
+        max_completion_tokens=1800,
     )
 
     if progress:
         progress("Finalizing response", 98)
 
-    output_text = _response_text(response)
-    if output_text:
-        return output_text
+    content = completion.choices[0].message.content if completion.choices else None
+    if isinstance(content, str) and content.strip():
+        return content.strip()
 
     return _fallback_answer(payload)
 

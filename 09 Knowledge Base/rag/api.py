@@ -1,15 +1,20 @@
 from __future__ import annotations
 
 import os
-from typing import Literal
+from typing import Any, Literal
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from assessment_insights import answer as answer_insights
-from assessment_store import latest_assessment_id, load_finding_from_db
+from assessment_store import (
+    assessment_metadata,
+    latest_assessment_id,
+    list_assessments,
+    load_finding_from_db,
+)
 from assistant import detect_check_id, route_question
 from retrieve import answer as answer_check
 
@@ -28,7 +33,7 @@ ALLOWED_ORIGINS = configured_origins or DEFAULT_ORIGINS
 
 app = FastAPI(
     title="TenantIQ Knowledge Assistant API",
-    version="1.1.0",
+    version="1.2.0",
     description="Read-only API for grounded TenantIQ Microsoft 365 assessment questions.",
 )
 
@@ -67,23 +72,51 @@ class RootResponse(BaseModel):
     health: str
     docs: str
     ask: str
+    assessments: str
+    latest_assessment: str
+
+
+class AssessmentSummary(BaseModel):
+    assessment_id: str
+    source_name: str | None = None
+    imported_at: str | None = None
+    finding_count: int
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 @app.get("/", response_model=RootResponse)
 def root() -> RootResponse:
     return RootResponse(
         service="TenantIQ Knowledge Assistant API",
-        version="1.1.0",
+        version="1.2.0",
         status="ok",
         health="/health",
         docs="/docs",
         ask="POST /ask",
+        assessments="/assessments",
+        latest_assessment="/assessments/latest",
     )
 
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
-    return HealthResponse(status="ok", service="tenantiq-rag", version="1.1.0")
+    return HealthResponse(status="ok", service="tenantiq-rag", version="1.2.0")
+
+
+@app.get("/assessments", response_model=list[AssessmentSummary])
+def assessments(limit: int = Query(default=25, ge=1, le=100)) -> list[AssessmentSummary]:
+    return [AssessmentSummary(**item) for item in list_assessments(limit=limit)]
+
+
+@app.get("/assessments/latest", response_model=AssessmentSummary)
+def latest_assessment() -> AssessmentSummary:
+    assessment_id = latest_assessment_id()
+    if not assessment_id:
+        raise HTTPException(status_code=404, detail="No TenantIQ assessments are stored in PostgreSQL yet.")
+    item = assessment_metadata(assessment_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Latest TenantIQ assessment could not be loaded.")
+    return AssessmentSummary(**item)
 
 
 @app.post("/ask", response_model=AskResponse)

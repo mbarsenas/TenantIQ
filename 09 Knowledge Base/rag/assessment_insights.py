@@ -26,14 +26,36 @@ client = OpenAI()
 SYSTEM_PROMPT = """You are the TenantIQ Microsoft 365 assessment assistant.
 Use only the supplied stored TenantIQ assessment summary, tenant finding evidence, and TenantIQ knowledge context.
 Your job is to identify the most important tenant-wide risks, explain why they matter, and recommend a prioritized remediation sequence.
-Do not invent missing counts, settings, identities, dates, policies, attack paths, or configuration details.
-Do not claim to execute changes or that remediation has been performed.
-Do not infer technical details that are not explicitly present in the finding evidence or TenantIQ knowledge context.
-If evidence or knowledge is insufficient for a claim, say so.
-Keep tenant-specific claims tied to the supplied findings.
-Prefer remediation language already supported by the supplied TenantIQ knowledge.
-Include a short Sources section listing only TenantIQ knowledge source paths that appear in the supplied grounded knowledge context.
-Keep the response concise and operationally focused.
+
+Grounding rules:
+- Never invent counts, settings, identities, domains, dates, policies, attack paths, commands, portal locations, or configuration details.
+- Every tenant-specific claim must be traceable to the supplied finding evidence.
+- Do not claim a remediation was executed or completed.
+- If a requested detail is not present in finding evidence or grounded TenantIQ knowledge, explicitly say it is not available from the assessment.
+- Prefer the exact recommendation from the TenantIQ finding when one exists.
+- Only include Microsoft 365 admin locations, PowerShell commands, or implementation steps when they are explicitly supported by the supplied TenantIQ knowledge context.
+
+For tenant-wide prioritization questions, use this response structure:
+Executive summary
+- State how many findings were reviewed and summarize the FAIL/WARNING/High-severity posture when provided.
+
+Priority findings
+For each of the top findings, provide:
+1. <Check ID> — <Title> (<Status>, <Severity>)
+   Evidence: quote or tightly paraphrase the tenant-specific evidence supplied for that finding.
+   Why it matters: explain the operational/security/compliance impact, grounded in the finding or TenantIQ knowledge.
+   Recommended remediation: state the supported remediation action.
+   Validation: state what an administrator should verify after remediation, but only when supported by the evidence/knowledge. Otherwise say validation guidance is not present in the supplied knowledge.
+
+Recommended order of operations
+- Give a short prioritized sequence and explain dependencies only when supported.
+
+Important:
+- Keep the answer operational and concise, but retain exact Check IDs and concrete assessment evidence.
+- Do not treat INFO or PASS findings as problems unless the user asks about them.
+- Do not convert a WARNING into a FAIL or change a severity.
+- Do not manufacture affected-object names. If evidence only provides counts, use the counts.
+- Include a short Sources section listing only TenantIQ knowledge source paths that appear in the supplied grounded knowledge context.
 """
 
 
@@ -188,9 +210,9 @@ def _compact_finding(finding: dict[str, Any]) -> dict[str, Any]:
             continue
         value = finding[key]
         if key == "evidence":
-            value = _trim_text(value, 700)
+            value = _trim_text(value, 900)
         elif key == "recommendation":
-            value = _trim_text(value, 500)
+            value = _trim_text(value, 650)
         elif key == "title":
             value = _trim_text(value, 180)
         compact[key] = value
@@ -218,7 +240,7 @@ def _knowledge_for_finding(finding: dict[str, Any]) -> list[dict[str, Any]]:
         return []
 
     question = (
-        f"Explain the risk and recommended remediation for TenantIQ check {check_id}: "
+        f"Explain the risk, remediation, and post-remediation validation for TenantIQ check {check_id}: "
         f"{finding.get('title', '')}"
     )
     try:
@@ -226,7 +248,7 @@ def _knowledge_for_finding(finding: dict[str, Any]) -> list[dict[str, Any]]:
             question,
             workload=str(finding.get("workload")) if finding.get("workload") else None,
             check_id=check_id,
-            limit=1,
+            limit=2,
         )
     except Exception:
         return []
@@ -235,7 +257,7 @@ def _knowledge_for_finding(finding: dict[str, Any]) -> list[dict[str, Any]]:
         {
             "source_path": match.source_path,
             "workload": match.workload,
-            "content": _trim_text(match.content, 1200),
+            "content": _trim_text(match.content, 1600),
         }
         for match in matches
     ]
@@ -313,58 +335,44 @@ def _deterministic_answer(payload: dict[str, Any]) -> str:
     finding_count = payload.get("finding_count", 0)
     status_counts = payload.get("status_counts", {}) or {}
     severity_counts = payload.get("severity_counts", {}) or {}
-    workloads = payload.get("workloads", {}) or {}
     priority_findings = payload.get("priority_findings", []) or []
-
-    lines = [
-        "Biggest problems in this tenant",
-        "",
-        f"TenantIQ reviewed {finding_count} findings.",
-    ]
 
     fail_count = status_counts.get("FAIL", 0)
     warning_count = status_counts.get("WARNING", 0)
     high_count = severity_counts.get("High", 0) or severity_counts.get("HIGH", 0)
-    if fail_count or warning_count or high_count:
-        lines.append(
-            f"Current risk posture: {fail_count} FAIL, {warning_count} WARNING, {high_count} High-severity findings."
-        )
 
-    if workloads:
-        ranked = sorted(
-            workloads.items(),
-            key=lambda item: (
-                (item[1] or {}).get("FAIL", 0) + (item[1] or {}).get("WARNING", 0),
-                (item[1] or {}).get("High", 0) + (item[1] or {}).get("HIGH", 0),
-            ),
-            reverse=True,
-        )
-        if ranked:
-            lines.extend(["", "Highest-priority workload areas:"])
-            for workload, counts in ranked[:3]:
-                counts = counts or {}
-                lines.append(
-                    f"- {workload}: {counts.get('FAIL', 0)} FAIL, {counts.get('WARNING', 0)} WARNING"
-                )
+    lines = [
+        "Executive summary",
+        "",
+        f"TenantIQ reviewed {finding_count} findings. Current risk posture: {fail_count} FAIL, {warning_count} WARNING, {high_count} High-severity findings.",
+    ]
 
     if priority_findings:
-        lines.extend(["", "What should be fixed first:"])
+        lines.extend(["", "Priority findings"])
         for index, item in enumerate(priority_findings[:5], start=1):
             finding = item.get("finding", {}) or {}
             check_id = finding.get("check_id", "Unknown")
             title = finding.get("title") or "Untitled finding"
             status = finding.get("status") or "Unknown"
             severity = finding.get("severity") or "Unknown"
-            lines.append(f"{index}. {check_id}: {title} ({status}, {severity})")
+            lines.extend(["", f"{index}. {check_id} — {title} ({status}, {severity})"])
+            evidence = finding.get("evidence")
+            if evidence:
+                lines.append(f"Evidence: {_trim_text(evidence, 520)}")
             recommendation = finding.get("recommendation")
             if recommendation:
-                lines.append(f"   Recommended action: {_trim_text(recommendation, 320)}")
+                lines.append(f"Recommended remediation: {_trim_text(recommendation, 420)}")
+            knowledge = item.get("knowledge_context", []) or []
+            if knowledge:
+                lines.append("Validation: Verify the remediated configuration against the TenantIQ control and rerun the assessment to confirm the finding no longer reports the same risk state.")
+            else:
+                lines.append("Validation: Detailed validation guidance is not present in the supplied TenantIQ knowledge context; rerun the assessment after the approved change and confirm the finding state changes as expected.")
 
     lines.extend([
         "",
-        "Why this matters",
+        "Recommended order of operations",
         "",
-        "The items above are prioritized from the stored TenantIQ assessment evidence. TenantIQ is not claiming remediation has been performed.",
+        "Address High-severity FAIL findings first, then High-severity WARNING findings, followed by remaining FAIL/WARNING findings based on business impact and change dependencies. Preserve change control and rerun TenantIQ after remediation to validate the resulting state.",
     ])
     return _append_sources("\n".join(lines), payload)
 
@@ -374,7 +382,7 @@ def _responses_answer(user_input: str) -> str:
         model=CHAT_MODEL,
         instructions=SYSTEM_PROMPT,
         input=user_input,
-        max_output_tokens=2200,
+        max_output_tokens=3000,
     )
 
     direct = getattr(response, "output_text", None)

@@ -40,20 +40,27 @@ if (Test-Path $mainPath -PathType Leaf) {
     $results.Add((Add-Result 'Responsive banner invariant' $responsive $(if($responsive){'Responsive banner logic present.'}else{'Responsive banner logic missing.'})))
 
     $expectedHints = @(
-        "Get-TenantIQMenuCount $ExchangeRegistryPath 50",
-        "Get-TenantIQMenuCount $EntraRegistryPath 66",
-        "Get-TenantIQMenuCount $SharePointRegistryPath 50",
-        "Get-TenantIQMenuCount $TeamsRegistryPath 50",
-        "Get-TenantIQMenuCount $OneDriveRegistryPath 50",
-        "Get-TenantIQMenuCount $IntuneRegistryPath 50",
-        "Get-TenantIQMenuCount $DefenderRegistryPath 50",
-        "Get-TenantIQMenuCount $PurviewRegistryPath 50"
+        @{ Name='Exchange Online'; Pattern='Get-TenantIQMenuCount\s+\$ExchangeRegistryPath\s+50' },
+        @{ Name='Entra ID'; Pattern='Get-TenantIQMenuCount\s+\$EntraRegistryPath\s+66' },
+        @{ Name='SharePoint Online'; Pattern='Get-TenantIQMenuCount\s+\$SharePointRegistryPath\s+50' },
+        @{ Name='Microsoft Teams'; Pattern='Get-TenantIQMenuCount\s+\$TeamsRegistryPath\s+50' },
+        @{ Name='OneDrive'; Pattern='Get-TenantIQMenuCount\s+\$OneDriveRegistryPath\s+50' },
+        @{ Name='Microsoft Intune'; Pattern='Get-TenantIQMenuCount\s+\$IntuneRegistryPath\s+50' },
+        @{ Name='Microsoft Defender'; Pattern='Get-TenantIQMenuCount\s+\$DefenderRegistryPath\s+50' },
+        @{ Name='Microsoft Purview'; Pattern='Get-TenantIQMenuCount\s+\$PurviewRegistryPath\s+50' }
     )
-    $countsOk = $true
+
+    $missingHints = New-Object System.Collections.Generic.List[string]
     foreach ($hint in $expectedHints) {
-        if ($main -notlike "*$hint*") { $countsOk = $false; break }
+        if ($main -notmatch $hint.Pattern) { $missingHints.Add($hint.Name) }
     }
-    $results.Add((Add-Result 'Workload count hints intact' $countsOk 'Expected counts: 66 Entra ID + 50 for each of the other 7 workloads.'))
+    $countsOk = $missingHints.Count -eq 0
+    $countDetail = if ($countsOk) {
+        'Expected counts confirmed: Entra ID=66; all other workloads=50.'
+    } else {
+        'Missing or changed count hints: ' + ($missingHints -join ', ')
+    }
+    $results.Add((Add-Result 'Workload count hints intact' $countsOk $countDetail))
 
     $exchangeNav = $main -match 'function\s+Start-TenantIQExchangeModule\s*\{\s*while\s*\(\$true\)'
     $results.Add((Add-Result 'Exchange submenu loop invariant' $exchangeNav $(if($exchangeNav){'Exchange submenu remains persistent.'}else{'Exchange submenu loop not detected.'})))

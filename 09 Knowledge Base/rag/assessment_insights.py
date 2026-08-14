@@ -10,6 +10,7 @@ from openai import OpenAI
 
 from assessment_store import latest_assessment_id
 from assessment_summary import load_findings, summarize
+from retrieve import retrieve
 
 load_dotenv()
 
@@ -17,13 +18,41 @@ CHAT_MODEL = os.getenv("OPENAI_CHAT_MODEL", "gpt-5")
 client = OpenAI()
 
 SYSTEM_PROMPT = """You are the TenantIQ Microsoft 365 assessment assistant.
-Use only the supplied stored TenantIQ assessment summary and finding evidence.
+Use only the supplied stored TenantIQ assessment summary, tenant finding evidence, and TenantIQ knowledge context.
 Your job is to identify the most important tenant-wide risks, explain why they matter, and recommend a prioritized remediation sequence.
-Do not invent missing counts, settings, identities, dates, policies, or configuration details.
+Do not invent missing counts, settings, identities, dates, policies, attack paths, or configuration details.
 Do not claim to execute changes or that remediation has been performed.
-If evidence is insufficient for a claim, say so.
+Do not infer technical details that are not explicitly present in the finding evidence or TenantIQ knowledge context.
+If evidence or knowledge is insufficient for a claim, say so.
 Keep tenant-specific claims tied to the supplied findings.
+Prefer remediation language already supported by the supplied TenantIQ knowledge.
+Include a short Sources section listing the TenantIQ knowledge source paths actually used.
 """
+
+
+def _knowledge_for_finding(finding: dict[str, Any]) -> list[dict[str, Any]]:
+    check_id = str(finding.get("check_id", "")).strip()
+    if not check_id:
+        return []
+
+    question = (
+        f"Explain the risk and recommended remediation for TenantIQ check {check_id}: "
+        f"{finding.get('title', '')}"
+    )
+    matches = retrieve(
+        question,
+        workload=str(finding.get("workload")) if finding.get("workload") else None,
+        check_id=check_id,
+        limit=3,
+    )
+    return [
+        {
+            "source_path": match.source_path,
+            "workload": match.workload,
+            "content": match.content,
+        }
+        for match in matches
+    ]
 
 
 def build_payload(assessment_id: str) -> dict[str, Any]:
@@ -42,13 +71,22 @@ def build_payload(assessment_id: str) -> dict[str, Any]:
         if str(finding.get("check_id")) in priority_ids
     ]
 
+    grounded_priority_findings: list[dict[str, Any]] = []
+    for finding in priority_findings:
+        grounded_priority_findings.append(
+            {
+                "finding": finding,
+                "knowledge_context": _knowledge_for_finding(finding),
+            }
+        )
+
     return {
         "assessment_id": assessment_id,
         "finding_count": summary.get("finding_count", 0),
         "status_counts": summary.get("status_counts", {}),
         "severity_counts": summary.get("severity_counts", {}),
         "workloads": summary.get("workloads", {}),
-        "priority_findings": priority_findings,
+        "priority_findings": grounded_priority_findings,
     }
 
 
@@ -58,7 +96,7 @@ def answer(question: str, assessment_id: str) -> str:
         model=CHAT_MODEL,
         instructions=SYSTEM_PROMPT,
         input=(
-            "Stored TenantIQ assessment summary and evidence:\n\n"
+            "Stored TenantIQ assessment summary, finding evidence, and grounded knowledge:\n\n"
             + json.dumps(payload, indent=2, default=str)
             + f"\n\nUser question:\n{question}"
         ),

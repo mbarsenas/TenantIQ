@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import tempfile
 from pathlib import Path
 from typing import Any, Literal
@@ -20,6 +21,7 @@ from assessment_store import (
     list_assessments,
     load_finding_from_db,
 )
+from assessment_summary import load_findings
 from assistant import detect_check_id, route_question
 from check_catalog import CHECKS, canonical_check_id
 from retrieve import answer as answer_check
@@ -44,10 +46,11 @@ ALLOWED_SEVERITIES = {"CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO", "NONE"}
 CANONICAL_CHECK_IDS = {item.check_id for item in CHECKS}
 CANONICAL_WORKLOADS = {item.workload for item in CHECKS}
 MIN_CANONICAL_RATIO = float(os.getenv("TENANTIQ_UPLOAD_MIN_CANONICAL_RATIO", "0.6"))
+CHECK_ID_PATTERN = re.compile(r"\b(?:ENTRA|EXO|SPO|TEAMS|ONEDRIVE|INTUNE|DEFENDER|PUR)-[A-Z0-9]+-\d{3}\b", re.IGNORECASE)
 
 app = FastAPI(
     title="TenantIQ Knowledge Assistant API",
-    version="1.4.1",
+    version="1.5.0",
     description="Read-only API for grounded TenantIQ Microsoft 365 assessment questions.",
 )
 
@@ -71,6 +74,9 @@ class AskResponse(BaseModel):
     route: Literal["specific_finding", "tenant_wide"]
     check_id: str | None = None
     answer: str
+    finding_count: int = 0
+    check_ids: list[str] = Field(default_factory=list)
+    sources: list[str] = Field(default_factory=list)
 
 
 class HealthResponse(BaseModel):
@@ -109,6 +115,42 @@ def _normalized_status(value: Any) -> str:
 
 def _normalized_severity(value: Any) -> str:
     return str(value or "").strip().upper()
+
+
+def _answer_sources(answer: str) -> list[str]:
+    match = re.search(r"(?:^|\n)Sources\s*\n(?P<body>.*)$", answer, flags=re.IGNORECASE | re.DOTALL)
+    if not match:
+        return []
+    sources: list[str] = []
+    for raw_line in match.group("body").splitlines():
+        source = raw_line.strip().lstrip("-•").strip()
+        if source and source not in sources:
+            sources.append(source)
+    return sources
+
+
+def _answer_check_ids(answer: str, finding_check_ids: set[str]) -> list[str]:
+    check_ids: list[str] = []
+    for candidate in CHECK_ID_PATTERN.findall(answer):
+        normalized = candidate.upper()
+        if normalized in finding_check_ids and normalized not in check_ids:
+            check_ids.append(normalized)
+    return check_ids
+
+
+def _assessment_evidence(assessment_id: str, answer: str, explicit_check_id: str | None = None) -> tuple[int, list[str], list[str]]:
+    findings = load_findings(assessment_id)
+    finding_check_ids = {
+        str(finding.get("check_id") or "").strip().upper()
+        for finding in findings
+        if finding.get("check_id")
+    }
+    check_ids = _answer_check_ids(answer, finding_check_ids)
+    if explicit_check_id:
+        normalized = explicit_check_id.upper()
+        if normalized in finding_check_ids and normalized not in check_ids:
+            check_ids.insert(0, normalized)
+    return len(findings), check_ids, _answer_sources(answer)
 
 
 def _validate_tenantiq_assessment(path: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -195,7 +237,7 @@ def _validate_tenantiq_assessment(path: Path) -> tuple[list[dict[str, Any]], dic
 def root() -> RootResponse:
     return RootResponse(
         service="TenantIQ Knowledge Assistant API",
-        version="1.4.1",
+        version="1.5.0",
         status="ok",
         health="/health",
         docs="/docs",
@@ -208,7 +250,7 @@ def root() -> RootResponse:
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
-    return HealthResponse(status="ok", service="tenantiq-rag", version="1.4.1")
+    return HealthResponse(status="ok", service="tenantiq-rag", version="1.5.0")
 
 
 @app.get("/assessments", response_model=list[AssessmentSummary])
@@ -288,19 +330,27 @@ def ask(request: AskRequest) -> AskResponse:
             )
 
         result = answer_check(question, check_id=check_id, finding=finding)
+        finding_count, check_ids, sources = _assessment_evidence(assessment_id, result, explicit_check_id=check_id)
         return AskResponse(
             assessment_id=assessment_id,
             route="specific_finding",
             check_id=check_id,
             answer=result,
+            finding_count=finding_count,
+            check_ids=check_ids,
+            sources=sources,
         )
 
     result = answer_insights(question, assessment_id, progress=None)
+    finding_count, check_ids, sources = _assessment_evidence(assessment_id, result)
     return AskResponse(
         assessment_id=assessment_id,
         route="tenant_wide",
         check_id=None,
         answer=result,
+        finding_count=finding_count,
+        check_ids=check_ids,
+        sources=sources,
     )
 
 

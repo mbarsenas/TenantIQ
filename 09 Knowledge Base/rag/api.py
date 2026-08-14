@@ -50,7 +50,7 @@ CHECK_ID_PATTERN = re.compile(r"\b(?:ENTRA|EXO|SPO|TEAMS|ONEDRIVE|INTUNE|DEFENDE
 
 app = FastAPI(
     title="TenantIQ Knowledge Assistant API",
-    version="1.5.0",
+    version="1.5.1",
     description="Read-only API for grounded TenantIQ Microsoft 365 assessment questions.",
 )
 
@@ -129,28 +129,51 @@ def _answer_sources(answer: str) -> list[str]:
     return sources
 
 
-def _answer_check_ids(answer: str, finding_check_ids: set[str]) -> list[str]:
-    check_ids: list[str] = []
-    for candidate in CHECK_ID_PATTERN.findall(answer):
-        normalized = candidate.upper()
-        if normalized in finding_check_ids and normalized not in check_ids:
-            check_ids.append(normalized)
-    return check_ids
-
-
-def _assessment_evidence(assessment_id: str, answer: str, explicit_check_id: str | None = None) -> tuple[int, list[str], list[str]]:
+def _finding_map(assessment_id: str) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]]]:
     findings = load_findings(assessment_id)
-    finding_check_ids = {
-        str(finding.get("check_id") or "").strip().upper()
+    by_id = {
+        str(finding.get("check_id") or "").strip().upper(): finding
         for finding in findings
         if finding.get("check_id")
     }
-    check_ids = _answer_check_ids(answer, finding_check_ids)
+    return findings, by_id
+
+
+def _answer_check_ids(answer: str, finding_map: dict[str, dict[str, Any]]) -> list[str]:
+    check_ids: list[str] = []
+
+    # Full canonical IDs first.
+    for candidate in CHECK_ID_PATTERN.findall(answer):
+        normalized = candidate.upper()
+        if normalized in finding_map and normalized not in check_ids:
+            check_ids.append(normalized)
+
+    # The model sometimes shortens ENTRA IDs in prose, e.g. APP-007 or ID-001.
+    # Resolve those only when they map uniquely to a finding in this assessment.
+    for short in re.findall(r"\b([A-Z][A-Z0-9]+-\d{3})\b", answer, flags=re.IGNORECASE):
+        normalized_short = short.upper()
+        matches = [check_id for check_id in finding_map if check_id.endswith(f"-{normalized_short}")]
+        if len(matches) == 1 and matches[0] not in check_ids:
+            check_ids.append(matches[0])
+
+    return check_ids
+
+
+def _assessment_evidence(
+    assessment_id: str,
+    answer: str,
+    explicit_check_id: str | None = None,
+) -> tuple[int, list[str], list[str]]:
+    findings, finding_map = _finding_map(assessment_id)
+    check_ids = _answer_check_ids(answer, finding_map)
+
     if explicit_check_id:
         normalized = explicit_check_id.upper()
-        if normalized in finding_check_ids and normalized not in check_ids:
+        if normalized in finding_map and normalized not in check_ids:
             check_ids.insert(0, normalized)
-    return len(findings), check_ids, _answer_sources(answer)
+
+    sources = _answer_sources(answer)
+    return len(findings), check_ids, sources
 
 
 def _validate_tenantiq_assessment(path: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -237,7 +260,7 @@ def _validate_tenantiq_assessment(path: Path) -> tuple[list[dict[str, Any]], dic
 def root() -> RootResponse:
     return RootResponse(
         service="TenantIQ Knowledge Assistant API",
-        version="1.5.0",
+        version="1.5.1",
         status="ok",
         health="/health",
         docs="/docs",
@@ -250,7 +273,7 @@ def root() -> RootResponse:
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
-    return HealthResponse(status="ok", service="tenantiq-rag", version="1.5.0")
+    return HealthResponse(status="ok", service="tenantiq-rag", version="1.5.1")
 
 
 @app.get("/assessments", response_model=list[AssessmentSummary])

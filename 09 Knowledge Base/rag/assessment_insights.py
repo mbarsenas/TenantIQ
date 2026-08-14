@@ -32,7 +32,7 @@ Do not infer technical details that are not explicitly present in the finding ev
 If evidence or knowledge is insufficient for a claim, say so.
 Keep tenant-specific claims tied to the supplied findings.
 Prefer remediation language already supported by the supplied TenantIQ knowledge.
-Include a short Sources section listing the TenantIQ knowledge source paths actually used.
+Include a short Sources section listing only TenantIQ knowledge source paths that appear in the supplied grounded knowledge context.
 Keep the response concise and operationally focused.
 """
 
@@ -241,6 +241,25 @@ def _knowledge_for_finding(finding: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
+def _source_paths(payload: dict[str, Any]) -> list[str]:
+    sources: list[str] = []
+    for item in payload.get("priority_findings", []) or []:
+        for knowledge in item.get("knowledge_context", []) or []:
+            source_path = str(knowledge.get("source_path") or "").strip()
+            if source_path and source_path not in sources:
+                sources.append(source_path)
+    return sources
+
+
+def _append_sources(answer_text: str, payload: dict[str, Any]) -> str:
+    sources = _source_paths(payload)
+    if not sources:
+        return answer_text.rstrip()
+    if "\nsources\n" in f"\n{answer_text.lower()}\n":
+        return answer_text.rstrip()
+    return answer_text.rstrip() + "\n\nSources\n" + "\n".join(f"- {source}" for source in sources)
+
+
 def build_payload(
     assessment_id: str,
     progress: Callable[[str, int], None] | None = None,
@@ -347,7 +366,7 @@ def _deterministic_answer(payload: dict[str, Any]) -> str:
         "",
         "The items above are prioritized from the stored TenantIQ assessment evidence. TenantIQ is not claiming remediation has been performed.",
     ])
-    return "\n".join(lines)
+    return _append_sources("\n".join(lines), payload)
 
 
 def _responses_answer(user_input: str) -> str:
@@ -395,7 +414,7 @@ def answer(
         if content:
             if progress:
                 progress("Finalizing response", 98)
-            return content
+            return _append_sources(content, payload)
     except Exception:
         pass
 

@@ -115,6 +115,8 @@ def import_assessment(path: str, metadata: dict[str, Any] | None = None) -> tupl
     if metadata:
         stored_metadata.update({k: v for k, v in metadata.items() if v not in (None, "")})
 
+    source_name = str(stored_metadata.get("original_filename") or assessment_path.name)
+
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn:
         ensure_schema(conn)
         conn.execute(
@@ -132,7 +134,7 @@ def import_assessment(path: str, metadata: dict[str, Any] | None = None) -> tupl
             (
                 assessment_id,
                 str(assessment_path.resolve()),
-                assessment_path.name,
+                source_name,
                 len(canonical_findings),
                 json.dumps(stored_metadata),
             ),

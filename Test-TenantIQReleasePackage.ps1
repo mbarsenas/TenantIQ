@@ -53,6 +53,31 @@ $RequiredDirectories = @('00 Runtime','01 Framework','02 Health Checks','03 Repo
 foreach($File in $RequiredFiles){ Test-RequiredFile $File }
 foreach($Directory in $RequiredDirectories){ Test-RequiredDirectory $Directory }
 
+$TenantIQMainPath = Join-Path $PackageRoot 'TenantIQ.ps1'
+if (Test-Path $TenantIQMainPath -PathType Leaf) {
+    try {
+        $TenantIQMain = Get-Content $TenantIQMainPath -Raw -ErrorAction Stop
+        $BannerPattern = '(?ms)^function\s+Show-Banner\s*\{.*?^\}'
+        $BannerMatch = [regex]::Match($TenantIQMain, $BannerPattern)
+        $BannerValid = $BannerMatch.Success -and
+            $BannerMatch.Value -match 'WindowSize\.Width' -and
+            $BannerMatch.Value -match '\[Math\]::Max\(60' -and
+            $BannerMatch.Value -match '\[Math\]::Min\(\$width,\s*120\)' -and
+            $BannerMatch.Value -match 'TenantIQ - M365 Assessment Tool'
+        $BannerDetail = if ($BannerValid) {
+            'Responsive console banner is canonical and width-aware.'
+        } elseif (-not $BannerMatch.Success) {
+            'Show-Banner function was not found in TenantIQ.ps1.'
+        } else {
+            'Show-Banner is present but required responsive width logic is missing.'
+        }
+        $Results.Add((Add-CheckResult -Name 'Responsive console banner guard' -Passed $BannerValid -Detail $BannerDetail))
+    }
+    catch {
+        $Results.Add((Add-CheckResult -Name 'Responsive console banner guard' -Passed $false -Detail $_.Exception.Message))
+    }
+}
+
 if ($IsCustomerDelivery) {
     $Results.Add((Add-CheckResult -Name 'Customer-specific license present' -Passed (Test-Path $CustomerLicensePath -PathType Leaf) -Detail $(if(Test-Path $CustomerLicensePath -PathType Leaf){'TenantIQ-License.json present'}else{'TenantIQ-License.json missing'})))
 } else {

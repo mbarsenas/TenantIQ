@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import tempfile
 from pathlib import Path
@@ -11,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from assessment_insights import answer as answer_insights
+from assessment_loader import load_assessment
 from assessment_store import (
     assessment_metadata,
     import_assessment,
@@ -19,6 +21,7 @@ from assessment_store import (
     load_finding_from_db,
 )
 from assistant import detect_check_id, route_question
+from check_catalog import CHECKS, canonical_check_id
 from retrieve import answer as answer_check
 
 load_dotenv()
@@ -36,10 +39,15 @@ ALLOWED_ORIGINS = configured_origins or DEFAULT_ORIGINS
 
 MAX_UPLOAD_BYTES = int(os.getenv("TENANTIQ_MAX_ASSESSMENT_UPLOAD_BYTES", str(20 * 1024 * 1024)))
 ALLOWED_UPLOAD_SUFFIXES = {".csv", ".json"}
+ALLOWED_STATUSES = {"PASS", "FAIL", "WARNING", "INFO", "NOT EVALUATED", "NOT_EVALUATED", "SKIPPED", "ERROR"}
+ALLOWED_SEVERITIES = {"CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO", "NONE"}
+CANONICAL_CHECK_IDS = {item.check_id for item in CHECKS}
+CANONICAL_WORKLOADS = {item.workload for item in CHECKS}
+MIN_CANONICAL_RATIO = float(os.getenv("TENANTIQ_UPLOAD_MIN_CANONICAL_RATIO", "0.6"))
 
 app = FastAPI(
     title="TenantIQ Knowledge Assistant API",
-    version="1.3.0",
+    version="1.4.0",
     description="Read-only API for grounded TenantIQ Microsoft 365 assessment questions.",
 )
 
@@ -95,11 +103,99 @@ class AssessmentUploadResponse(AssessmentSummary):
     imported: Literal[True] = True
 
 
+def _normalized_status(value: Any) -> str:
+    return str(value or "").strip().upper().replace("_", " ")
+
+
+def _normalized_severity(value: Any) -> str:
+    return str(value or "").strip().upper()
+
+
+def _validate_tenantiq_assessment(path: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    try:
+        findings = load_assessment(str(path), follow_portfolio=False)
+    except (SystemExit, json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid TenantIQ assessment format: {exc}") from exc
+
+    if not findings:
+        raise HTTPException(status_code=400, detail="Uploaded file does not contain any TenantIQ assessment findings.")
+    if len(findings) > 5000:
+        raise HTTPException(status_code=400, detail="Uploaded assessment contains an unexpected number of findings.")
+
+    canonical_count = 0
+    invalid_statuses: set[str] = set()
+    invalid_severities: set[str] = set()
+    unknown_workloads: set[str] = set()
+    missing_core_fields = 0
+
+    for finding in findings:
+        check_id = str(finding.get("check_id") or "").strip()
+        workload = str(finding.get("workload") or "").strip()
+        title = str(finding.get("title") or "").strip()
+        status = _normalized_status(finding.get("status"))
+        severity = _normalized_severity(finding.get("severity"))
+
+        canonical = canonical_check_id(check_id) if check_id else None
+        if canonical and canonical in CANONICAL_CHECK_IDS:
+            canonical_count += 1
+
+        if not title or not status or not (check_id or canonical):
+            missing_core_fields += 1
+
+        if status and status not in {item.replace("_", " ") for item in ALLOWED_STATUSES}:
+            invalid_statuses.add(status)
+        if severity and severity not in ALLOWED_SEVERITIES:
+            invalid_severities.add(severity)
+        if workload and workload not in CANONICAL_WORKLOADS:
+            unknown_workloads.add(workload)
+
+    canonical_ratio = canonical_count / len(findings)
+    if canonical_count == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="This file is not a recognized TenantIQ assessment. No canonical TenantIQ check IDs were found.",
+        )
+    if canonical_ratio < MIN_CANONICAL_RATIO:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "This file does not look like a valid TenantIQ assessment. "
+                f"Only {canonical_count} of {len(findings)} findings mapped to TenantIQ checks."
+            ),
+        )
+    if missing_core_fields > max(3, int(len(findings) * 0.1)):
+        raise HTTPException(
+            status_code=400,
+            detail="This file is missing required TenantIQ finding fields such as check ID, title, or status.",
+        )
+    if invalid_statuses:
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported TenantIQ status value(s): " + ", ".join(sorted(invalid_statuses)[:8]),
+        )
+    if invalid_severities:
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported TenantIQ severity value(s): " + ", ".join(sorted(invalid_severities)[:8]),
+        )
+    if unknown_workloads:
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported TenantIQ workload value(s): " + ", ".join(sorted(unknown_workloads)[:8]),
+        )
+
+    return findings, {
+        "validated": True,
+        "canonical_findings": canonical_count,
+        "canonical_ratio": round(canonical_ratio, 4),
+    }
+
+
 @app.get("/", response_model=RootResponse)
 def root() -> RootResponse:
     return RootResponse(
         service="TenantIQ Knowledge Assistant API",
-        version="1.3.0",
+        version="1.4.0",
         status="ok",
         health="/health",
         docs="/docs",
@@ -112,7 +208,7 @@ def root() -> RootResponse:
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
-    return HealthResponse(status="ok", service="tenantiq-rag", version="1.3.0")
+    return HealthResponse(status="ok", service="tenantiq-rag", version="1.4.0")
 
 
 @app.get("/assessments", response_model=list[AssessmentSummary])
@@ -150,14 +246,18 @@ async def upload_assessment(file: UploadFile = File(...)) -> AssessmentUploadRes
             handle.write(contents)
             temp_path = Path(handle.name)
 
+        _, validation_metadata = _validate_tenantiq_assessment(temp_path)
         assessment_id, finding_count = import_assessment(str(temp_path))
         item = assessment_metadata(assessment_id)
         if not item:
             raise RuntimeError("Imported TenantIQ assessment metadata could not be loaded.")
 
-        # Preserve the customer's original filename instead of the temporary server filename.
         item["source_name"] = original_name
         item["finding_count"] = finding_count
+        metadata = dict(item.get("metadata") or {})
+        metadata.update(validation_metadata)
+        metadata["original_filename"] = original_name
+        item["metadata"] = metadata
         return AssessmentUploadResponse(**item)
     except HTTPException:
         raise

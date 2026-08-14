@@ -276,6 +276,46 @@ def build_payload(
     }
 
 
+def _fallback_answer(payload: dict[str, Any]) -> str:
+    finding_count = payload.get("finding_count", 0)
+    status_counts = payload.get("status_counts", {}) or {}
+    severity_counts = payload.get("severity_counts", {}) or {}
+    priority_findings = payload.get("priority_findings", []) or []
+
+    lines = [
+        "TenantIQ completed the assessment review, but the language model returned no displayable text.",
+        "",
+        f"Assessment findings: {finding_count}",
+    ]
+
+    if status_counts:
+        lines.append(
+            "Status summary: "
+            + ", ".join(f"{key}: {value}" for key, value in status_counts.items())
+        )
+    if severity_counts:
+        lines.append(
+            "Severity summary: "
+            + ", ".join(f"{key}: {value}" for key, value in severity_counts.items())
+        )
+
+    if priority_findings:
+        lines.extend(["", "Priority findings:"])
+        for item in priority_findings[:5]:
+            finding = item.get("finding", {}) or {}
+            check_id = finding.get("check_id", "Unknown")
+            title = finding.get("title") or "Untitled finding"
+            status = finding.get("status") or "Unknown"
+            severity = finding.get("severity") or "Unknown"
+            lines.append(f"- {check_id}: {title} ({status}, {severity})")
+
+    lines.extend([
+        "",
+        "The underlying assessment data was loaded successfully. Retry the question to regenerate the narrative response.",
+    ])
+    return "\n".join(lines)
+
+
 def answer(
     question: str,
     assessment_id: str,
@@ -296,7 +336,11 @@ def answer(
     )
     if progress:
         progress("Finalizing response", 98)
-    return response.output_text
+
+    output_text = (response.output_text or "").strip()
+    if output_text:
+        return output_text
+    return _fallback_answer(payload)
 
 
 def main() -> None:

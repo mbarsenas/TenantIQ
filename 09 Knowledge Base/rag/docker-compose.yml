@@ -19,7 +19,7 @@ services:
 
   rag-api:
     build:
-      context: ../../..
+      context: ../..
       dockerfile: "09 Knowledge Base/rag/Dockerfile"
     container_name: tenantiq-rag-api
     restart: unless-stopped

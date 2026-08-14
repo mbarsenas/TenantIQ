@@ -82,7 +82,7 @@ function Invoke-TenantIQAccessProbe {
         if($spoStatus -eq 'ERROR' -and [string]::IsNullOrWhiteSpace($spoError)){$spoStatus='SIGN-IN REQUIRED'}
         $category=switch($spoStatus){'SIGN-IN REQUIRED'{'Authentication required'}'DENIED'{'Permission denied'}'UNAVAILABLE'{'Service or licensing unavailable'}default{'Query failure'}}
         $detail=if($spoStatus -eq 'SIGN-IN REQUIRED'){'Please sign in to SharePoint Online.'}elseif($spoError){$spoError}else{'SharePoint Online tenant query did not succeed.'}
-        $results.Add((New-AccessResult 'SharePoint Online' $spoStatus $category $detail 'Run Connect-SPOService -Url https://<tenant>-admin.sharepoint.com -UseSystemBrowser $true and authenticate.'))
+        $results.Add((New-AccessResult 'SharePoint Online' $spoStatus $category $detail 'Run Connect-SPOService -Url https://<tenant>-admin.sharepoint.com and authenticate.'))
     }
 
     $teamsConnected=$false;$teamsError=''
@@ -108,8 +108,18 @@ function Invoke-TenantIQAccessProbe {
     elseif(-not($graphContext -and $graphContext.Account)){$results.Add((New-AccessResult 'Microsoft Defender' 'SIGN-IN REQUIRED' 'Authentication required' 'Please sign in to Microsoft Graph before checking Defender.' 'Run Connect-MgGraph, then rerun this pre-check.'))}
     else{$status=Get-AccessClassification $defenderError;$category=switch($status){'DENIED'{'Permission denied'}'UNAVAILABLE'{'Service or licensing unavailable'}'SIGN-IN REQUIRED'{'Authentication required'}default{'Query failure'}};$results.Add((New-AccessResult 'Microsoft Defender' $status $category $defenderError 'Verify Security read permissions and Defender licensing for the data being assessed.'))}
 
-    if(-not($graphContext -and $graphContext.Account)){$results.Add((New-AccessResult 'Microsoft Purview' 'SIGN-IN REQUIRED' 'Authentication required' 'Please sign in to Microsoft Graph before validating Purview access.' 'Run Connect-MgGraph, then validate Purview permissions and licensing.'))}
-    else{$results.Add((New-AccessResult 'Microsoft Purview' 'REVIEW' 'Feature validation required' 'Graph connectivity is healthy. Purview-specific feature availability should still be validated during the Purview assessment.' 'Verify the tenant has the Purview features used by TenantIQ and that the signed-in account has the required read permissions.'))}
+    $purviewOk=$false;$purviewError=''
+    $purviewProbe = @('Get-RetentionCompliancePolicy','Get-DlpCompliancePolicy','Get-ComplianceTag') | Where-Object { Get-CommandAvailable $_ } | Select-Object -First 1
+    if ($purviewProbe) {
+        try {
+            & $purviewProbe -ErrorAction Stop | Select-Object -First 1 | Out-Null
+            $purviewOk=$true
+        } catch { $purviewError=$_.Exception.Message }
+    }
+    if($purviewOk){$results.Add((New-AccessResult 'Microsoft Purview' 'OK' 'Access confirmed' ("Security & Compliance PowerShell query succeeded via {0}." -f $purviewProbe)))}
+    elseif(-not $purviewProbe){$results.Add((New-AccessResult 'Microsoft Purview' 'SIGN-IN REQUIRED' 'Authentication required' 'Please sign in to Microsoft Purview / Security & Compliance PowerShell.' 'Run Connect-IPPSSession, then rerun this pre-check.'))}
+    else{$status=Get-AccessClassification $purviewError;$category=switch($status){'DENIED'{'Permission denied'}'UNAVAILABLE'{'Service or licensing unavailable'}'SIGN-IN REQUIRED'{'Authentication required'}default{'Query failure'}};$detail=if($status -eq 'SIGN-IN REQUIRED'){'Please sign in to Microsoft Purview / Security & Compliance PowerShell.'}elseif($purviewError){$purviewError}else{'Purview query did not succeed.'};$results.Add((New-AccessResult 'Microsoft Purview' $status $category $detail 'Run Connect-IPPSSession and verify the signed-in account has Purview read permissions.'))}
+
     return $results
 }
 
@@ -125,10 +135,11 @@ function Show-TenantIQAccessResults {
 
 function Invoke-TenantIQInteractiveSignIn {
     param([Parameter(Mandatory)]$CurrentResults)
-    $needGraph=@($CurrentResults|Where-Object{$_.Status -eq 'SIGN-IN REQUIRED' -and $_.Workload -in @('Entra ID / Graph','Microsoft Intune','Microsoft Defender','Microsoft Purview')}).Count -gt 0
+    $needGraph=@($CurrentResults|Where-Object{$_.Status -eq 'SIGN-IN REQUIRED' -and $_.Workload -in @('Entra ID / Graph','Microsoft Intune','Microsoft Defender')}).Count -gt 0
     $needExchange=@($CurrentResults|Where-Object{$_.Status -eq 'SIGN-IN REQUIRED' -and $_.Workload -eq 'Exchange Online'}).Count -gt 0
     $needSharePoint=@($CurrentResults|Where-Object{$_.Status -eq 'SIGN-IN REQUIRED' -and $_.Workload -in @('SharePoint Online','OneDrive')}).Count -gt 0
     $needTeams=@($CurrentResults|Where-Object{$_.Status -eq 'SIGN-IN REQUIRED' -and $_.Workload -eq 'Microsoft Teams'}).Count -gt 0
+    $needPurview=@($CurrentResults|Where-Object{$_.Status -eq 'SIGN-IN REQUIRED' -and $_.Workload -eq 'Microsoft Purview'}).Count -gt 0
 
     if($needGraph){Write-Host '';Write-Host 'Signing in to Microsoft Graph...' -ForegroundColor Cyan;try{$graphScopes=@('Directory.Read.All','Policy.Read.All','AuditLog.Read.All','RoleManagement.Read.Directory','Application.Read.All','Group.Read.All','User.Read.All','Reports.Read.All','DeviceManagementManagedDevices.Read.All','SecurityAlert.Read.All');Connect-MgGraph -Scopes $graphScopes -NoWelcome -ErrorAction Stop|Out-Null;Write-Host '[OK] Microsoft Graph sign-in completed.' -ForegroundColor Green}catch{Write-Host ('[WARNING] Microsoft Graph sign-in did not complete: {0}' -f $_.Exception.Message) -ForegroundColor Yellow}}
     if($needExchange){Write-Host '';Write-Host 'Signing in to Exchange Online...' -ForegroundColor Cyan;try{Connect-ExchangeOnline -ShowBanner:$false -ErrorAction Stop|Out-Null;Write-Host '[OK] Exchange Online sign-in completed.' -ForegroundColor Green}catch{Write-Host ('[WARNING] Exchange Online sign-in did not complete: {0}' -f $_.Exception.Message) -ForegroundColor Yellow}}
@@ -141,23 +152,26 @@ function Invoke-TenantIQInteractiveSignIn {
             Write-Host ("Signing in to SharePoint Online: {0}" -f $adminUrl) -ForegroundColor Cyan
             try {
                 if (-not (Get-CommandAvailable 'Connect-SPOService')) { Import-Module Microsoft.Online.SharePoint.PowerShell -ErrorAction Stop }
-                if (-not (Get-CommandAvailable 'Connect-SPOService')) { throw 'Microsoft.Online.SharePoint.PowerShell loaded, but Connect-SPOService is unavailable.' }
-                $spoCommand = Get-Command Connect-SPOService -ErrorAction Stop
-                if ($spoCommand.Parameters.ContainsKey('UseSystemBrowser')) {
-                    Connect-SPOService -Url $adminUrl -UseSystemBrowser $true -ErrorAction Stop
-                } elseif ($spoCommand.Parameters.ContainsKey('ModernAuth') -and $spoCommand.Parameters.ContainsKey('AuthenticationUrl')) {
-                    Connect-SPOService -Url $adminUrl -ModernAuth $true -AuthenticationUrl 'https://login.microsoftonline.com/organizations' -ErrorAction Stop
-                } else {
-                    Connect-SPOService -Url $adminUrl -ErrorAction Stop
-                }
+                if (-not (Get-CommandAvailable 'Connect-SPOService')) { throw 'Connect-SPOService is unavailable after importing Microsoft.Online.SharePoint.PowerShell.' }
+                $spoCommand=Get-Command Connect-SPOService -ErrorAction Stop
+                if($spoCommand.Parameters.ContainsKey('UseSystemBrowser')){Connect-SPOService -Url $adminUrl -UseSystemBrowser $true -ErrorAction Stop}
+                elseif($spoCommand.Parameters.ContainsKey('ModernAuth')){Connect-SPOService -Url $adminUrl -ModernAuth $true -AuthenticationUrl 'https://login.microsoftonline.com/organizations' -ErrorAction Stop}
+                else{Connect-SPOService -Url $adminUrl -ErrorAction Stop}
                 Write-Host '[OK] SharePoint Online sign-in completed.' -ForegroundColor Green
-            } catch {
-                Write-Host ('[WARNING] SharePoint Online sign-in did not complete: {0}' -f $_.Exception.Message) -ForegroundColor Yellow
-                Write-Host '          TenantIQ attempted the SharePoint system-browser / modern-auth flow supported by the installed module.' -ForegroundColor DarkGray
-            }
+            }catch{Write-Host ('[WARNING] SharePoint Online sign-in did not complete: {0}' -f $_.Exception.Message) -ForegroundColor Yellow}
         }else{Write-Host '[WARNING] Could not determine the SharePoint tenant name. SharePoint sign-in skipped.' -ForegroundColor Yellow}
     }
     if($needTeams){Write-Host '';Write-Host 'Signing in to Microsoft Teams...' -ForegroundColor Cyan;try{Connect-MicrosoftTeams -ErrorAction Stop|Out-Null;Write-Host '[OK] Microsoft Teams sign-in completed.' -ForegroundColor Green}catch{Write-Host ('[WARNING] Microsoft Teams sign-in did not complete: {0}' -f $_.Exception.Message) -ForegroundColor Yellow}}
+    if($needPurview){
+        Write-Host ''
+        Write-Host 'Signing in to Microsoft Purview / Security & Compliance PowerShell...' -ForegroundColor Cyan
+        try {
+            if (-not (Get-CommandAvailable 'Connect-IPPSSession')) { Import-Module ExchangeOnlineManagement -ErrorAction Stop }
+            if (-not (Get-CommandAvailable 'Connect-IPPSSession')) { throw 'Connect-IPPSSession is unavailable. Update or reinstall ExchangeOnlineManagement.' }
+            Connect-IPPSSession -ShowBanner:$false -ErrorAction Stop | Out-Null
+            Write-Host '[OK] Microsoft Purview sign-in completed.' -ForegroundColor Green
+        } catch { Write-Host ('[WARNING] Microsoft Purview sign-in did not complete: {0}' -f $_.Exception.Message) -ForegroundColor Yellow }
+    }
 }
 
 Write-Host '';Write-Host 'TenantIQ Tenant Access Pre-Check' -ForegroundColor Cyan;Write-Host '================================' -ForegroundColor Cyan;Write-Host ''

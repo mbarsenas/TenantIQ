@@ -14,4 +14,4 @@ COPY . .
 
 EXPOSE 8787
 
-CMD ["/bin/sh", "-c", "python -m uvicorn api:app --host 0.0.0.0 --port ${PORT:-8787}"]
+CMD ["/bin/sh", "-c", "python -m uvicorn dashboard_api:app --host 0.0.0.0 --port ${PORT:-8787}"]

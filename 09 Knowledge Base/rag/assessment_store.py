@@ -253,11 +253,55 @@ def load_finding_from_db(assessment_id: str, check_id: str, customer_id: str | N
     return {key: value for key, value in zip(keys, row) if value not in (None, "")}
 
 
+def claim_assessments(source_customer_id: str, target_customer_id: str) -> int:
+    source = _customer_id(source_customer_id)
+    target = _customer_id(target_customer_id)
+    if source == target:
+        return 0
+    if source != "local-dev":
+        raise ValueError("Assessment claiming is restricted to the local-dev source identity.")
+    if target == "local-dev":
+        raise ValueError("Target customer identity must not be local-dev.")
+
+    with psycopg.connect(DATABASE_URL, autocommit=True) as conn:
+        ensure_schema(conn)
+        row = conn.execute(
+            """
+            WITH moved AS (
+                UPDATE tenantiq_assessments
+                SET customer_id = %s
+                WHERE customer_id = %s
+                RETURNING assessment_id
+            )
+            SELECT COUNT(*) FROM moved
+            """,
+            (target, source),
+        ).fetchone()
+    return int(row[0] or 0) if row else 0
+
+
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="Persist a TenantIQ assessment into PostgreSQL.")
-    parser.add_argument("assessment_file")
-    parser.add_argument("--customer-id", default=None)
+
+    parser = argparse.ArgumentParser(description="Persist or claim TenantIQ assessments in PostgreSQL.")
+    subparsers = parser.add_subparsers(dest="command")
+
+    import_parser = subparsers.add_parser("import", help="Import an assessment file.")
+    import_parser.add_argument("assessment_file")
+    import_parser.add_argument("--customer-id", default=None)
+
+    claim_parser = subparsers.add_parser("claim-local", help="Move local-dev assessments to an authenticated customer identity.")
+    claim_parser.add_argument("--target-customer-id", required=True)
+
     args = parser.parse_args()
-    assessment_id, count = import_assessment(args.assessment_file, customer_id=args.customer_id)
-    print(f"Imported assessment {assessment_id} with {count} canonical findings.")
+
+    if args.command == "claim-local":
+        moved = claim_assessments("local-dev", args.target_customer_id)
+        print(f"Claimed {moved} local assessment(s) for {args.target_customer_id}.")
+    else:
+        assessment_file = getattr(args, "assessment_file", None)
+        customer_id = getattr(args, "customer_id", None)
+        if not assessment_file:
+            parser.error("assessment_file is required. Use the 'import' subcommand or provide a command.")
+        assessment_id, count = import_assessment(assessment_file, customer_id=customer_id)
+        print(f"Imported assessment {assessment_id} with {count} canonical findings.")

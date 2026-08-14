@@ -34,12 +34,27 @@ Include a short Sources section listing the TenantIQ knowledge source paths actu
 
 
 class ConsoleProgress:
+    ANSI_YELLOW = "\033[93m"
+    ANSI_GREEN = "\033[92m"
+    ANSI_RED = "\033[91m"
+    ANSI_RESET = "\033[0m"
+
     def __init__(self, label: str = "TenantIQ insights") -> None:
         self.label = label
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._phase = "Starting"
         self._percent = 0
+        self._color_enabled = self._supports_color()
+
+    @staticmethod
+    def _supports_color() -> bool:
+        return sys.stdout.isatty() and os.getenv("NO_COLOR") is None
+
+    def _colorize(self, text: str, color: str) -> str:
+        if not self._color_enabled:
+            return text
+        return f"{color}{text}{self.ANSI_RESET}"
 
     def start(self) -> None:
         if not sys.stdout.isatty():
@@ -78,9 +93,15 @@ class ConsoleProgress:
             bar = "=" * filled + ">" + " " * max(0, width - filled - 1)
         else:
             bar = "=" * width
-        suffix = "" if final else ""
+
+        line = f"{self.label}: [{bar}] {self._percent:3d}%  {self._phase}"
+        if final:
+            color = self.ANSI_RED if self._phase == "Failed" else self.ANSI_GREEN
+        else:
+            color = self.ANSI_YELLOW
+
         print(
-            f"\r{self.label}: [{bar}] {self._percent:3d}%  {self._phase}{suffix}",
+            "\r" + self._colorize(line, color),
             end="",
             flush=True,
         )

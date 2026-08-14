@@ -35,29 +35,68 @@ Include a short Sources section listing the TenantIQ knowledge source paths actu
 
 
 class ConsoleProgress:
-    ANSI_YELLOW = "\033[93m"
-    ANSI_GREEN = "\033[92m"
-    ANSI_RED = "\033[91m"
-    ANSI_RESET = "\033[0m"
-
     def __init__(self, label: str = "TenantIQ insights") -> None:
         self.label = label
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._phase = "Starting"
         self._percent = 0
-        self._color_enabled = self._supports_color()
         self._lock = threading.Lock()
         self._last_render_width = 0
+        self._windows_console = os.name == "nt" and sys.stdout.isatty()
+        self._kernel32 = None
+        self._stdout_handle = None
+        self._default_attributes = None
+        self._init_windows_console()
 
-    @staticmethod
-    def _supports_color() -> bool:
-        return sys.stdout.isatty() and os.getenv("NO_COLOR") is None
+    def _init_windows_console(self) -> None:
+        if not self._windows_console:
+            return
+        try:
+            import ctypes
 
-    def _colorize(self, text: str, color: str) -> str:
-        if not self._color_enabled:
-            return text
-        return f"{color}{text}{self.ANSI_RESET}"
+            self._kernel32 = ctypes.windll.kernel32
+            self._stdout_handle = self._kernel32.GetStdHandle(-11)
+
+            class CONSOLE_SCREEN_BUFFER_INFO(ctypes.Structure):
+                _fields_ = [
+                    ("dwSize", ctypes.c_short * 2),
+                    ("dwCursorPosition", ctypes.c_short * 2),
+                    ("wAttributes", ctypes.c_ushort),
+                    ("srWindow", ctypes.c_short * 4),
+                    ("dwMaximumWindowSize", ctypes.c_short * 2),
+                ]
+
+            info = CONSOLE_SCREEN_BUFFER_INFO()
+            if self._kernel32.GetConsoleScreenBufferInfo(self._stdout_handle, ctypes.byref(info)):
+                self._default_attributes = int(info.wAttributes)
+        except Exception:
+            self._kernel32 = None
+            self._stdout_handle = None
+            self._default_attributes = None
+
+    def _set_color(self, color: str) -> None:
+        if not self._windows_console or not self._kernel32 or self._stdout_handle is None:
+            return
+        attributes = {
+            "yellow": 14,
+            "green": 10,
+            "red": 12,
+        }.get(color)
+        if attributes is not None:
+            self._kernel32.SetConsoleTextAttribute(self._stdout_handle, attributes)
+
+    def _reset_color(self) -> None:
+        if (
+            self._windows_console
+            and self._kernel32
+            and self._stdout_handle is not None
+            and self._default_attributes is not None
+        ):
+            self._kernel32.SetConsoleTextAttribute(
+                self._stdout_handle,
+                self._default_attributes,
+            )
 
     def start(self) -> None:
         if not sys.stdout.isatty():
@@ -115,16 +154,14 @@ class ConsoleProgress:
         padded_line = line.ljust(padded_width)
         self._last_render_width = len(line)
 
-        if final:
-            color = self.ANSI_RED if phase == "Failed" else self.ANSI_GREEN
-        else:
-            color = self.ANSI_YELLOW
+        color = "red" if final and phase == "Failed" else "green" if final else "yellow"
 
-        # Clear the entire terminal line before redrawing. This prevents text from
-        # a longer previous phase (for example "Retrieving knowledge ...") from
-        # remaining visible after the shorter "Complete" message.
-        rendered = "\r\033[2K" + self._colorize(padded_line, color)
-        print(rendered, end="", flush=True)
+        # PowerShell/Windows terminals can display raw ANSI escape sequences when
+        # VT processing is disabled. Use native console attributes on Windows and
+        # avoid embedding ANSI codes in the output entirely.
+        self._set_color(color)
+        print("\r" + (" " * padded_width) + "\r" + padded_line, end="", flush=True)
+        self._reset_color()
 
 
 def _knowledge_for_finding(finding: dict[str, Any]) -> list[dict[str, Any]]:

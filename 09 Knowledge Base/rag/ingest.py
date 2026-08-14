@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 from typing import Iterable
 
@@ -21,21 +22,124 @@ DATABASE_URL = os.environ["DATABASE_URL"]
 client = OpenAI()
 
 
-def chunk_text(text: str, size: int = 2200, overlap: int = 300) -> Iterable[str]:
-    text = "\n".join(line.rstrip() for line in text.splitlines()).strip()
+HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
+
+
+def _normalize_markdown(text: str) -> str:
+    return "\n".join(line.rstrip() for line in text.splitlines()).strip()
+
+
+def _split_markdown_sections(text: str) -> list[str]:
+    """Split Markdown on headings while carrying the heading into its section."""
+    text = _normalize_markdown(text)
     if not text:
         return []
+
+    sections: list[str] = []
+    current: list[str] = []
+
+    for line in text.splitlines():
+        if HEADING_RE.match(line) and current:
+            section = "\n".join(current).strip()
+            if section:
+                sections.append(section)
+            current = [line]
+        else:
+            current.append(line)
+
+    if current:
+        section = "\n".join(current).strip()
+        if section:
+            sections.append(section)
+
+    return sections
+
+
+def _split_large_block(text: str, size: int, overlap: int) -> list[str]:
+    """Split an oversized section on paragraph boundaries, then sentences/characters as needed."""
+    if len(text) <= size:
+        return [text]
+
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
+    if len(paragraphs) <= 1:
+        chunks: list[str] = []
+        start = 0
+        while start < len(text):
+            end = min(len(text), start + size)
+            chunk = text[start:end].strip()
+            if chunk:
+                chunks.append(chunk)
+            if end == len(text):
+                break
+            start = max(0, end - overlap)
+        return chunks
+
     chunks: list[str] = []
-    start = 0
-    while start < len(text):
-        end = min(len(text), start + size)
-        chunk = text[start:end].strip()
-        if chunk:
-            chunks.append(chunk)
-        if end == len(text):
-            break
-        start = max(0, end - overlap)
+    current = ""
+
+    for paragraph in paragraphs:
+        candidate = f"{current}\n\n{paragraph}".strip() if current else paragraph
+        if len(candidate) <= size:
+            current = candidate
+            continue
+
+        if current:
+            chunks.append(current)
+
+        if len(paragraph) <= size:
+            current = paragraph
+            continue
+
+        oversized = _split_large_block(paragraph, size=size, overlap=overlap)
+        chunks.extend(oversized[:-1])
+        current = oversized[-1] if oversized else ""
+
+    if current:
+        chunks.append(current)
+
     return chunks
+
+
+def chunk_text(text: str, size: int = 2200, overlap: int = 300) -> Iterable[str]:
+    """Create Markdown-aware chunks without cutting normal sections mid-heading."""
+    sections = _split_markdown_sections(text)
+    if not sections:
+        return []
+
+    chunks: list[str] = []
+    current = ""
+
+    for section in sections:
+        parts = _split_large_block(section, size=size, overlap=overlap)
+        for part in parts:
+            candidate = f"{current}\n\n{part}".strip() if current else part
+            if len(candidate) <= size:
+                current = candidate
+                continue
+
+            if current:
+                chunks.append(current)
+            current = part
+
+    if current:
+        chunks.append(current)
+
+    if overlap <= 0 or len(chunks) <= 1:
+        return chunks
+
+    # Add a small tail from the preceding chunk only when it does not duplicate
+    # the opening content of the next chunk. This preserves local context without
+    # breaking Markdown section boundaries during the primary split.
+    overlapped: list[str] = [chunks[0]]
+    for index in range(1, len(chunks)):
+        previous_tail = chunks[index - 1][-overlap:].strip()
+        current_chunk = chunks[index]
+        if previous_tail and not current_chunk.startswith(previous_tail):
+            overlapped.append(f"{previous_tail}\n\n{current_chunk}".strip())
+        else:
+            overlapped.append(current_chunk)
+
+    return overlapped
 
 
 def parse_front_matter(text: str) -> tuple[dict, str]:

@@ -350,6 +350,31 @@ def _deterministic_answer(payload: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _responses_answer(user_input: str) -> str:
+    response = client.responses.create(
+        model=CHAT_MODEL,
+        instructions=SYSTEM_PROMPT,
+        input=user_input,
+        max_output_tokens=2200,
+    )
+
+    direct = getattr(response, "output_text", None)
+    if isinstance(direct, str) and direct.strip():
+        return direct.strip()
+
+    parts: list[str] = []
+    for item in getattr(response, "output", None) or []:
+        for block in getattr(item, "content", None) or []:
+            text = getattr(block, "text", None)
+            if isinstance(text, str) and text.strip():
+                parts.append(text.strip())
+                continue
+            value = getattr(text, "value", None) if text is not None else None
+            if isinstance(value, str) and value.strip():
+                parts.append(value.strip())
+    return "\n\n".join(parts).strip()
+
+
 def answer(
     question: str,
     assessment_id: str,
@@ -366,19 +391,11 @@ def answer(
     )
 
     try:
-        completion = client.chat.completions.create(
-            model=CHAT_MODEL,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_input},
-            ],
-            max_completion_tokens=1800,
-        )
-        content = completion.choices[0].message.content if completion.choices else None
-        if isinstance(content, str) and content.strip():
+        content = _responses_answer(user_input)
+        if content:
             if progress:
                 progress("Finalizing response", 98)
-            return content.strip()
+            return content
     except Exception:
         pass
 

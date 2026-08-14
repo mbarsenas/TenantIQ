@@ -9,8 +9,22 @@ import psycopg
 from dotenv import load_dotenv
 
 from assessment_store import DATABASE_URL, ensure_schema, latest_assessment_id
+from check_catalog import CHECK_BY_ID
 
 load_dotenv()
+
+
+def _normalized_workload(finding: dict[str, Any]) -> str:
+    workload = str(finding.get("workload") or "").strip()
+    if workload and workload.lower() != "unknown":
+        return workload
+
+    check_id = str(finding.get("check_id") or "").strip().upper()
+    definition = CHECK_BY_ID.get(check_id)
+    if definition:
+        return definition.workload
+
+    return "Unknown"
 
 
 def load_findings(assessment_id: str) -> list[dict[str, Any]]:
@@ -31,10 +45,15 @@ def load_findings(assessment_id: str) -> list[dict[str, Any]]:
         "check_id", "workload", "category", "status", "severity", "title",
         "evidence", "recommendation", "source_assessment_file",
     ]
-    return [
+    findings = [
         {key: value for key, value in zip(keys, row) if value not in (None, "")}
         for row in rows
     ]
+
+    for finding in findings:
+        finding["workload"] = _normalized_workload(finding)
+
+    return findings
 
 
 def summarize(findings: list[dict[str, Any]]) -> dict[str, Any]:
@@ -43,7 +62,7 @@ def summarize(findings: list[dict[str, Any]]) -> dict[str, Any]:
     workload_counts: dict[str, Counter[str]] = defaultdict(Counter)
 
     for finding in findings:
-        workload = str(finding.get("workload", "Unknown"))
+        workload = _normalized_workload(finding)
         status = str(finding.get("status", "Unknown"))
         workload_counts[workload][status] += 1
 
@@ -55,7 +74,7 @@ def summarize(findings: list[dict[str, Any]]) -> dict[str, Any]:
     failing.sort(
         key=lambda f: (
             priority_order.get(str(f.get("severity", "Unknown")), 4),
-            str(f.get("workload", "")),
+            _normalized_workload(f),
             str(f.get("check_id", "")),
         )
     )
@@ -92,7 +111,7 @@ def print_text(assessment_id: str, summary: dict[str, Any]) -> None:
         status = finding.get("status", "Unknown")
         check_id = finding.get("check_id", "Unknown")
         title = finding.get("title", check_id)
-        workload = finding.get("workload", "Unknown")
+        workload = _normalized_workload(finding)
         print(f"  [{severity}] [{status}] {workload} - {check_id} - {title}")
 
 

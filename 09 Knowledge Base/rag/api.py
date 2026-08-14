@@ -47,7 +47,7 @@ MIN_CANONICAL_RATIO = float(os.getenv("TENANTIQ_UPLOAD_MIN_CANONICAL_RATIO", "0.
 
 app = FastAPI(
     title="TenantIQ Knowledge Assistant API",
-    version="1.4.0",
+    version="1.4.1",
     description="Read-only API for grounded TenantIQ Microsoft 365 assessment questions.",
 )
 
@@ -195,7 +195,7 @@ def _validate_tenantiq_assessment(path: Path) -> tuple[list[dict[str, Any]], dic
 def root() -> RootResponse:
     return RootResponse(
         service="TenantIQ Knowledge Assistant API",
-        version="1.4.0",
+        version="1.4.1",
         status="ok",
         health="/health",
         docs="/docs",
@@ -208,7 +208,7 @@ def root() -> RootResponse:
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
-    return HealthResponse(status="ok", service="tenantiq-rag", version="1.4.0")
+    return HealthResponse(status="ok", service="tenantiq-rag", version="1.4.1")
 
 
 @app.get("/assessments", response_model=list[AssessmentSummary])
@@ -247,17 +247,15 @@ async def upload_assessment(file: UploadFile = File(...)) -> AssessmentUploadRes
             temp_path = Path(handle.name)
 
         _, validation_metadata = _validate_tenantiq_assessment(temp_path)
-        assessment_id, finding_count = import_assessment(str(temp_path))
+        stored_metadata = {
+            **validation_metadata,
+            "original_filename": original_name,
+        }
+        assessment_id, finding_count = import_assessment(str(temp_path), metadata=stored_metadata)
         item = assessment_metadata(assessment_id)
         if not item:
             raise RuntimeError("Imported TenantIQ assessment metadata could not be loaded.")
-
-        item["source_name"] = original_name
         item["finding_count"] = finding_count
-        metadata = dict(item.get("metadata") or {})
-        metadata.update(validation_metadata)
-        metadata["original_filename"] = original_name
-        item["metadata"] = metadata
         return AssessmentUploadResponse(**item)
     except HTTPException:
         raise

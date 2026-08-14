@@ -1,0 +1,28 @@
+{
+  "passed": 2,
+  "total": 2,
+  "results": [
+    {
+      "name": "known MFA finding retrieves grounded knowledge",
+      "passed": true,
+      "check_id": "ENTRA-MFA-001",
+      "workload": null,
+      "retrieval_count": 1,
+      "sources": [
+        "09 Knowledge Base/workloads/entra/mfa-registration.md"
+      ],
+      "failures": [],
+      "answer": "Low MFA registration coverage is risky because it leaves a meaningful portion of users relying primarily on passwords. Password-only accounts are far more susceptible to phishing, password spraying, credential stuffing, and other credential-based attacks. When many users aren\u2019t registered for at least one approved MFA method, you can\u2019t reliably enforce stronger authentication without causing disruptions. If you enable Conditional Access to require MFA before users have registered, it can break sign-ins and force administrators to add broad exceptions that weaken your overall security posture.\n\nWhat TenantIQ reviews\n- Total member users\n- MFA registered vs. not registered users\n- MFA capable users and passwordless capable users\n- Overall registration coverage percentage\n\nRecommended remediation\n- Identify users not registered for MFA.\n- Ensure approved authentication methods are available to them.\n- Validate Conditional Access requirements for MFA.\n- Drive registration for unenrolled users.\n- Review emergency access and service identities separately according to your identity design.\n\nInterpretation\nA failed finding means registration coverage does not meet the expected security posture. TenantIQ explains the observed evidence rather than inventing tenant-specific counts.\n\nSources\n- 09 Knowledge Base/workloads/entra/mfa-registration.md"
+    },
+    {
+      "name": "unknown check ID refuses safely",
+      "passed": true,
+      "check_id": "ENTRA-DOES-NOT-EXIST",
+      "workload": null,
+      "retrieval_count": 0,
+      "sources": [],
+      "failures": [],
+      "answer": "TenantIQ does not have enough grounded information to answer for check ENTRA-DOES-NOT-EXIST."
+    }
+  ]
+}

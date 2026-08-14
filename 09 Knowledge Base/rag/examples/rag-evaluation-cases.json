@@ -1,0 +1,20 @@
+[
+  {
+    "name": "known MFA finding retrieves grounded knowledge",
+    "question": "Explain why low MFA registration coverage is risky.",
+    "check_id": "ENTRA-MFA-001",
+    "must_contain": [
+      "MFA"
+    ],
+    "must_not_contain": [
+      "I changed",
+      "I remediated"
+    ]
+  },
+  {
+    "name": "unknown check ID refuses safely",
+    "question": "Explain this finding.",
+    "check_id": "ENTRA-DOES-NOT-EXIST",
+    "expect_grounded_refusal": true
+  }
+]

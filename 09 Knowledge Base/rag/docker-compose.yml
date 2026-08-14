@@ -1,0 +1,44 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: tenantiq-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tenantiq
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - tenantiq_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tenantiq"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  rag-api:
+    build:
+      context: ../..
+      dockerfile: "09 Knowledge Base/rag/Dockerfile"
+    container_name: tenantiq-rag-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/tenantiq
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_EMBEDDING_MODEL: ${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
+      OPENAI_CHAT_MODEL: ${OPENAI_CHAT_MODEL:-gpt-5}
+      TENANTIQ_API_HOST: 0.0.0.0
+      TENANTIQ_API_PORT: 8787
+      TENANTIQ_ALLOWED_ORIGINS: ${TENANTIQ_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      TENANTIQ_INTERNAL_API_SECRET: ${TENANTIQ_INTERNAL_API_SECRET}
+    ports:
+      - "8787:8787"
+
+volumes:
+  tenantiq_pgdata:
+    name: ${TENANTIQ_POSTGRES_VOLUME:-rag_tenantiq_pgdata}
+    external: true

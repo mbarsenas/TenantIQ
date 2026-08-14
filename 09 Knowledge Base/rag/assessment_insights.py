@@ -337,6 +337,27 @@ def _fallback_answer(payload: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _response_text(response: Any) -> str:
+    direct = getattr(response, "output_text", None)
+    if isinstance(direct, str) and direct.strip():
+        return direct.strip()
+
+    output = getattr(response, "output", None) or []
+    parts: list[str] = []
+    for item in output:
+        content = getattr(item, "content", None) or []
+        for block in content:
+            text = getattr(block, "text", None)
+            if isinstance(text, str) and text.strip():
+                parts.append(text.strip())
+                continue
+            value = getattr(text, "value", None) if text is not None else None
+            if isinstance(value, str) and value.strip():
+                parts.append(value.strip())
+
+    return "\n\n".join(parts).strip()
+
+
 def answer(
     question: str,
     assessment_id: str,
@@ -345,6 +366,7 @@ def answer(
     payload = build_payload(assessment_id, progress=progress)
     if progress:
         progress("Generating TenantIQ insights", 90)
+
     response = client.responses.create(
         model=CHAT_MODEL,
         instructions=SYSTEM_PROMPT,
@@ -353,14 +375,16 @@ def answer(
             + json.dumps(payload, separators=(",", ":"), default=str)
             + f"\n\nUser question:\n{question}"
         ),
-        max_output_tokens=1400,
+        max_output_tokens=1800,
     )
+
     if progress:
         progress("Finalizing response", 98)
 
-    output_text = (response.output_text or "").strip()
+    output_text = _response_text(response)
     if output_text:
         return output_text
+
     return _fallback_answer(payload)
 
 

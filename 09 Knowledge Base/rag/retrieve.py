@@ -12,6 +12,7 @@ from pgvector import Vector
 from pgvector.psycopg import register_vector
 
 from assessment_loader import load_assessment, select_finding
+from assessment_store import load_finding_from_db
 
 load_dotenv()
 
@@ -180,12 +181,26 @@ if __name__ == "__main__":
         action="store_true",
         help="Use the newest TenantIQ portfolio assessment found under 06 Output.",
     )
+    parser.add_argument(
+        "--assessment-id",
+        default=None,
+        help="Load tenant-specific finding evidence from PostgreSQL by assessment ID.",
+    )
     args = parser.parse_args()
 
-    if args.finding_file and (args.assessment_file or args.latest_assessment):
-        raise SystemExit("Use --finding-file by itself, or use an assessment source.")
-    if args.assessment_file and args.latest_assessment:
-        raise SystemExit("Use either --assessment-file or --latest-assessment, not both.")
+    source_count = sum(
+        bool(value)
+        for value in (
+            args.finding_file,
+            args.assessment_file,
+            args.latest_assessment,
+            args.assessment_id,
+        )
+    )
+    if source_count > 1:
+        raise SystemExit(
+            "Use only one finding source: --finding-file, --assessment-file, --latest-assessment, or --assessment-id."
+        )
 
     finding = load_finding(args.finding_file)
     assessment_path: str | None = args.assessment_file
@@ -201,6 +216,15 @@ if __name__ == "__main__":
         if not args.check_id:
             raise SystemExit("Assessment queries require --check-id so TenantIQ can select one finding.")
         finding = select_finding(load_assessment(assessment_path), args.check_id)
+
+    if args.assessment_id:
+        if not args.check_id:
+            raise SystemExit("--assessment-id requires --check-id.")
+        finding = load_finding_from_db(args.assessment_id, args.check_id)
+        if not finding:
+            raise SystemExit(
+                f"Finding not found in PostgreSQL for assessment {args.assessment_id} and check {args.check_id}."
+            )
 
     print(
         answer(

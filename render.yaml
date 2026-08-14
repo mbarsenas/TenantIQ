@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: tenantiq-rag
+    runtime: docker
+    plan: free
+    branch: main
+    dockerfilePath: ./09 Knowledge Base/rag/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_EMBEDDING_MODEL
+        value: text-embedding-3-small
+      - key: OPENAI_CHAT_MODEL
+        value: gpt-5
+      - key: DATABASE_URL
+        sync: false
+      - key: TENANTIQ_INTERNAL_API_SECRET
+        sync: false
+      - key: TENANTIQ_ALLOWED_ORIGINS
+        value: https://tenantiq365.com,https://www.tenantiq365.com

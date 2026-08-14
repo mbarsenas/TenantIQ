@@ -92,6 +92,7 @@ if ($exoConnected) {
 # SharePoint Online
 $spoConnected = $false
 $spoError = ''
+$spoStatus = 'SIGN-IN REQUIRED'
 if (Get-CommandAvailable 'Get-SPOTenant') {
     try {
         $tenant = Get-SPOTenant -ErrorAction Stop
@@ -101,18 +102,19 @@ if (Get-CommandAvailable 'Get-SPOTenant') {
     $spoError = 'SharePoint Online cmdlets are not available in the current session.'
 }
 if ($spoConnected) {
+    $spoStatus = 'OK'
     Add-TenantIQAccessResult -Workload 'SharePoint Online' -Status 'OK' -Category 'Access confirmed' -Detail 'SharePoint Online tenant query succeeded.'
 } else {
-    $status = if ($spoError -match '(?i)cmdlets are not available') { 'SIGN-IN REQUIRED' } else { Get-AccessClassification $spoError }
-    if ($status -eq 'ERROR' -and [string]::IsNullOrWhiteSpace($spoError)) { $status = 'SIGN-IN REQUIRED' }
-    $category = switch ($status) {
+    $spoStatus = if ($spoError -match '(?i)cmdlets are not available') { 'SIGN-IN REQUIRED' } else { Get-AccessClassification $spoError }
+    if ($spoStatus -eq 'ERROR' -and [string]::IsNullOrWhiteSpace($spoError)) { $spoStatus = 'SIGN-IN REQUIRED' }
+    $category = switch ($spoStatus) {
         'SIGN-IN REQUIRED' { 'Authentication required' }
         'DENIED' { 'Permission denied' }
         'UNAVAILABLE' { 'Service or licensing unavailable' }
         default { 'Query failure' }
     }
-    $detail = if ($status -eq 'SIGN-IN REQUIRED') { 'Please sign in to SharePoint Online.' } elseif ($spoError) { $spoError } else { 'SharePoint Online tenant query did not succeed.' }
-    Add-TenantIQAccessResult -Workload 'SharePoint Online' -Status $status -Category $category -Detail $detail -Fix 'Run Connect-SPOService -Url https://<tenant>-admin.sharepoint.com and authenticate.'
+    $detail = if ($spoStatus -eq 'SIGN-IN REQUIRED') { 'Please sign in to SharePoint Online.' } elseif ($spoError) { $spoError } else { 'SharePoint Online tenant query did not succeed.' }
+    Add-TenantIQAccessResult -Workload 'SharePoint Online' -Status $spoStatus -Category $category -Detail $detail -Fix 'Run Connect-SPOService -Url https://<tenant>-admin.sharepoint.com and authenticate.'
 }
 
 # Microsoft Teams
@@ -144,8 +146,14 @@ if ($teamsConnected) {
 # OneDrive is assessed through SharePoint Online APIs in TenantIQ.
 if ($spoConnected) {
     Add-TenantIQAccessResult -Workload 'OneDrive' -Status 'OK' -Category 'Access confirmed' -Detail 'Available through the active SharePoint Online administrative connection.'
+} elseif ($spoStatus -eq 'SIGN-IN REQUIRED') {
+    Add-TenantIQAccessResult -Workload 'OneDrive' -Status 'SIGN-IN REQUIRED' -Category 'Authentication required' -Detail 'Please sign in to SharePoint Online before checking OneDrive.' -Fix 'Sign in to SharePoint Online, then rerun this pre-check.'
+} elseif ($spoStatus -eq 'DENIED') {
+    Add-TenantIQAccessResult -Workload 'OneDrive' -Status 'DENIED' -Category 'Permission denied' -Detail 'OneDrive assessment access cannot be confirmed because SharePoint Online access was denied.' -Fix 'Resolve the SharePoint Online permission issue first.'
+} elseif ($spoStatus -eq 'UNAVAILABLE') {
+    Add-TenantIQAccessResult -Workload 'OneDrive' -Status 'UNAVAILABLE' -Category 'Service or licensing unavailable' -Detail 'OneDrive assessment access cannot be confirmed because SharePoint Online is unavailable.' -Fix 'Resolve SharePoint Online service or licensing availability first.'
 } else {
-    Add-TenantIQAccessResult -Workload 'OneDrive' -Status 'BLOCKED' -Category 'Dependency blocked' -Detail 'TenantIQ OneDrive checks depend on SharePoint Online administrative access.' -Fix 'Sign in to SharePoint Online first.'
+    Add-TenantIQAccessResult -Workload 'OneDrive' -Status 'BLOCKED' -Category 'Dependency blocked' -Detail 'TenantIQ OneDrive checks depend on working SharePoint Online administrative access.' -Fix 'Resolve the SharePoint Online result first.'
 }
 
 # Intune / Graph

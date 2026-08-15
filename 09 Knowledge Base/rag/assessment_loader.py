@@ -8,6 +8,15 @@ from typing import Any
 from check_catalog import canonical_check_id
 
 
+ASSESSMENT_TITLE_ALIASES = {
+    "externalsharingconfiguration": "SPO-SHR-003",
+    "externaluserexpirationpolicy": "SPO-SHR-005",
+    "unusedgroupconnectedsites": "SPO-SITE-010",
+    "sharepointaddinretirementreadiness": "SPO-APP-001",
+    "sitestoragemanagement": "SPO-SITE-009",
+}
+
+
 def _normalize_key(value: str) -> str:
     return "".join(ch for ch in value.strip().lower() if ch.isalnum())
 
@@ -28,6 +37,10 @@ def _infer_check_id(row: dict[str, Any], title: Any) -> str | None:
         return canonical or str(explicit).strip()
 
     if title:
+        normalized_title = _normalize_key(str(title))
+        compatibility_id = ASSESSMENT_TITLE_ALIASES.get(normalized_title)
+        if compatibility_id:
+            return compatibility_id
         return canonical_check_id(str(title))
 
     return None

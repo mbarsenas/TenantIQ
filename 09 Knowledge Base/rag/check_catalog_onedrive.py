@@ -50,4 +50,5 @@ CHECKS = (
     CheckDefinition("OD-SYNC-003", "OneDrive", ("known folder move readiness", "kfm readiness")),
     CheckDefinition("OD-SYNC-004", "OneDrive", ("sync app version governance", "sync version governance")),
     CheckDefinition("OD-SYNC-005", "OneDrive", ("sync client restrictions", "onedrive sync client restrictions")),
+    CheckDefinition("OD-TEN-001", "OneDrive", ("onedrive tenant configuration", "tenant configuration")),
 )

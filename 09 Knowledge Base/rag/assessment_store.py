@@ -10,11 +10,13 @@ import psycopg
 from dotenv import load_dotenv
 
 from assessment_loader import load_assessment
+from check_catalog import CHECKS, canonical_check_id
 
 load_dotenv()
 
 DATABASE_URL = os.environ["DATABASE_URL"]
 DEFAULT_CUSTOMER_ID = os.getenv("TENANTIQ_DEFAULT_CUSTOMER_ID", "local-dev").strip() or "local-dev"
+CANONICAL_CHECK_IDS = {check.check_id for check in CHECKS}
 
 
 def _customer_id(value: str | None) -> str:
@@ -107,6 +109,25 @@ def _merge_duplicate_findings(findings: list[dict[str, Any]]) -> list[dict[str, 
     return list(merged.values())
 
 
+def _stored_validation_metadata(findings: list[dict[str, Any]], metadata: dict[str, Any]) -> dict[str, Any]:
+    if not metadata.get("validated"):
+        return metadata
+
+    canonical_count = 0
+    for finding in findings:
+        check_id = str(finding.get("check_id") or "").strip()
+        canonical = canonical_check_id(check_id) if check_id else None
+        if canonical and canonical in CANONICAL_CHECK_IDS:
+            canonical_count += 1
+
+    finding_count = len(findings)
+    return {
+        **metadata,
+        "canonical_findings": canonical_count,
+        "canonical_ratio": round(canonical_count / finding_count, 4) if finding_count else 0.0,
+    }
+
+
 def import_assessment(path: str, metadata: dict[str, Any] | None = None, customer_id: str | None = None) -> tuple[str, int]:
     assessment_path = Path(path)
     findings = load_assessment(str(assessment_path))
@@ -116,6 +137,7 @@ def import_assessment(path: str, metadata: dict[str, Any] | None = None, custome
     stored_metadata = {"input_type": assessment_path.suffix.lower()}
     if metadata:
         stored_metadata.update({k: v for k, v in metadata.items() if v not in (None, "")})
+    stored_metadata = _stored_validation_metadata(canonical_findings, stored_metadata)
     source_name = str(stored_metadata.get("original_filename") or assessment_path.name)
 
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn:

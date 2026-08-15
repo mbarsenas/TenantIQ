@@ -71,10 +71,12 @@ def ensure_schema(conn: psycopg.Connection) -> None:
     )
 
 
+def assessment_digest_for(path: Path) -> str:
+    return hashlib.sha256(path.resolve().read_bytes()).hexdigest()[:16]
+
+
 def assessment_id_for(path: Path) -> str:
-    resolved = path.resolve()
-    digest = hashlib.sha256(resolved.read_bytes()).hexdigest()[:16]
-    return f"{resolved.stem}-{digest}"
+    return f"tenantiq-assessment-{assessment_digest_for(path)}"
 
 
 def _json_value(value: Any) -> str:
@@ -131,10 +133,11 @@ def _stored_validation_metadata(findings: list[dict[str, Any]], metadata: dict[s
 def import_assessment(path: str, metadata: dict[str, Any] | None = None, customer_id: str | None = None) -> tuple[str, int]:
     assessment_path = Path(path)
     findings = load_assessment(str(assessment_path))
-    assessment_id = assessment_id_for(assessment_path)
+    digest = assessment_digest_for(assessment_path)
+    assessment_id = f"tenantiq-assessment-{digest}"
     customer = _customer_id(customer_id)
     canonical_findings = _merge_duplicate_findings(findings)
-    stored_metadata = {"input_type": assessment_path.suffix.lower()}
+    stored_metadata = {"input_type": assessment_path.suffix.lower(), "content_digest": digest}
     if metadata:
         stored_metadata.update({k: v for k, v in metadata.items() if v not in (None, "")})
     stored_metadata = _stored_validation_metadata(canonical_findings, stored_metadata)
@@ -142,6 +145,24 @@ def import_assessment(path: str, metadata: dict[str, Any] | None = None, custome
 
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn:
         ensure_schema(conn)
+
+        # Backward-compatible duplicate detection: older TenantIQ uploads used a
+        # temporary filename plus the same 16-character content digest as the ID.
+        # Reuse that assessment instead of creating another record.
+        duplicate = conn.execute(
+            """
+            SELECT assessment_id, finding_count
+            FROM tenantiq_assessments
+            WHERE customer_id = %s
+              AND (assessment_id = %s OR assessment_id LIKE %s)
+            ORDER BY imported_at DESC, assessment_id DESC
+            LIMIT 1
+            """,
+            (customer, assessment_id, f"%-{digest}"),
+        ).fetchone()
+        if duplicate:
+            return str(duplicate[0]), int(duplicate[1] or 0)
+
         conn.execute(
             """
             INSERT INTO tenantiq_assessments

@@ -1,7 +1,7 @@
 from check_catalog import CheckDefinition
 
 CHECKS = (
-    CheckDefinition("INTUNE-ADM-001", "Microsoft Intune", ("role based access control", "intune rbac")),
+    CheckDefinition("INTUNE-ADM-001", "Microsoft Intune", ("role based access control", "role-based access control", "intune rbac")),
     CheckDefinition("INTUNE-ADM-002", "Microsoft Intune", ("scope tags", "intune scope tags")),
     CheckDefinition("INTUNE-APP-001", "Microsoft Intune", ("app configuration policies", "application configuration policies")),
     CheckDefinition("INTUNE-APP-002", "Microsoft Intune", ("app protection policies", "application protection policies")),
@@ -9,7 +9,7 @@ CHECKS = (
     CheckDefinition("INTUNE-APP-004", "Microsoft Intune", ("managed app inventory", "managed application inventory")),
     CheckDefinition("INTUNE-APP-005", "Microsoft Intune", ("required application deployment", "required app deployment")),
     CheckDefinition("INTUNE-CERT-001", "Microsoft Intune", ("certificate profiles", "intune certificate profiles")),
-    CheckDefinition("INTUNE-CERT-002", "Microsoft Intune", ("scep pkcs configuration", "scep and pkcs configuration")),
+    CheckDefinition("INTUNE-CERT-002", "Microsoft Intune", ("scep pkcs configuration", "scep/pkcs configuration", "scep and pkcs configuration")),
     CheckDefinition("INTUNE-COMP-001", "Microsoft Intune", ("android compliance policies",)),
     CheckDefinition("INTUNE-COMP-002", "Microsoft Intune", ("compliance grace periods",)),
     CheckDefinition("INTUNE-COMP-003", "Microsoft Intune", ("conditional access integration", "intune conditional access integration")),

@@ -18,6 +18,7 @@ services:
       retries: 20
 
   rag-api:
+    image: tenantiq-rag-api:local
     build:
       context: .
       dockerfile: Dockerfile

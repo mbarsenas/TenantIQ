@@ -98,23 +98,26 @@ function Protect-TenantIQSupportBundleFiles {
 }
 
 if ($RedactionSelfTest) {
-    $samples = @(
-        'password=' + 'SyntheticPassword123!',
-        'Authorization: Bearer ' + 'synthetic-bearer-token',
-        'STRIPE_SECRET_KEY=' + ('sk_' + 'live_' + 'SyntheticStripeValue'),
-        'DATABASE_URL=postgres://user:' + 'SyntheticDbPassword' + '@db.example.test/app',
-        'https://example.test/?access_token=' + 'SyntheticAccessToken',
-        '-----BEGIN PRIVATE KEY-----' + [Environment]::NewLine + 'SyntheticPrivateKeyMaterial' + [Environment]::NewLine + '-----END PRIVATE KEY-----'
+    $cases = @(
+        [pscustomobject]@{ Name='Password'; Input=('password=' + 'SyntheticPassword123!'); Sensitive='SyntheticPassword123!' },
+        [pscustomobject]@{ Name='AuthorizationHeader'; Input=('Authorization: Bearer ' + 'synthetic-bearer-token'); Sensitive='synthetic-bearer-token' },
+        [pscustomobject]@{ Name='StripeKey'; Input=('STRIPE_SECRET_KEY=' + ('sk_' + 'live_' + 'SyntheticStripeValue')); Sensitive='SyntheticStripeValue' },
+        [pscustomobject]@{ Name='UriCredential'; Input=('DATABASE_URL=postgres://user:' + 'SyntheticDbPassword' + '@db.example.test/app'); Sensitive='SyntheticDbPassword' },
+        [pscustomobject]@{ Name='QueryToken'; Input=('https://example.test/?access_token=' + 'SyntheticAccessToken'); Sensitive='SyntheticAccessToken' },
+        [pscustomobject]@{ Name='PrivateKey'; Input=('-----BEGIN PRIVATE KEY-----' + [Environment]::NewLine + 'SyntheticPrivateKeyMaterial' + [Environment]::NewLine + '-----END PRIVATE KEY-----'); Sensitive='SyntheticPrivateKeyMaterial' }
     )
-    $protected = Protect-TenantIQSensitiveText -Text ($samples -join [Environment]::NewLine)
-    $leaked = @('SyntheticPassword123!','synthetic-bearer-token','SyntheticStripeValue','SyntheticDbPassword','SyntheticAccessToken','SyntheticPrivateKeyMaterial') |
-        Where-Object { $protected.Contains($_, [StringComparison]::Ordinal) }
+    $failedCases = @(
+        foreach ($case in $cases) {
+            $protected = Protect-TenantIQSensitiveText -Text $case.Input
+            if ($protected.Contains($case.Sensitive, [StringComparison]::Ordinal)) { $case.Name }
+        }
+    )
     [pscustomobject]@{
-        Passed = @($leaked).Count -eq 0
-        Cases = $samples.Count
-        LeakedValues = @($leaked).Count
+        Passed = $failedCases.Count -eq 0
+        Cases = $cases.Count
+        FailedCases = $failedCases
     }
-    if (@($leaked).Count -gt 0) { exit 1 }
+    if ($failedCases.Count -gt 0) { exit 1 }
     return
 }
 

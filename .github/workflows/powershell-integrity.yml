@@ -1,0 +1,36 @@
+name: PowerShell Integrity
+
+on:
+  pull_request:
+    paths:
+      - '**/*.ps1'
+      - '**/*.psm1'
+      - '**/*.psd1'
+      - 'Test-TenantIQPowerShellIntegrity.ps1'
+      - '.githooks/pre-commit'
+      - '.github/workflows/powershell-integrity.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - '**/*.ps1'
+      - '**/*.psm1'
+      - '**/*.psd1'
+      - 'Test-TenantIQPowerShellIntegrity.ps1'
+      - '.githooks/pre-commit'
+      - '.github/workflows/powershell-integrity.yml'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Validate TenantIQ PowerShell
+    runs-on: windows-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run TenantIQ PowerShell integrity gate
+        shell: pwsh
+        run: ./Test-TenantIQPowerShellIntegrity.ps1

@@ -2,7 +2,8 @@
 param(
     [string]$OutputDirectory = (Join-Path (Split-Path $PSScriptRoot -Parent) 'Support Bundles'),
     [switch]$IncludeTenantAccess,
-    [switch]$IncludeRecentAssessmentOutput
+    [switch]$IncludeRecentAssessmentOutput,
+    [switch]$RedactionSelfTest
 )
 
 $ErrorActionPreference = 'Stop'
@@ -34,6 +35,87 @@ function Invoke-CapturedTool {
             "Message: $($_.Exception.Message)"
         ) | Set-Content -LiteralPath $OutputPath -Encoding utf8
     }
+}
+
+function Protect-TenantIQSensitiveText {
+    [CmdletBinding()]
+    param([AllowEmptyString()][string]$Text)
+
+    if ([string]::IsNullOrEmpty($Text)) { return $Text }
+
+    $redacted = $Text
+    $replacement = '$1[REDACTED]'
+    $patterns = @(
+        # JSON, PowerShell, INI, YAML, and diagnostic key/value output.
+        '(?im)(["'']?(?:password|passwd|pwd|secret|client_secret|token|access_token|refresh_token|id_token|api[_-]?key|private[_-]?key|connection[_-]?string|sas[_-]?token|authorization)["'']?\s*[:=]\s*["'']?)([^\s,"'';\r\n}]+)',
+        # HTTP authorization headers.
+        '(?im)(\bAuthorization\s*:\s*(?:Bearer|Basic)\s+)([^\s,;]+)',
+        # Connection-string password fields.
+        '(?im)(\b(?:Password|Pwd)\s*=\s*)([^;\r\n]+)',
+        # Sensitive query-string values in URLs.
+        '(?im)([?&](?:access_token|refresh_token|token|api[_-]?key|sig|signature|code)=)([^&#\s]+)',
+        # Common Stripe, webhook, GitHub, npm, and JWT token formats.
+        '(?i)\b((?:sk|rk|pk)_(?:live|test)_)[A-Za-z0-9_\-]{8,}',
+        '(?i)\b(whsec_)[A-Za-z0-9_\-]{8,}',
+        '(?i)\b((?:gh[pousr]|github_pat)_)[A-Za-z0-9_\-]{8,}',
+        '(?i)\b(npm_)[A-Za-z0-9_\-]{8,}',
+        '(?i)\b(eyJ[A-Za-z0-9_-]{5,}\.)[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+'
+    )
+
+    foreach ($pattern in $patterns) {
+        $redacted = [regex]::Replace($redacted, $pattern, $replacement)
+    }
+
+    # URI user-info credentials (for example, database://user:password@host).
+    $redacted = [regex]::Replace($redacted, '(?im)(://[^:\s/@]+:)[^@\s/]+(@)', '$1[REDACTED]$2')
+
+    # Remove an accidentally captured private-key block in full.
+    $privateKeyReplacement = '$1' + [Environment]::NewLine + '[REDACTED]' + [Environment]::NewLine + '$2'
+    $redacted = [regex]::Replace(
+        $redacted,
+        '(?ms)(-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----).*?(-----END (?:RSA |EC |OPENSSH )?PRIVATE KEY-----)',
+        $privateKeyReplacement
+    )
+    return $redacted
+}
+
+function Protect-TenantIQSupportBundleFiles {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Root)
+
+    $redactedFiles = 0
+    $textExtensions = @('.txt','.log','.json','.csv','.xml','.yaml','.yml','.md','.ps1','.psm1','.psd1','.config','.ini')
+    foreach ($file in Get-ChildItem -LiteralPath $Root -Recurse -File -ErrorAction Stop) {
+        if ($file.Extension.ToLowerInvariant() -notin $textExtensions) { continue }
+        $original = Get-Content -LiteralPath $file.FullName -Raw -ErrorAction Stop
+        $safe = Protect-TenantIQSensitiveText -Text $original
+        if ($safe -cne $original) {
+            Set-Content -LiteralPath $file.FullName -Value $safe -Encoding utf8 -NoNewline
+            $redactedFiles++
+        }
+    }
+    return $redactedFiles
+}
+
+if ($RedactionSelfTest) {
+    $samples = @(
+        'password=' + 'SyntheticPassword123!',
+        'Authorization: Bearer ' + 'synthetic-bearer-token',
+        'STRIPE_SECRET_KEY=' + ('sk_' + 'live_' + 'SyntheticStripeValue'),
+        'DATABASE_URL=postgres://user:' + 'SyntheticDbPassword' + '@db.example.test/app',
+        'https://example.test/?access_token=' + 'SyntheticAccessToken',
+        '-----BEGIN PRIVATE KEY-----' + [Environment]::NewLine + 'SyntheticPrivateKeyMaterial' + [Environment]::NewLine + '-----END PRIVATE KEY-----'
+    )
+    $protected = Protect-TenantIQSensitiveText -Text ($samples -join [Environment]::NewLine)
+    $leaked = @('SyntheticPassword123!','synthetic-bearer-token','SyntheticStripeValue','SyntheticDbPassword','SyntheticAccessToken','SyntheticPrivateKeyMaterial') |
+        Where-Object { $protected.Contains($_, [StringComparison]::Ordinal) }
+    [pscustomobject]@{
+        Passed = @($leaked).Count -eq 0
+        Cases = $samples.Count
+        LeakedValues = @($leaked).Count
+    }
+    if (@($leaked).Count -gt 0) { exit 1 }
+    return
 }
 
 function Get-SafeEnvironmentStatus {
@@ -156,6 +238,13 @@ try {
             Set-Content -LiteralPath (Join-Path $workRoot 'Runtime-File-Inventory.txt') -Encoding utf8
     }
 
+    $redactedFileCount = Protect-TenantIQSupportBundleFiles -Root $workRoot
+    @(
+        'TenantIQ automatic redaction completed before archive creation.'
+        "Files changed by redaction: $redactedFileCount"
+        'Protected categories: passwords, secrets, tokens, API keys, authorization headers, connection strings, sensitive URL parameters, and private keys.'
+    ) | Set-Content -LiteralPath (Join-Path $workRoot 'REDACTION-REPORT.txt') -Encoding utf8
+
     if (Test-Path $zipPath) { Remove-Item -LiteralPath $zipPath -Force }
     Compress-Archive -Path (Join-Path $workRoot '*') -DestinationPath $zipPath -CompressionLevel Optimal
 
@@ -170,6 +259,7 @@ try {
         CreatedAt = Get-Date
         IncludedTenantAccess = [bool]$IncludeTenantAccess
         IncludedAssessmentOutput = [bool]$IncludeRecentAssessmentOutput
+        RedactedFileCount = $redactedFileCount
     }
 }
 finally {

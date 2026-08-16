@@ -53,6 +53,39 @@ try {
 
     $Config = Get-ExchangeAIConfig
 
+    if (-not (Get-Command Connect-MgGraph -ErrorAction SilentlyContinue)) {
+        Import-Module Microsoft.Graph.Authentication -Force -Global -ErrorAction Stop
+    }
+
+    $DefenderGraphScopes = @(
+        'SecurityAlert.Read.All',
+        'SecurityIncident.Read.All',
+        'ThreatHunting.Read.All',
+        'Directory.Read.All'
+    )
+
+    $GraphContext = Get-MgContext -ErrorAction SilentlyContinue
+    $MissingGraphScopes = if ($GraphContext) {
+        @($DefenderGraphScopes | Where-Object { $_ -notin @($GraphContext.Scopes) })
+    }
+    else {
+        $DefenderGraphScopes
+    }
+
+    if (-not $GraphContext -or $MissingGraphScopes.Count -gt 0) {
+        Write-Host ''
+        Write-Host 'Launching Microsoft Graph sign-in for Defender security checks...' -ForegroundColor Cyan
+        Connect-MgGraph -Scopes $DefenderGraphScopes -NoWelcome -ErrorAction Stop
+        $GraphContext = Get-MgContext -ErrorAction SilentlyContinue
+    }
+
+    if (-not $GraphContext) {
+        throw 'Microsoft Graph authentication completed without an active Defender context.'
+    }
+
+    Write-Host 'Microsoft Defender connections are ready.' -ForegroundColor Green
+    Write-Host ''
+
     $DefenderRegistryPath = Join-Path $ModulesPath 'MicrosoftDefender.ps1'
     if (-not (Test-Path $DefenderRegistryPath)) {
         throw "Microsoft Defender registry was not found: $DefenderRegistryPath"

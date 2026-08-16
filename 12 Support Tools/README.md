@@ -1,19 +1,54 @@
 # TenantIQ Support Tools
 
-This folder is the permanent catalog for reusable TenantIQ diagnostic, validation, recovery, and troubleshooting tools.
+This folder is the permanent TenantIQ troubleshooting entry point. Operational scripts remain in their existing locations so production workflows and relative paths are not disturbed; the support console references those authoritative tools.
 
-## Purpose
+## Start the console
 
-Operational scripts remain in their existing locations so production workflows and relative paths are not disturbed. This folder stores support-facing copies and/or references so troubleshooting tools are easy to find later.
+From the TenantIQ repository root:
 
-## Categories
+```powershell
+.\12 Support Tools\Start-TenantIQSupportTools.ps1
+```
 
-- `PowerShell/` — integrity and PowerShell troubleshooting tools
-- `Workload Isolation/` — isolated workload runners and cache helpers
-- `Release Validation/` — package validation and release-candidate checks
-- `RAG and Database/` — RAG/backend/database diagnostics
-- `Fulfillment/` — licensing, delivery, R2, and fulfillment diagnostics
+The console groups support actions into:
 
-## Rule
+- System and environment checks
+- Workload isolation and evidence diagnostics
+- Release/customer package validation
+- RAG and assessment service checks
+- Support bundle creation
 
-Do not replace the operational copy of a script with the copy stored here unless the invoking workflow is deliberately updated and tested. Treat this directory as the support catalog.
+## Support bundle
+
+`New-TenantIQSupportBundle.ps1` creates a timestamped ZIP under `Support Bundles\` containing troubleshooting metadata such as:
+
+- TenantIQ version/release channel
+- PowerShell and operating-system details
+- Git branch/status and recent commits
+- Installed PowerShell module inventory
+- Prerequisite check output
+- TenantIQ version and license-status command output
+- Recent assessment/output file inventory
+- Runtime evidence file inventory
+- Environment-variable configuration status
+
+Secret values are deliberately not collected. Environment variables are recorded only as `Configured` or `Missing`.
+
+By default, tenant-access probes are not run and assessment CSVs are not copied. The console asks before enabling either option because tenant-access probes can trigger Microsoft 365 authentication and assessment CSVs may contain customer data.
+
+Direct usage:
+
+```powershell
+.\12 Support Tools\New-TenantIQSupportBundle.ps1
+```
+
+Optional:
+
+```powershell
+.\12 Support Tools\New-TenantIQSupportBundle.ps1 -IncludeTenantAccess
+.\12 Support Tools\New-TenantIQSupportBundle.ps1 -IncludeRecentAssessmentOutput
+```
+
+## Operational-script rule
+
+Do not move the authoritative assessment, fulfillment, package-validation, or runtime scripts into this directory unless every invoking workflow and relative path is deliberately updated and tested. The console should reference the operational source of truth instead of creating stale duplicate logic.

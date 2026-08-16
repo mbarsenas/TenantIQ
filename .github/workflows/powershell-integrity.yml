@@ -34,3 +34,26 @@ jobs:
       - name: Run TenantIQ PowerShell integrity gate
         shell: pwsh
         run: ./Test-TenantIQPowerShellIntegrity.ps1
+
+      - name: Verify support bundle redaction
+        shell: pwsh
+        run: |
+          $result = & '.\12 Support Tools\New-TenantIQSupportBundle.ps1' -RedactionSelfTest
+          if ($result -is [array]) { $result = $result | Select-Object -Last 1 }
+          if (-not $result.Passed) {
+            Write-Host ("Failed redaction cases: {0}" -f (@($result.FailedCases) -join ', '))
+            throw 'TenantIQ support bundle redaction self-test failed.'
+          }
+          Write-Host "Support bundle redaction: PASS ($($result.Cases) cases)"
+
+      - name: Build and validate customer package
+        shell: pwsh
+        run: |
+          $result = .\Build-TenantIQPackage.ps1
+          if ($result -is [array]) { $result = $result | Select-Object -Last 1 }
+          if (-not $result.ReleaseReady -or -not $result.SmokeTestReady) {
+            throw 'TenantIQ customer package did not reach release-ready status.'
+          }
+          Write-Host "Package validation: $($result.ValidationPass) passed"
+          Write-Host "Smoke testing: $($result.SmokeTestPass) passed"
+          Write-Host "ZIP SHA256: $($result.ZipSha256)"

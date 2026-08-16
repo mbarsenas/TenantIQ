@@ -32,7 +32,7 @@ The console groups support actions into:
 - Runtime evidence file inventory
 - Environment-variable configuration status
 
-Secret values are deliberately not collected. Environment variables are recorded only as `Configured` or `Missing`.
+Secret values are deliberately not collected. Environment variables are recorded only as `Configured` or `Missing`. Before the ZIP is created, every collected text file is automatically scanned and redacted for passwords, secrets, tokens, API keys, authorization headers, connection strings, sensitive URL parameters, common provider-token formats, JWTs, and private-key blocks. A `REDACTION-REPORT.txt` file is included in each bundle.
 
 By default, tenant-access probes are not run and assessment CSVs are not copied. The console asks before enabling either option because tenant-access probes can trigger Microsoft 365 authentication and assessment CSVs may contain customer data.
 
@@ -47,6 +47,12 @@ Optional:
 ```powershell
 .\12 Support Tools\New-TenantIQSupportBundle.ps1 -IncludeTenantAccess
 .\12 Support Tools\New-TenantIQSupportBundle.ps1 -IncludeRecentAssessmentOutput
+```
+
+Redaction verification:
+
+```powershell
+.\12 Support Tools\New-TenantIQSupportBundle.ps1 -RedactionSelfTest
 ```
 
 ## Operational-script rule

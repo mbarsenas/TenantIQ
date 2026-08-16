@@ -1,10 +1,10 @@
-# TenantIQ v1.0
+# TenantIQ v1.1.0
 
 TenantIQ is a read-only Microsoft 365 assessment platform that evaluates configuration, security, governance, and operational posture across eight Microsoft 365 workloads.
 
 ## Coverage
 
-TenantIQ v1.0 contains 416 registered controls:
+TenantIQ v1.1.0 contains 416 registered controls:
 
 - Exchange Online — 50
 - Entra ID — 66

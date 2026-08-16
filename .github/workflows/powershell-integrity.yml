@@ -40,7 +40,10 @@ jobs:
         run: |
           $result = & '.\12 Support Tools\New-TenantIQSupportBundle.ps1' -RedactionSelfTest
           if ($result -is [array]) { $result = $result | Select-Object -Last 1 }
-          if (-not $result.Passed) { throw 'TenantIQ support bundle redaction self-test failed.' }
+          if (-not $result.Passed) {
+            Write-Host ("Failed redaction cases: {0}" -f (@($result.FailedCases) -join ', '))
+            throw 'TenantIQ support bundle redaction self-test failed.'
+          }
           Write-Host "Support bundle redaction: PASS ($($result.Cases) cases)"
 
       - name: Build and validate customer package

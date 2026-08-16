@@ -82,6 +82,28 @@ if (Test-Path $TenantIQMainPath -PathType Leaf) {
     } catch { $Results.Add((Add-CheckResult -Name 'Responsive console banner guard' -Passed $false -Detail $_.Exception.Message)) }
 }
 
+$LauncherPath = Join-Path $PackageRoot 'Start-TenantIQ.ps1'
+if (Test-Path $LauncherPath -PathType Leaf) {
+    try {
+        $LauncherText = Get-Content $LauncherPath -Raw -ErrorAction Stop
+        $NoStaleVersionCopy = $LauncherText -notmatch 'TenantIQ v1\.0 provides' -and $LauncherText -notmatch 'v1\.0 release candidate'
+        $DynamicVersionCopy = $LauncherText -match '\$Config\.Version'
+        $Results.Add((Add-CheckResult -Name 'First-run version copy current' -Passed ($NoStaleVersionCopy -and $DynamicVersionCopy) -Detail $(if($NoStaleVersionCopy -and $DynamicVersionCopy){'First-run copy uses current release metadata.'}else{'First-run copy contains stale or hard-coded release language.'})))
+    } catch { $Results.Add((Add-CheckResult -Name 'First-run version copy current' -Passed $false -Detail $_.Exception.Message)) }
+}
+
+$CustomerReadmePath = Join-Path $PackageRoot 'CUSTOMER-README.md'
+if (Test-Path $CustomerReadmePath -PathType Leaf) {
+    try {
+        $CustomerReadmeText = Get-Content $CustomerReadmePath -Raw -ErrorAction Stop
+        $ExpectedReadmeVersion = if (Test-Path (Join-Path $PackageRoot 'TenantIQ.json')) {
+            [string](Get-Content (Join-Path $PackageRoot 'TenantIQ.json') -Raw | ConvertFrom-Json).Version
+        } else { '' }
+        $ReadmeVersionCurrent = $ExpectedReadmeVersion -and $CustomerReadmeText -match ('(?m)^# TenantIQ v' + [regex]::Escape($ExpectedReadmeVersion) + '$')
+        $Results.Add((Add-CheckResult -Name 'Customer README version current' -Passed $ReadmeVersionCurrent -Detail $(if($ReadmeVersionCurrent){"CUSTOMER-README.md identifies v$ExpectedReadmeVersion."}else{'CUSTOMER-README.md version does not match TenantIQ.json.'})))
+    } catch { $Results.Add((Add-CheckResult -Name 'Customer README version current' -Passed $false -Detail $_.Exception.Message)) }
+}
+
 if ($IsCustomerDelivery) {
     $Results.Add((Add-CheckResult -Name 'Customer-specific license present' -Passed (Test-Path $CustomerLicensePath -PathType Leaf) -Detail $(if(Test-Path $CustomerLicensePath -PathType Leaf){'TenantIQ-License.json present'}else{'TenantIQ-License.json missing'})))
 } else {

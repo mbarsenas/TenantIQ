@@ -78,13 +78,13 @@ if (Test-Path $tenantIqPath) {
     $tenantIqText = Get-Content $tenantIqPath -Raw
     foreach ($requiredFunction in @(
         'Start-TenantIQExchangeModule',
-        'Start-TenantIQEntra',
-        'Start-TenantIQSharePoint',
-        'Start-TenantIQTeams',
-        'Start-TenantIQOneDrive',
-        'Start-TenantIQIntune',
-        'Start-TenantIQDefender',
-        'Start-TenantIQPurview'
+        'Start-TenantIQEntraModule',
+        'Start-TenantIQSharePointModule',
+        'Start-TenantIQTeamsModule',
+        'Start-TenantIQOneDriveModule',
+        'Start-TenantIQIntuneModule',
+        'Start-TenantIQDefenderModule',
+        'Start-TenantIQPurviewModule'
     )) {
         if ($tenantIqText -match "(?m)^function\s+$([regex]::Escape($requiredFunction))\b") {
             Add-Pass "Launcher function: $requiredFunction"

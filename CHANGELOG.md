@@ -1,5 +1,23 @@
 # TenantIQ Changelog
 
+## 1.1.0 — Production
+
+Stabilization and customer-package refresh based on the latest validated TenantIQ assessment engine.
+
+### Runtime and assessment stability
+
+- Preserves 416 registered controls across all 8 Microsoft 365 workloads.
+- Includes the corrected Microsoft Defender preset-security policy evaluation.
+- Includes the latest isolated workload execution fixes used to reduce Microsoft Graph and Exchange Online authentication conflicts.
+- Includes stabilized submenu navigation and launcher behavior.
+- Includes the current PowerShell integrity protections validated before packaging.
+
+### Release validation
+
+- Customer package continues to require release-package validation before delivery.
+- Customer package continues to require release-candidate smoke testing before delivery.
+- Package metadata, SHA256 manifest, ZIP sidecar hash, signed-license public key, and version metadata are verified during the build.
+
 ## 1.0.0 — Production
 
 Initial validated TenantIQ production baseline.

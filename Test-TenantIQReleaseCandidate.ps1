@@ -55,7 +55,7 @@ $customerReadmePath = Join-Path $PackageRoot 'CUSTOMER-README.md'
 if ((Test-Path $customerReadmePath -PathType Leaf) -and (Test-Path $configPath -PathType Leaf)) {
     $readme = Get-Content $customerReadmePath -Raw
     $releaseVersion = [string](Get-Content $configPath -Raw | ConvertFrom-Json).Version
-    $readmeVersionOk = $releaseVersion -and $readme -match ('(?m)^# TenantIQ v' + [regex]::Escape($releaseVersion) + '$')
+    $readmeVersionOk = $releaseVersion -and $readme -match ('(?m)^# TenantIQ v' + [regex]::Escape($releaseVersion) + '\r?$')
     $results.Add((Add-Result 'Customer README version invariant' $readmeVersionOk $(if($readmeVersionOk){"Customer README identifies v$releaseVersion."}else{'Customer README version does not match release metadata.'})))
 }
 

@@ -16,8 +16,8 @@ from check_catalog import CHECKS
 
 load_dotenv()
 
-ROOT = Path(__file__).resolve().parents[2]
 RAG_ROOT = Path(__file__).resolve().parent
+ROOT = RAG_ROOT.parent.parent if len(RAG_ROOT.parents) >= 2 else RAG_ROOT
 
 REQUIRED_FILES = (
     "assistant.py",

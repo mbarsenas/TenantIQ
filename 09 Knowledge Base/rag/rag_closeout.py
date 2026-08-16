@@ -10,7 +10,7 @@ from pathlib import Path
 import psycopg
 from dotenv import load_dotenv
 
-from assessment_store import DATABASE_URL, ensure_schema, latest_assessment_id
+from assessment_store import DATABASE_URL, ensure_schema
 from assessment_summary import load_findings, summarize
 from check_catalog import CHECKS
 
@@ -128,6 +128,14 @@ def check_database() -> tuple[bool, str | None]:
             assessment_count = conn.execute(
                 "SELECT COUNT(*) FROM tenantiq_assessments"
             ).fetchone()[0]
+            latest_row = conn.execute(
+                """
+                SELECT assessment_id, customer_id
+                FROM tenantiq_assessments
+                ORDER BY imported_at DESC, assessment_id DESC
+                LIMIT 1
+                """
+            ).fetchone()
     except Exception as exc:
         fail("PostgreSQL connectivity", str(exc))
         return False, None
@@ -151,20 +159,21 @@ def check_database() -> tuple[bool, str | None]:
         fail("Stored assessments", "no assessments imported")
         return False, None
 
-    assessment_id = latest_assessment_id()
-    if not assessment_id:
+    if not latest_row:
         fail("Latest stored assessment", "none available")
         return False, None
 
+    assessment_id = str(latest_row[0])
+    customer_id = str(latest_row[1])
     findings = load_findings(assessment_id)
     if not findings:
-        fail("Latest stored assessment", "contains no findings")
+        fail("Latest stored assessment", f"{assessment_id} contains no findings")
         return False, None
 
     summary = summarize(findings)
     ok(
         "Latest stored assessment",
-        f"{assessment_id} with {summary.get('finding_count', 0)} canonical findings",
+        f"{assessment_id} ({customer_id}) with {summary.get('finding_count', 0)} canonical findings",
     )
     return True, assessment_id
 

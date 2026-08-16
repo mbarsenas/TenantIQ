@@ -103,7 +103,7 @@ if (-not (Test-Path $FirstRunMarker)) {
     Write-Host '                    Welcome to TenantIQ' -ForegroundColor Cyan
     Write-Host '============================================================' -ForegroundColor DarkCyan
     Write-Host ''
-    Write-Host 'TenantIQ v1.0 provides a read-only Microsoft 365 assessment' -ForegroundColor White
+    Write-Host ("TenantIQ v{0} provides a read-only Microsoft 365 assessment" -f $(if ($Config -and $Config.Version) { $Config.Version } else { 'current' })) -ForegroundColor White
     Write-Host 'across 8 workloads and 416 registered controls.' -ForegroundColor White
     Write-Host ''
     Write-Host 'Recommended first assessment:' -ForegroundColor Cyan
@@ -126,7 +126,7 @@ if (-not (Test-Path $FirstRunMarker)) {
     Write-Host ''
     Write-Host 'Licensing:' -ForegroundColor Cyan
     Write-Host '  TenantIQ verifies cryptographically signed local license files.'
-    Write-Host '  Launch enforcement remains disabled for the v1.0 release candidate.'
+    Write-Host ('  Launch enforcement is {0} for this release.' -f $(if ($Config -and $Config.LicenseEnforcement) { 'enabled' } else { 'disabled' }))
     Write-Host '  Use .\Get-TenantIQLicenseStatus.ps1 to view verification details.'
     Write-Host ''
     Write-Host 'Help is always available from main-menu option 10.' -ForegroundColor DarkGray

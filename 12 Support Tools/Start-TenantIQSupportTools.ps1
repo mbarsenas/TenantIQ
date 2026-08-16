@@ -4,6 +4,7 @@ param()
 $ErrorActionPreference = 'Stop'
 $RepoRoot = Split-Path $PSScriptRoot -Parent
 $Host.UI.RawUI.WindowTitle = 'TenantIQ365 Support Tool'
+[Console]::Title = 'TenantIQ365 Support Tool'
 
 function Pause-TenantIQSupportConsole {
     Write-Host ''

@@ -12,11 +12,6 @@ $bundleName = "TenantIQ-Support-$timestamp"
 $workRoot = Join-Path ([IO.Path]::GetTempPath()) $bundleName
 $zipPath = Join-Path $OutputDirectory "$bundleName.zip"
 
-function Write-Section {
-    param([Parameter(Mandatory)][string]$Title, [Parameter(Mandatory)][string]$Path)
-    Add-Content -LiteralPath $Path -Value "`r`n==== $Title ====" -Encoding utf8
-}
-
 function Invoke-CapturedTool {
     param(
         [Parameter(Mandatory)][string]$RelativePath,
@@ -83,7 +78,6 @@ try {
         'SECURITY NOTE: Secret values are intentionally not collected. Environment variables are recorded only as Configured/Missing.'
     ) | Set-Content -LiteralPath $summaryPath -Encoding utf8
 
-    # TenantIQ version/config metadata (safe subset only).
     $configPath = Join-Path $RepoRoot 'TenantIQ.json'
     if (Test-Path $configPath -PathType Leaf) {
         try {
@@ -103,7 +97,6 @@ try {
     Get-SafeEnvironmentStatus | Format-Table -AutoSize | Out-String -Width 200 |
         Set-Content -LiteralPath (Join-Path $workRoot 'Environment-Status.txt') -Encoding utf8
 
-    # Git information contains no credentials and is very useful for support correlation.
     $gitPath = Join-Path $workRoot 'Git-State.txt'
     if (Get-Command git -ErrorAction SilentlyContinue) {
         Push-Location $RepoRoot
@@ -121,7 +114,6 @@ try {
         'git is not available in PATH.' | Set-Content -LiteralPath $gitPath -Encoding utf8
     }
 
-    # Installed PowerShell modules are collected as names/versions only.
     Get-Module -ListAvailable |
         Sort-Object Name, Version -Descending |
         Select-Object Name, Version, Path |
@@ -136,7 +128,6 @@ try {
         Invoke-CapturedTool -RelativePath 'Test-TenantIQTenantAccess.ps1' -OutputPath (Join-Path $workRoot 'Tenant-Access-Check.txt')
     }
 
-    # Inventory recent assessment outputs without copying customer data by default.
     $outputRoot = Join-Path $RepoRoot '06 Output'
     if (Test-Path $outputRoot -PathType Container) {
         $recent = Get-ChildItem -LiteralPath $outputRoot -File -ErrorAction SilentlyContinue |
@@ -156,7 +147,6 @@ try {
         }
     }
 
-    # Capture recent runtime JSON file inventory only; do not copy evidence payloads by default.
     $runtimeRoot = Join-Path $RepoRoot '00 Runtime'
     if (Test-Path $runtimeRoot -PathType Container) {
         Get-ChildItem -LiteralPath $runtimeRoot -File -ErrorAction SilentlyContinue |
@@ -167,7 +157,7 @@ try {
     }
 
     if (Test-Path $zipPath) { Remove-Item -LiteralPath $zipPath -Force }
-    Compress-Archive -LiteralPath (Join-Path $workRoot '*') -DestinationPath $zipPath -CompressionLevel Optimal
+    Compress-Archive -Path (Join-Path $workRoot '*') -DestinationPath $zipPath -CompressionLevel Optimal
 
     Write-Host ''
     Write-Host '[OK] TenantIQ support bundle created.' -ForegroundColor Green

@@ -4,7 +4,7 @@ services:
     runtime: docker
     plan: free
     branch: main
-    dockerfilePath: ./Dockerfile
+    dockerfilePath: ./09 Knowledge Base/rag/Dockerfile
     dockerContext: ./09 Knowledge Base/rag
     healthCheckPath: /health
     autoDeploy: true

@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+set -eu
+
+echo "Running TenantIQ PowerShell integrity gate..."
+pwsh -NoProfile -ExecutionPolicy Bypass -File "./Test-TenantIQPowerShellIntegrity.ps1"

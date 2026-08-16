@@ -99,7 +99,7 @@ if (Test-Path $CustomerReadmePath -PathType Leaf) {
         $ExpectedReadmeVersion = if (Test-Path (Join-Path $PackageRoot 'TenantIQ.json')) {
             [string](Get-Content (Join-Path $PackageRoot 'TenantIQ.json') -Raw | ConvertFrom-Json).Version
         } else { '' }
-        $ReadmeVersionCurrent = $ExpectedReadmeVersion -and $CustomerReadmeText -match ('(?m)^# TenantIQ v' + [regex]::Escape($ExpectedReadmeVersion) + '$')
+        $ReadmeVersionCurrent = $ExpectedReadmeVersion -and $CustomerReadmeText -match ('(?m)^# TenantIQ v' + [regex]::Escape($ExpectedReadmeVersion) + '\r?$')
         $Results.Add((Add-CheckResult -Name 'Customer README version current' -Passed $ReadmeVersionCurrent -Detail $(if($ReadmeVersionCurrent){"CUSTOMER-README.md identifies v$ExpectedReadmeVersion."}else{'CUSTOMER-README.md version does not match TenantIQ.json.'})))
     } catch { $Results.Add((Add-CheckResult -Name 'Customer README version current' -Passed $false -Detail $_.Exception.Message)) }
 }

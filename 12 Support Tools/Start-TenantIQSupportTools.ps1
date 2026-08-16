@@ -17,7 +17,7 @@ function Resolve-TenantIQToolPath {
 function Invoke-TenantIQSupportTool {
     param(
         [Parameter(Mandatory)][string]$RelativePath,
-        [object[]]$Arguments = @()
+        [hashtable]$Parameters = @{}
     )
 
     $toolPath = Resolve-TenantIQToolPath $RelativePath
@@ -31,7 +31,7 @@ function Invoke-TenantIQSupportTool {
     Write-Host "Launching: $RelativePath" -ForegroundColor Cyan
     Write-Host ''
     try {
-        & $toolPath @Arguments
+        & $toolPath @Parameters
     }
     catch {
         Write-Host ''
@@ -64,7 +64,7 @@ function Invoke-TenantIQCurrentPackageValidation {
         return
     }
 
-    Invoke-TenantIQSupportTool 'Test-TenantIQReleasePackage.ps1' @('-PackageRoot', $packageRoot, '-ZipPath', $zipPath)
+    Invoke-TenantIQSupportTool 'Test-TenantIQReleasePackage.ps1' @{ PackageRoot = $packageRoot; ZipPath = $zipPath }
 }
 
 function Invoke-TenantIQCurrentSmokeTest {
@@ -84,7 +84,7 @@ function Invoke-TenantIQCurrentSmokeTest {
         return
     }
 
-    Invoke-TenantIQSupportTool 'Test-TenantIQReleaseCandidate.ps1' @('-PackageRoot', $packageRoot, '-ZipPath', $zipPath)
+    Invoke-TenantIQSupportTool 'Test-TenantIQReleaseCandidate.ps1' @{ PackageRoot = $packageRoot; ZipPath = $zipPath }
 }
 
 function Test-TenantIQRagHealth {
@@ -132,10 +132,10 @@ function New-TenantIQSupportBundleInteractive {
     $includeAccess = Read-Host 'Include tenant access probes? This may prompt for Microsoft 365 authentication. (y/N)'
     $includeOutput = Read-Host 'Include the latest assessment CSV for each workload? These may contain customer data. (y/N)'
 
-    $args = @()
-    if ($includeAccess -match '^(y|yes)$') { $args += '-IncludeTenantAccess' }
-    if ($includeOutput -match '^(y|yes)$') { $args += '-IncludeRecentAssessmentOutput' }
-    Invoke-TenantIQSupportTool '12 Support Tools/New-TenantIQSupportBundle.ps1' $args
+    $parameters = @{}
+    if ($includeAccess -match '^(y|yes)$') { $parameters.IncludeTenantAccess = $true }
+    if ($includeOutput -match '^(y|yes)$') { $parameters.IncludeRecentAssessmentOutput = $true }
+    Invoke-TenantIQSupportTool '12 Support Tools/New-TenantIQSupportBundle.ps1' $parameters
 }
 
 function Show-TenantIQSupportMenu {

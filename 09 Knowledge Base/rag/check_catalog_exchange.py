@@ -4,7 +4,6 @@ from check_catalog import CheckDefinition
 # The base catalog already contains the core mail-flow/security mappings;
 # this extension fills the remaining canonical titles used by production CSVs.
 CHECKS = (
-    CheckDefinition("EXO-SEC-001", "Exchange Online", ("anti-spam policies",)),
     CheckDefinition("EXO-TP-001", "Exchange Online", ("anti-phish policies", "anti phish policies", "anti-phishing policies")),
     CheckDefinition("EXO-TP-002", "Exchange Online", ("safe links policies", "safe links policy")),
     CheckDefinition("EXO-TP-003", "Exchange Online", ("safe attachments policies", "safe attachments policy")),

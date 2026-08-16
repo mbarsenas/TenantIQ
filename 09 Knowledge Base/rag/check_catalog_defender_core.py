@@ -35,4 +35,8 @@ CHECKS = (
     CheckDefinition("DEF-HUNT-002", "Microsoft Defender", ("custom detection rules", "custom detections")),
     CheckDefinition("DEF-HUNT-003", "Microsoft Defender", ("threat analytics access", "threat analytics")),
     CheckDefinition("DEF-TI-001", "Microsoft Defender", ("threat intelligence indicators", "threat indicators")),
+    CheckDefinition("DEF-VULN-001", "Microsoft Defender", ("vulnerability management coverage", "defender vulnerability management coverage")),
+    CheckDefinition("DEF-VULN-002", "Microsoft Defender", ("critical vulnerabilities", "defender critical vulnerabilities")),
+    CheckDefinition("DEF-VULN-003", "Microsoft Defender", ("exposed devices", "defender exposed devices")),
+    CheckDefinition("DEF-VULN-004", "Microsoft Defender", ("security recommendations", "defender security recommendations")),
 )

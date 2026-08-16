@@ -46,10 +46,10 @@ function Protect-TenantIQSensitiveText {
     $redacted = $Text
     $replacement = '$1[REDACTED]'
     $patterns = @(
-        # JSON, PowerShell, INI, YAML, and diagnostic key/value output.
-        '(?im)(["'']?(?:password|passwd|pwd|secret|client_secret|token|access_token|refresh_token|id_token|api[_-]?key|private[_-]?key|connection[_-]?string|sas[_-]?token|authorization)["'']?\s*[:=]\s*["'']?)([^\s,"'';\r\n}]+)',
         # HTTP authorization headers.
         '(?im)(\bAuthorization\s*:\s*(?:Bearer|Basic)\s+)([^\s,;]+)',
+        # JSON, PowerShell, INI, YAML, and diagnostic key/value output.
+        '(?im)(["'']?(?:password|passwd|pwd|secret|client_secret|token|access_token|refresh_token|id_token|api[_-]?key|private[_-]?key|connection[_-]?string|sas[_-]?token|authorization)["'']?\s*[:=]\s*["'']?)([^\s,"'';\r\n}]+)',
         # Connection-string password fields.
         '(?im)(\b(?:Password|Pwd)\s*=\s*)([^;\r\n]+)',
         # Sensitive query-string values in URLs.

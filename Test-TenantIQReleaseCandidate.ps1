@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
-    [string]$PackageRoot = $(Join-Path $PSScriptRoot 'dist\TenantIQ-v1.0.0'),
-    [string]$ZipPath = $(Join-Path $PSScriptRoot 'dist\TenantIQ-v1.0.0.zip')
+    [string]$PackageRoot,
+    [string]$ZipPath
 )
 
 $ErrorActionPreference = 'Stop'
@@ -9,6 +9,18 @@ $ErrorActionPreference = 'Stop'
 function Add-Result {
     param([string]$Check,[bool]$Passed,[string]$Detail='')
     [pscustomobject]@{ Check=$Check; Passed=$Passed; Detail=$Detail }
+}
+
+if ([string]::IsNullOrWhiteSpace($PackageRoot) -or [string]::IsNullOrWhiteSpace($ZipPath)) {
+    $sourceConfigPath = Join-Path $PSScriptRoot 'TenantIQ.json'
+    if (-not (Test-Path $sourceConfigPath -PathType Leaf)) {
+        throw "TenantIQ.json was not found at $sourceConfigPath"
+    }
+    $sourceConfig = Get-Content $sourceConfigPath -Raw | ConvertFrom-Json
+    $sourceVersion = [string]$sourceConfig.Version
+    if ([string]::IsNullOrWhiteSpace($sourceVersion)) { throw 'TenantIQ.json does not contain a valid Version.' }
+    if ([string]::IsNullOrWhiteSpace($PackageRoot)) { $PackageRoot = Join-Path $PSScriptRoot ("dist\TenantIQ-v{0}" -f $sourceVersion) }
+    if ([string]::IsNullOrWhiteSpace($ZipPath)) { $ZipPath = Join-Path $PSScriptRoot ("dist\TenantIQ-v{0}.zip" -f $sourceVersion) }
 }
 
 $results = New-Object System.Collections.Generic.List[object]
@@ -76,8 +88,10 @@ if (Test-Path $mainPath -PathType Leaf) {
 if ((Test-Path $configPath -PathType Leaf) -and (Test-Path $packageInfoPath -PathType Leaf)) {
     $config = Get-Content $configPath -Raw | ConvertFrom-Json
     $info = Get-Content $packageInfoPath -Raw | ConvertFrom-Json
-    $metadataOk = ([string]$config.Version -eq '1.0.0') -and ([string]$info.Version -eq '1.0.0') -and ([int]$info.Controls -eq 416) -and ([int]$info.Workloads -eq 8)
-    $results.Add((Add-Result 'Release metadata invariant' $metadataOk ("Version={0}; Controls={1}; Workloads={2}" -f $info.Version,$info.Controls,$info.Workloads)))
+    $configVersion = [string]$config.Version
+    $infoVersion = [string]$info.Version
+    $metadataOk = (-not [string]::IsNullOrWhiteSpace($configVersion)) -and ($configVersion -eq $infoVersion) -and ([int]$info.Controls -eq 416) -and ([int]$info.Workloads -eq 8)
+    $results.Add((Add-Result 'Release metadata invariant' $metadataOk ("ConfigVersion={0}; PackageVersion={1}; Controls={2}; Workloads={3}" -f $configVersion,$infoVersion,$info.Controls,$info.Workloads)))
 
     $toolMeta = @($info.TroubleshootingTools)
     $toolsOk = $toolMeta -contains 'Test-TenantIQPrerequisites.ps1' -and $toolMeta -contains 'Test-TenantIQTenantAccess.ps1'

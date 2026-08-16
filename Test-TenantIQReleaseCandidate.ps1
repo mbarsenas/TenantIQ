@@ -45,6 +45,20 @@ $results.Add((Add-Result 'Main application present' (Test-Path $mainPath -PathTy
 $results.Add((Add-Result 'Prerequisite troubleshooting tool present' (Test-Path $prereqPath -PathType Leaf) $prereqPath))
 $results.Add((Add-Result 'Tenant access troubleshooting tool present' (Test-Path $tenantAccessPath -PathType Leaf) $tenantAccessPath))
 
+if (Test-Path $launcherPath -PathType Leaf) {
+    $launcher = Get-Content $launcherPath -Raw
+    $firstRunCopyOk = $launcher -match '\$Config\.Version' -and $launcher -notmatch 'TenantIQ v1\.0 provides' -and $launcher -notmatch 'v1\.0 release candidate'
+    $results.Add((Add-Result 'First-run version copy invariant' $firstRunCopyOk $(if($firstRunCopyOk){'First-run screen uses current release metadata.'}else{'First-run screen contains stale or hard-coded version copy.'})))
+}
+
+$customerReadmePath = Join-Path $PackageRoot 'CUSTOMER-README.md'
+if ((Test-Path $customerReadmePath -PathType Leaf) -and (Test-Path $configPath -PathType Leaf)) {
+    $readme = Get-Content $customerReadmePath -Raw
+    $releaseVersion = [string](Get-Content $configPath -Raw | ConvertFrom-Json).Version
+    $readmeVersionOk = $releaseVersion -and $readme -match ('(?m)^# TenantIQ v' + [regex]::Escape($releaseVersion) + '$')
+    $results.Add((Add-Result 'Customer README version invariant' $readmeVersionOk $(if($readmeVersionOk){"Customer README identifies v$releaseVersion."}else{'Customer README version does not match release metadata.'})))
+}
+
 if (Test-Path $prereqPath -PathType Leaf) {
     $pre = Get-Content $prereqPath -Raw
     $preOk = $pre -match 'TenantIQ Troubleshooting Pre-Check' -and $pre -match 'RequiredModulesInstalled' -and $pre -match 'Install-TenantIQPrerequisites\.ps1'

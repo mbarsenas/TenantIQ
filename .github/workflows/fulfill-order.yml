@@ -7,6 +7,11 @@ on:
         description: Stripe subscription ID to fulfill
         required: true
         type: string
+      force_rebuild:
+        description: Build and redeliver a fresh customer package
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -32,6 +37,7 @@ jobs:
       TENANTIQ_SITE_URL: https://tenantiq365.com
       TENANTIQ_LICENSE_PRIVATE_KEY_PATH: ${{ github.workspace }}\.tenantiq-secrets\TenantIQ-License-Private.pem
       TENANTIQ_SUBSCRIPTION_ID: ${{ inputs.subscription_id }}
+      TENANTIQ_FORCE_REBUILD: ${{ inputs.force_rebuild }}
 
     steps:
       - name: Check out TenantIQ
@@ -92,7 +98,8 @@ jobs:
           if ($env:TENANTIQ_SUBSCRIPTION_ID -notmatch '^sub_[A-Za-z0-9]+$') {
             throw 'workflow_dispatch subscription_id is not a valid Stripe subscription ID.'
           }
-          .\Invoke-TenantIQOrderFulfillment.ps1 -SubscriptionId $env:TENANTIQ_SUBSCRIPTION_ID
+          $forceRebuild = $env:TENANTIQ_FORCE_REBUILD -ceq 'true'
+          .\Invoke-TenantIQOrderFulfillment.ps1 -SubscriptionId $env:TENANTIQ_SUBSCRIPTION_ID -ForceRebuild:$forceRebuild
 
       - name: Remove signing key
         if: always()

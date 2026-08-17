@@ -4,7 +4,8 @@ param(
     [string]$StripeSecretKey = $env:STRIPE_SECRET_KEY,
     [string]$PrivateKeyPath = $(if ($env:TENANTIQ_LICENSE_PRIVATE_KEY_PATH) { $env:TENANTIQ_LICENSE_PRIVATE_KEY_PATH } else { Join-Path $HOME '.tenantiq\keys\TenantIQ-License-Private.pem' }),
     [string]$FulfillmentApiKey = $env:TENANTIQ_FULFILLMENT_API_KEY,
-    [string]$SiteUrl = $(if ($env:TENANTIQ_SITE_URL) { $env:TENANTIQ_SITE_URL } else { 'https://tenantiq365.com' })
+    [string]$SiteUrl = $(if ($env:TENANTIQ_SITE_URL) { $env:TENANTIQ_SITE_URL } else { 'https://tenantiq365.com' }),
+    [switch]$ForceRebuild
 )
 
 $ErrorActionPreference = 'Stop'
@@ -101,7 +102,7 @@ if ($subscription.status -notin @('active','trialing')) {
 }
 
 $metadata = $subscription.metadata
-if ([string]$metadata.tenantiq_delivery_email_status -eq 'sent') {
+if ([string]$metadata.tenantiq_delivery_email_status -eq 'sent' -and -not $ForceRebuild) {
     Write-Host "TenantIQ order $SubscriptionId was already delivered by email. Nothing to do." -ForegroundColor Green
     return [pscustomobject]@{
         SubscriptionId = $SubscriptionId
@@ -131,7 +132,7 @@ $isDownloadReady = (
     -not [string]::IsNullOrWhiteSpace([string]$metadata.tenantiq_storage_object)
 )
 
-if ($isDownloadReady) {
+if ($isDownloadReady -and -not $ForceRebuild) {
     Write-Host ''
     Write-Host 'TenantIQ Fulfillment Resume' -ForegroundColor Cyan
     Write-Host '===========================' -ForegroundColor Cyan
@@ -178,6 +179,11 @@ $deliveryScript = Join-Path $PSScriptRoot 'New-TenantIQCustomerDelivery.ps1'
 $r2Script = Join-Path $PSScriptRoot 'Publish-TenantIQDeliveryToR2.ps1'
 foreach ($requiredScript in @($buildScript,$licenseScript,$deliveryScript,$r2Script)) {
     if (-not (Test-Path $requiredScript -PathType Leaf)) { throw "Required fulfillment script not found: $requiredScript" }
+}
+
+if ($ForceRebuild) {
+    Write-Host ''
+    Write-Host 'Force rebuild requested. A new validated package, delivery ID, claim token, and email will be generated.' -ForegroundColor Yellow
 }
 
 Write-Host ''

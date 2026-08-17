@@ -16,6 +16,7 @@ Get-ChildItem $FrameworkPath -Filter "*.ps1" |
     }
 
 $Config = Get-ExchangeAIConfig
+$script:TenantIQDisplayVersion = if ($Config -and $Config.Version) { [string]$Config.Version } else { 'Unknown' }
 
 . "$FrameworkPath\HealthChecks.ps1"
 
@@ -463,7 +464,7 @@ function Show-Banner {
     Write-Host ('|' + (' ' * $leftPad) + $title + (' ' * $rightPad) + '|') -ForegroundColor Cyan
     Write-Host ('+' + ('-' * $innerWidth) + '+') -ForegroundColor Cyan
     Write-Host ''
-    Write-Host 'Version : 1.0.0' -ForegroundColor DarkGray
+    Write-Host ("Version : {0}" -f $script:TenantIQDisplayVersion) -ForegroundColor DarkGray
     Write-Host ''
 }
 

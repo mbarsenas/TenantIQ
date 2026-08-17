@@ -1,3 +1,57 @@
+# Enforce the signed customer license even when this main script is launched directly.
+$TenantIQConfigPath = Join-Path $PSScriptRoot 'TenantIQ.json'
+$TenantIQLicensePath = Join-Path $PSScriptRoot 'TenantIQ-License.json'
+$TenantIQLicenseTool = Join-Path $PSScriptRoot 'Get-TenantIQLicenseStatus.ps1'
+$TenantIQLicensePublicKey = Join-Path $PSScriptRoot 'TenantIQ-License-Public.pem'
+
+$TenantIQStartupConfig = $null
+try {
+    $TenantIQStartupConfig = Get-Content -Path $TenantIQConfigPath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+}
+catch {}
+
+$TenantIQLicenseEnforcement = if (
+    $TenantIQStartupConfig -and
+    $TenantIQStartupConfig.PSObject.Properties.Name -contains 'LicenseEnforcement'
+) {
+    [bool]$TenantIQStartupConfig.LicenseEnforcement
+}
+else {
+    $true
+}
+
+if ($TenantIQLicenseEnforcement) {
+    $TenantIQLicenseStatus = $null
+    if (Test-Path $TenantIQLicenseTool -PathType Leaf) {
+        try {
+            $TenantIQLicenseStatus = & $TenantIQLicenseTool -LicensePath $TenantIQLicensePath -PublicKeyPath $TenantIQLicensePublicKey 6>$null
+            if ($TenantIQLicenseStatus -is [array]) {
+                $TenantIQLicenseStatus = $TenantIQLicenseStatus | Select-Object -Last 1
+            }
+        }
+        catch {}
+    }
+
+    if (
+        -not $TenantIQLicenseStatus -or
+        -not [bool]$TenantIQLicenseStatus.SignatureValid -or
+        [string]$TenantIQLicenseStatus.State -ne 'ACTIVE'
+    ) {
+        $Reason = if ($TenantIQLicenseStatus -and $TenantIQLicenseStatus.Reason) {
+            [string]$TenantIQLicenseStatus.Reason
+        }
+        else {
+            'License validation could not be completed.'
+        }
+
+        Write-Host ''
+        Write-Host '[ERROR] TenantIQ requires an active, cryptographically valid customer license.' -ForegroundColor Red
+        Write-Host $Reason -ForegroundColor Yellow
+        Write-Host 'Run .\Get-TenantIQLicenseStatus.ps1 for diagnostics, then contact TenantIQ support.' -ForegroundColor Yellow
+        exit 3
+    }
+}
+
 $FrameworkPath = Join-Path $PSScriptRoot "01 Framework"
 $ModulesPath   = Join-Path $PSScriptRoot "10 Modules"
 

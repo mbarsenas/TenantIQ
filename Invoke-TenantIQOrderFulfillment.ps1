@@ -219,6 +219,13 @@ if (-not $published -or [string]$published.DeliveryStatus -ne 'download_ready') 
 }
 
 Write-Host '[5/5] Sending secure TenantIQ claim email...' -ForegroundColor Cyan
+if ($ForceRebuild) {
+    Invoke-StripePost -Path ("subscriptions/{0}" -f $SubscriptionId) -Body @{
+        'metadata[tenantiq_delivery_email_status]' = 'pending'
+        'metadata[tenantiq_delivery_email_retry_prepared_at]' = [datetimeoffset]::UtcNow.ToString('o')
+        'metadata[tenantiq_delivery_email_retry_reason]' = 'forced_package_rebuild'
+    } | Out-Null
+}
 $emailResponse = Send-TenantIQDeliveryEmail -SubscriptionId $SubscriptionId -ClaimUrl ([string]$delivery.ClaimUrl)
 
 Write-Host ''

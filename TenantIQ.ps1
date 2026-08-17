@@ -324,27 +324,30 @@ function Ensure-TenantIQSharePointConnection {
 }
 
 function Start-TenantIQSharePointModule {
-    :SharePointMenu while ($true) {
+    $Choice = $null
+    do {
         Show-Banner
         Write-Host 'SharePoint Online' -ForegroundColor Cyan
         Write-Host '[1] Full SharePoint Online Assessment'
         Write-Host '[2] Health Checks'
         Write-Host '[0] Back to Modules'
         Write-Host ''
-        switch (Read-Host 'Select') {
-            '1' {
-                if (Ensure-TenantIQSharePointConnection) { Start-TenantIQSharePointAssessment }
-                Wait-TenantIQ
-                continue SharePointMenu
+        $Choice = Read-Host 'Select'
+
+        if ($Choice -eq '1') {
+            if (Ensure-TenantIQSharePointConnection) {
+                Start-TenantIQSharePointAssessment
             }
-            '2' {
-                foreach ($Check in ($TenantIQSharePointHealthChecks | Sort-Object { [int]$_.Number })) { Write-Host ("[{0}] {1}" -f $Check.Number,$Check.Name) }
-                Wait-TenantIQ
-                continue SharePointMenu
+            Wait-TenantIQ
+        }
+        elseif ($Choice -eq '2') {
+            foreach ($Check in ($TenantIQSharePointHealthChecks | Sort-Object { [int]$_.Number })) {
+                Write-Host ("[{0}] {1}" -f $Check.Number,$Check.Name)
             }
-            '0' { return }
+            Wait-TenantIQ
         }
     }
+    until ($Choice -eq '0')
 }
 
 function Start-TenantIQTeamsModule {
@@ -367,27 +370,30 @@ function Start-TenantIQTeamsModule {
 }
 
 function Start-TenantIQOneDriveModule {
-    :OneDriveMenu while ($true) {
+    $Choice = $null
+    do {
         Show-Banner
         Write-Host 'OneDrive' -ForegroundColor Cyan
         Write-Host '[1] Full OneDrive Assessment'
         Write-Host '[2] Health Checks'
         Write-Host '[0] Back to Modules'
         Write-Host ''
-        switch (Read-Host 'Select') {
-            '1' {
-                if (Ensure-TenantIQSharePointConnection) { Start-TenantIQOneDriveAssessment }
-                Wait-TenantIQ
-                continue OneDriveMenu
+        $Choice = Read-Host 'Select'
+
+        if ($Choice -eq '1') {
+            if (Ensure-TenantIQSharePointConnection) {
+                Start-TenantIQOneDriveAssessment
             }
-            '2' {
-                foreach ($Check in ($TenantIQOneDriveHealthChecks | Sort-Object { [int]$_.Number })) { Write-Host ("[{0}] {1}" -f $Check.Number,$Check.Name) }
-                Wait-TenantIQ
-                continue OneDriveMenu
+            Wait-TenantIQ
+        }
+        elseif ($Choice -eq '2') {
+            foreach ($Check in ($TenantIQOneDriveHealthChecks | Sort-Object { [int]$_.Number })) {
+                Write-Host ("[{0}] {1}" -f $Check.Number,$Check.Name)
             }
-            '0' { return }
+            Wait-TenantIQ
         }
     }
+    until ($Choice -eq '0')
 }
 
 function Start-TenantIQIntuneModule {

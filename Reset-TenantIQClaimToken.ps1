@@ -57,7 +57,7 @@ $updateBody = @{
 }
 Invoke-StripeApi -Method POST -Path ("subscriptions/{0}" -f $SubscriptionId) -Body $updateBody | Out-Null
 
-$claimUrl = "https://tenantiq365.com/claim?token=$claimToken"
+$claimUrl = "https://tenantiq365.com/claim?token=$([uri]::EscapeDataString($claimToken))&subscription=$([uri]::EscapeDataString($SubscriptionId))"
 
 Write-Host ''
 Write-Host 'TenantIQ Claim Token Rotated' -ForegroundColor Green

@@ -92,7 +92,7 @@ try {
 } finally { $rsaPublic.Dispose() }
 
 $BuildInfo = [ordered]@{
-    Product='TenantIQ'; Version=$Version; BuiltAt=(Get-Date).ToString('o'); ReleaseChannel=[string]$Config.ReleaseChannel; PackageType='Customer'; BuildCommit=$BuildCommit; Controls=416; Workloads=8; MinimumPowerShell='7.0'; LicensingMode='SignedLicenseVerification'; LicenseKeyId=$LicenseKeyId; LicenseEnforcement=$false; OptionalPnPRequested=[bool]$IncludeOptionalPnP; TroubleshootingTools=@('Test-TenantIQPrerequisites.ps1','Test-TenantIQTenantAccess.ps1')
+    Product='TenantIQ'; Version=$Version; BuiltAt=(Get-Date).ToString('o'); ReleaseChannel=[string]$Config.ReleaseChannel; PackageType='Customer'; BuildCommit=$BuildCommit; Controls=416; Workloads=8; MinimumPowerShell='7.0'; LicensingMode='SignedLicenseVerification'; LicenseKeyId=$LicenseKeyId; LicenseEnforcement=[bool]$Config.LicenseEnforcement; OptionalPnPRequested=[bool]$IncludeOptionalPnP; TroubleshootingTools=@('Test-TenantIQPrerequisites.ps1','Test-TenantIQTenantAccess.ps1')
 }
 $BuildInfo | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $PackageRoot 'PACKAGE-INFO.json') -Encoding UTF8
 

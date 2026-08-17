@@ -324,7 +324,7 @@ function Ensure-TenantIQSharePointConnection {
 }
 
 function Start-TenantIQSharePointModule {
-    while ($true) {
+    :SharePointMenu while ($true) {
         Show-Banner
         Write-Host 'SharePoint Online' -ForegroundColor Cyan
         Write-Host '[1] Full SharePoint Online Assessment'
@@ -335,10 +335,12 @@ function Start-TenantIQSharePointModule {
             '1' {
                 if (Ensure-TenantIQSharePointConnection) { Start-TenantIQSharePointAssessment }
                 Wait-TenantIQ
+                continue SharePointMenu
             }
             '2' {
                 foreach ($Check in ($TenantIQSharePointHealthChecks | Sort-Object { [int]$_.Number })) { Write-Host ("[{0}] {1}" -f $Check.Number,$Check.Name) }
                 Wait-TenantIQ
+                continue SharePointMenu
             }
             '0' { return }
         }
@@ -365,7 +367,7 @@ function Start-TenantIQTeamsModule {
 }
 
 function Start-TenantIQOneDriveModule {
-    while ($true) {
+    :OneDriveMenu while ($true) {
         Show-Banner
         Write-Host 'OneDrive' -ForegroundColor Cyan
         Write-Host '[1] Full OneDrive Assessment'
@@ -376,10 +378,12 @@ function Start-TenantIQOneDriveModule {
             '1' {
                 if (Ensure-TenantIQSharePointConnection) { Start-TenantIQOneDriveAssessment }
                 Wait-TenantIQ
+                continue OneDriveMenu
             }
             '2' {
                 foreach ($Check in ($TenantIQOneDriveHealthChecks | Sort-Object { [int]$_.Number })) { Write-Host ("[{0}] {1}" -f $Check.Number,$Check.Name) }
                 Wait-TenantIQ
+                continue OneDriveMenu
             }
             '0' { return }
         }

@@ -103,8 +103,20 @@ if (Test-Path $mainPath -PathType Leaf) {
     $countDetail = if ($countsOk) { 'Expected counts confirmed: Entra ID=66; all other workloads=50.' } else { 'Missing or changed count hints: ' + ($missingHints -join ', ') }
     $results.Add((Add-Result 'Workload count hints intact' $countsOk $countDetail))
 
-    $exchangeNav = $main -match 'function\s+Start-TenantIQExchangeModule\s*\{\s*while\s*\(\$true\)'
-    $results.Add((Add-Result 'Exchange submenu loop invariant' $exchangeNav $(if($exchangeNav){'Exchange submenu remains persistent.'}else{'Exchange submenu loop not detected.'})))
+    $submenuPatterns = @(
+        @{ Name='Exchange'; Pattern='function\s+Start-TenantIQExchangeModule\s*\{\s*while\s*\(\$true\)' },
+        @{ Name='Entra ID'; Pattern='function\s+Start-TenantIQEntraModule\s*\{\s*while\s*\(\$true\)' },
+        @{ Name='SharePoint'; Pattern='function\s+Start-TenantIQSharePointModule\s*\{\s*:SharePointMenu\s+while\s*\(\$true\)[\s\S]*?continue\s+SharePointMenu' },
+        @{ Name='Teams'; Pattern='function\s+Start-TenantIQTeamsModule\s*\{\s*while\s*\(\$true\)' },
+        @{ Name='OneDrive'; Pattern='function\s+Start-TenantIQOneDriveModule\s*\{\s*:OneDriveMenu\s+while\s*\(\$true\)[\s\S]*?continue\s+OneDriveMenu' },
+        @{ Name='Intune'; Pattern='function\s+Start-TenantIQIntuneModule\s*\{\s*while\s*\(\$true\)' },
+        @{ Name='Defender'; Pattern='function\s+Start-TenantIQDefenderModule\s*\{\s*while\s*\(\$true\)' },
+        @{ Name='Purview'; Pattern='function\s+Start-TenantIQPurviewModule\s*\{\s*while\s*\(\$true\)' }
+    )
+    $missingSubmenus = @($submenuPatterns | Where-Object { $main -notmatch $_.Pattern } | ForEach-Object Name)
+    $submenuNav = $missingSubmenus.Count -eq 0
+    $submenuDetail = if ($submenuNav) { 'All eight workload submenu loops remain persistent; SharePoint and OneDrive use explicit return labels.' } else { 'Missing submenu navigation invariants: ' + ($missingSubmenus -join ', ') }
+    $results.Add((Add-Result 'Workload submenu navigation invariants' $submenuNav $submenuDetail))
 }
 
 if ((Test-Path $configPath -PathType Leaf) -and (Test-Path $packageInfoPath -PathType Leaf)) {

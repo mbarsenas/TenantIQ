@@ -53,7 +53,7 @@ if (Test-Path $launcherPath -PathType Leaf) {
     $licenseGateOk = (
         $launcher -match '\$Config\.LicenseEnforcement' -and
         $launcher -match 'SignatureValid' -and
-        $launcher -match "\$LicenseState\s+-ne\s+'ACTIVE'" -and
+        $launcher -match '\$LicenseState\s+-ne\s+''ACTIVE''' -and
         $launcher -match 'exit\s+3'
     )
     $results.Add((Add-Result 'Signed license startup enforcement invariant' $licenseGateOk $(if($licenseGateOk){'Missing, invalid, expired, and tampered licenses are blocked.'}else{'Required signed-license startup enforcement is missing.'})))

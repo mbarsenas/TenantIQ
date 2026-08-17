@@ -49,6 +49,14 @@ if (Test-Path $launcherPath -PathType Leaf) {
     $launcher = Get-Content $launcherPath -Raw
     $firstRunCopyOk = $launcher -match '\$Config\.Version' -and $launcher -notmatch 'TenantIQ v1\.0 provides' -and $launcher -notmatch 'v1\.0 release candidate'
     $results.Add((Add-Result 'First-run version copy invariant' $firstRunCopyOk $(if($firstRunCopyOk){'First-run screen uses current release metadata.'}else{'First-run screen contains stale or hard-coded version copy.'})))
+
+    $licenseGateOk = (
+        $launcher -match '\$Config\.LicenseEnforcement' -and
+        $launcher -match 'SignatureValid' -and
+        $launcher -match "\$LicenseState\s+-ne\s+'ACTIVE'" -and
+        $launcher -match 'exit\s+3'
+    )
+    $results.Add((Add-Result 'Signed license startup enforcement invariant' $licenseGateOk $(if($licenseGateOk){'Missing, invalid, expired, and tampered licenses are blocked.'}else{'Required signed-license startup enforcement is missing.'})))
 }
 
 $customerReadmePath = Join-Path $PackageRoot 'CUSTOMER-README.md'

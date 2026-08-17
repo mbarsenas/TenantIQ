@@ -41,7 +41,7 @@ jobs:
 
     steps:
       - name: Check out TenantIQ
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Validate fulfillment secrets
         shell: pwsh

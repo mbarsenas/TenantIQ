@@ -106,16 +106,16 @@ if (Test-Path $mainPath -PathType Leaf) {
     $submenuPatterns = @(
         @{ Name='Exchange'; Pattern='function\s+Start-TenantIQExchangeModule\s*\{\s*while\s*\(\$true\)' },
         @{ Name='Entra ID'; Pattern='function\s+Start-TenantIQEntraModule\s*\{\s*while\s*\(\$true\)' },
-        @{ Name='SharePoint'; Pattern='function\s+Start-TenantIQSharePointModule\s*\{\s*:SharePointMenu\s+while\s*\(\$true\)[\s\S]*?continue\s+SharePointMenu' },
+        @{ Name='SharePoint'; Pattern='function\s+Start-TenantIQSharePointModule\s*\{[\s\S]*?do\s*\{[\s\S]*?until\s*\(\$Choice\s+-eq\s+''0''\)' },
         @{ Name='Teams'; Pattern='function\s+Start-TenantIQTeamsModule\s*\{\s*while\s*\(\$true\)' },
-        @{ Name='OneDrive'; Pattern='function\s+Start-TenantIQOneDriveModule\s*\{\s*:OneDriveMenu\s+while\s*\(\$true\)[\s\S]*?continue\s+OneDriveMenu' },
+        @{ Name='OneDrive'; Pattern='function\s+Start-TenantIQOneDriveModule\s*\{[\s\S]*?do\s*\{[\s\S]*?until\s*\(\$Choice\s+-eq\s+''0''\)' },
         @{ Name='Intune'; Pattern='function\s+Start-TenantIQIntuneModule\s*\{\s*while\s*\(\$true\)' },
         @{ Name='Defender'; Pattern='function\s+Start-TenantIQDefenderModule\s*\{\s*while\s*\(\$true\)' },
         @{ Name='Purview'; Pattern='function\s+Start-TenantIQPurviewModule\s*\{\s*while\s*\(\$true\)' }
     )
     $missingSubmenus = @($submenuPatterns | Where-Object { $main -notmatch $_.Pattern } | ForEach-Object Name)
     $submenuNav = $missingSubmenus.Count -eq 0
-    $submenuDetail = if ($submenuNav) { 'All eight workload submenu loops remain persistent; SharePoint and OneDrive use explicit return labels.' } else { 'Missing submenu navigation invariants: ' + ($missingSubmenus -join ', ') }
+    $submenuDetail = if ($submenuNav) { 'All eight workload submenu loops remain persistent; SharePoint and OneDrive exit only when option 0 is selected.' } else { 'Missing submenu navigation invariants: ' + ($missingSubmenus -join ', ') }
     $results.Add((Add-Result 'Workload submenu navigation invariants' $submenuNav $submenuDetail))
 
     $exchangeModulePath = Join-Path $PackageRoot '01 Framework\Invoke-TenantIQExchangeModule.ps1'

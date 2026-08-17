@@ -183,10 +183,10 @@ Do not share this customer-specific package outside the licensed organization.
     Write-Host ('License ID  : {0}' -f $license.LicenseId)
     Write-Host ('Output      : {0}' -f $outputPath) -ForegroundColor Cyan
     Write-Host ('ZIP SHA256  : {0}' -f $deliveryHash)
-    Write-Host ('Claim URL   : {0}' -f $claimUrl) -ForegroundColor Yellow
+    Write-Host 'Claim URL   : Generated securely (not written to logs)' -ForegroundColor Green
     Write-Host ('Claim expiry: {0}' -f $claimExpiresAt.ToUniversalTime().ToString('u'))
     Write-Host ''
-    Write-Host 'IMPORTANT: The claim token is shown only here. Do not commit it to GitHub.' -ForegroundColor Yellow
+    Write-Host 'The claim token remains in memory only for secure email delivery.' -ForegroundColor DarkGray
 
     [pscustomobject]@{
         DeliveryId=$deliveryId; SubscriptionId=$SubscriptionId; CustomerName=$customerName; CustomerEmail=$customerEmail;

@@ -172,7 +172,7 @@ Do not share this customer-specific package outside the licensed organization.
         } | Out-Null
     }
 
-    $claimUrl = "https://tenantiq365.com/claim?token=$claimToken"
+    $claimUrl = "https://tenantiq365.com/claim?token=$([uri]::EscapeDataString($claimToken))&subscription=$([uri]::EscapeDataString($SubscriptionId))"
     Write-Host ''
     Write-Host 'TenantIQ Customer Delivery Package Created' -ForegroundColor Green
     Write-Host '==========================================' -ForegroundColor Green

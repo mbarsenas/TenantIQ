@@ -52,6 +52,31 @@ function Start-TenantIQExchange50Assessment {
         }
 
         $After = @($Global:ExchangeAIResults).Count
+
+        # The registry is the authoritative source for customer-facing control
+        # names and categories. Some legacy scripts use generic labels (for
+        # example, both connector checks returned "Connectors") or omit the
+        # category. Normalize only the rows produced by the current check.
+        if ($After -gt $Before) {
+            for ($ResultIndex = $Before; $ResultIndex -lt $After; $ResultIndex++) {
+                $Result = $Global:ExchangeAIResults[$ResultIndex]
+
+                if ($Result.PSObject.Properties['Check']) {
+                    $Result.Check = [string]$Check.Name
+                }
+                else {
+                    $Result | Add-Member -NotePropertyName Check -NotePropertyValue ([string]$Check.Name)
+                }
+
+                if ($Result.PSObject.Properties['Category']) {
+                    $Result.Category = [string]$Check.Category
+                }
+                else {
+                    $Result | Add-Member -NotePropertyName Category -NotePropertyValue ([string]$Check.Category)
+                }
+            }
+        }
+
         if ($After -eq $Before -and (Get-Command New-HealthCheckResult -ErrorAction SilentlyContinue)) {
             $null = New-HealthCheckResult -Check $Check.Name -Category $Check.Category -Status 'INFO' -Severity 'None' -Finding 'The Exchange Online check executed but did not return a standardized TenantIQ result.' -Recommendation 'Validate this control before using it as a scored production finding.'
         }

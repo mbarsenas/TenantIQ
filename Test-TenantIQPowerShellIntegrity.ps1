@@ -79,9 +79,9 @@ if (Test-Path $tenantIqPath) {
     foreach ($requiredFunction in @(
         'Start-TenantIQExchangeModule',
         'Start-TenantIQEntraModule',
-        'Start-TenantIQSharePointModule',
+        'Show-TenantIQSharePointSubmenu',
         'Start-TenantIQTeamsModule',
-        'Start-TenantIQOneDriveModule',
+        'Show-TenantIQOneDriveSubmenu',
         'Start-TenantIQIntuneModule',
         'Start-TenantIQDefenderModule',
         'Start-TenantIQPurviewModule'

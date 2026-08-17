@@ -323,7 +323,7 @@ function Ensure-TenantIQSharePointConnection {
     } catch { Write-Host '';Write-Host 'Could not connect to SharePoint Online.' -ForegroundColor Red;Write-Host $_.Exception.Message -ForegroundColor Red;return $false }
 }
 
-function Start-TenantIQSharePointModule {
+function Show-TenantIQSharePointSubmenu {
     $Choice = $null
     do {
         Show-Banner
@@ -372,7 +372,7 @@ function Start-TenantIQTeamsModule {
     }
 }
 
-function Start-TenantIQOneDriveModule {
+function Show-TenantIQOneDriveSubmenu {
     $Choice = $null
     do {
         Show-Banner
@@ -510,9 +510,9 @@ while($true){
     switch($Choice){
         '1'{Start-TenantIQExchangeModule}
         '2'{Start-TenantIQEntraModule}
-        '3'{Start-TenantIQSharePointModule}
+        '3'{Show-TenantIQSharePointSubmenu}
         '4'{Start-TenantIQTeamsModule}
-        '5'{Start-TenantIQOneDriveModule}
+        '5'{Show-TenantIQOneDriveSubmenu}
         '6'{Start-TenantIQIntuneModule}
         '7'{Start-TenantIQDefenderModule}
         '8'{Start-TenantIQPurviewModule}

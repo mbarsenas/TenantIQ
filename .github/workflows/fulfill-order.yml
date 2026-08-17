@@ -22,6 +22,7 @@ jobs:
     timeout-minutes: 30
     env:
       STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+      TENANTIQ_LIVE_FULFILLMENT_ENABLED: ${{ secrets.TENANTIQ_LIVE_FULFILLMENT_ENABLED }}
       TENANTIQ_R2_ACCOUNT_ID: ${{ secrets.TENANTIQ_R2_ACCOUNT_ID }}
       TENANTIQ_R2_ACCESS_KEY_ID: ${{ secrets.TENANTIQ_R2_ACCESS_KEY_ID }}
       TENANTIQ_R2_SECRET_ACCESS_KEY: ${{ secrets.TENANTIQ_R2_SECRET_ACCESS_KEY }}
@@ -51,6 +52,11 @@ jobs:
             if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
               throw "Required GitHub Actions secret is missing: $name"
             }
+          }
+
+          $liveGate = [Environment]::GetEnvironmentVariable('TENANTIQ_LIVE_FULFILLMENT_ENABLED')
+          if (-not [string]::IsNullOrWhiteSpace($liveGate) -and $liveGate -cnotin @('true','false')) {
+            throw 'TENANTIQ_LIVE_FULFILLMENT_ENABLED must be exactly true or false.'
           }
 
       - name: Restore private signing key

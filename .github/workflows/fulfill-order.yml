@@ -12,6 +12,11 @@ on:
         required: false
         type: boolean
         default: false
+      retry_delivery_email:
+        description: Send a new claim link for the current download-ready package
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -38,6 +43,7 @@ jobs:
       TENANTIQ_LICENSE_PRIVATE_KEY_PATH: ${{ github.workspace }}\.tenantiq-secrets\TenantIQ-License-Private.pem
       TENANTIQ_SUBSCRIPTION_ID: ${{ inputs.subscription_id }}
       TENANTIQ_FORCE_REBUILD: ${{ inputs.force_rebuild }}
+      TENANTIQ_RETRY_DELIVERY_EMAIL: ${{ inputs.retry_delivery_email }}
 
     steps:
       - name: Check out TenantIQ
@@ -99,7 +105,8 @@ jobs:
             throw 'workflow_dispatch subscription_id is not a valid Stripe subscription ID.'
           }
           $forceRebuild = $env:TENANTIQ_FORCE_REBUILD -ceq 'true'
-          .\Invoke-TenantIQOrderFulfillment.ps1 -SubscriptionId $env:TENANTIQ_SUBSCRIPTION_ID -ForceRebuild:$forceRebuild
+          $retryDeliveryEmail = $env:TENANTIQ_RETRY_DELIVERY_EMAIL -ceq 'true'
+          .\Invoke-TenantIQOrderFulfillment.ps1 -SubscriptionId $env:TENANTIQ_SUBSCRIPTION_ID -ForceRebuild:$forceRebuild -RetryDeliveryEmail:$retryDeliveryEmail
 
       - name: Remove signing key
         if: always()

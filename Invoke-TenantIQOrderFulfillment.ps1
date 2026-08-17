@@ -5,7 +5,8 @@ param(
     [string]$PrivateKeyPath = $(if ($env:TENANTIQ_LICENSE_PRIVATE_KEY_PATH) { $env:TENANTIQ_LICENSE_PRIVATE_KEY_PATH } else { Join-Path $HOME '.tenantiq\keys\TenantIQ-License-Private.pem' }),
     [string]$FulfillmentApiKey = $env:TENANTIQ_FULFILLMENT_API_KEY,
     [string]$SiteUrl = $(if ($env:TENANTIQ_SITE_URL) { $env:TENANTIQ_SITE_URL } else { 'https://tenantiq365.com' }),
-    [switch]$ForceRebuild
+    [switch]$ForceRebuild,
+    [switch]$RetryDeliveryEmail
 )
 
 $ErrorActionPreference = 'Stop'
@@ -13,6 +14,7 @@ $ErrorActionPreference = 'Stop'
 if (-not $SubscriptionId.StartsWith('sub_')) { throw 'SubscriptionId must begin with sub_.' }
 if ([string]::IsNullOrWhiteSpace($StripeSecretKey)) { throw 'STRIPE_SECRET_KEY is not set.' }
 if ([string]::IsNullOrWhiteSpace($FulfillmentApiKey)) { throw 'TENANTIQ_FULFILLMENT_API_KEY is not set.' }
+if ($ForceRebuild -and $RetryDeliveryEmail) { throw 'ForceRebuild and RetryDeliveryEmail cannot be used together.' }
 
 $SiteUrl = $SiteUrl.TrimEnd('/')
 if ($SiteUrl -notmatch '^https://') { throw 'TENANTIQ_SITE_URL must use HTTPS for automated fulfillment.' }
@@ -51,7 +53,7 @@ function New-TenantIQClaimUrl {
         'metadata[tenantiq_claim_token_sha256]' = $claimTokenHash
         'metadata[tenantiq_claim_expires_at]' = $claimExpiresAt.ToString('o')
         'metadata[tenantiq_delivery_email_status]' = 'pending'
-        'metadata[tenantiq_delivery_email_retry_prepared_at]' = [datetimeoffset]::UtcNow.ToString('o')
+        'metadata[tenantiq_email_retry_prepared_at]' = [datetimeoffset]::UtcNow.ToString('o')
     } | Out-Null
 
     [pscustomobject]@{
@@ -102,7 +104,7 @@ if ($subscription.status -notin @('active','trialing')) {
 }
 
 $metadata = $subscription.metadata
-if ([string]$metadata.tenantiq_delivery_email_status -eq 'sent' -and -not $ForceRebuild) {
+if ([string]$metadata.tenantiq_delivery_email_status -eq 'sent' -and -not $ForceRebuild -and -not $RetryDeliveryEmail) {
     Write-Host "TenantIQ order $SubscriptionId was already delivered by email. Nothing to do." -ForegroundColor Green
     return [pscustomobject]@{
         SubscriptionId = $SubscriptionId
@@ -131,6 +133,9 @@ $isDownloadReady = (
     [string]$metadata.tenantiq_storage_provider -eq 'cloudflare_r2' -and
     -not [string]::IsNullOrWhiteSpace([string]$metadata.tenantiq_storage_object)
 )
+if ($RetryDeliveryEmail -and -not $isDownloadReady) {
+    throw 'Delivery email retry requires an existing download_ready package in private R2.'
+}
 
 if ($isDownloadReady -and -not $ForceRebuild) {
     Write-Host ''
@@ -222,7 +227,7 @@ Write-Host '[5/5] Sending secure TenantIQ claim email...' -ForegroundColor Cyan
 if ($ForceRebuild) {
     Invoke-StripePost -Path ("subscriptions/{0}" -f $SubscriptionId) -Body @{
         'metadata[tenantiq_delivery_email_status]' = 'pending'
-        'metadata[tenantiq_delivery_email_retry_prepared_at]' = [datetimeoffset]::UtcNow.ToString('o')
+        'metadata[tenantiq_email_retry_prepared_at]' = [datetimeoffset]::UtcNow.ToString('o')
         'metadata[tenantiq_delivery_email_retry_reason]' = 'forced_package_rebuild'
     } | Out-Null
 }

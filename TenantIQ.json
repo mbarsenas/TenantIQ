@@ -5,6 +5,7 @@
   "Author": "Mark Barsenas",
   "Repository": "https://github.com/mbarsenas/TenantIQ",
   "ReleaseChannel": "Production",
+  "LicenseEnforcement": true,
   "MSP": {
     "CompanyName": "",
     "Website": "",

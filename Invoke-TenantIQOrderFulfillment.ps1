@@ -92,8 +92,9 @@ function Get-LastResult {
 }
 
 $subscription = Invoke-StripeGet -Path ("subscriptions/{0}" -f $SubscriptionId)
-if ($subscription.livemode) {
-    throw 'Automated fulfillment is currently restricted to Stripe test mode until the production release gate is explicitly enabled.'
+$liveFulfillmentEnabled = ([string]$env:TENANTIQ_LIVE_FULFILLMENT_ENABLED).Trim() -ceq 'true'
+if ($subscription.livemode -and -not $liveFulfillmentEnabled) {
+    throw 'Live Stripe fulfillment is disabled. Set the protected TENANTIQ_LIVE_FULFILLMENT_ENABLED secret to true to enable it explicitly.'
 }
 if ($subscription.status -notin @('active','trialing')) {
     throw "Subscription is not active. Current status: $($subscription.status)"

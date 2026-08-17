@@ -57,6 +57,15 @@ if (Test-Path $launcherPath -PathType Leaf) {
         $launcher -match 'exit\s+3'
     )
     $results.Add((Add-Result 'Signed license startup enforcement invariant' $licenseGateOk $(if($licenseGateOk){'Missing, invalid, expired, and tampered licenses are blocked.'}else{'Required signed-license startup enforcement is missing.'})))
+
+    $welcomeAlwaysVisible =
+        $launcher -notmatch '\.tenantiq-first-run-complete' -and
+        $launcher -match 'Welcome to TenantIQ' -and
+        $launcher -match 'Recommended first assessment:' -and
+        $launcher -match 'Result model:' -and
+        $launcher -match 'Important:' -and
+        $launcher -match 'Licensing:'
+    $results.Add((Add-Result 'Complete launch guidance invariant' $welcomeAlwaysVisible $(if($welcomeAlwaysVisible){'Complete welcome and operating guidance is shown on every launch.'}else{'Welcome guidance is incomplete or can be suppressed by a prior-run marker.'})))
 }
 
 $customerReadmePath = Join-Path $PackageRoot 'CUSTOMER-README.md'
@@ -117,6 +126,18 @@ if (Test-Path $mainPath -PathType Leaf) {
     $submenuNav = $missingSubmenus.Count -eq 0
     $submenuDetail = if ($submenuNav) { 'All eight workload submenu loops remain persistent; SharePoint and OneDrive exit only when option 0 is selected.' } else { 'Missing submenu navigation invariants: ' + ($missingSubmenus -join ', ') }
     $results.Add((Add-Result 'Workload submenu navigation invariants' $submenuNav $submenuDetail))
+
+    $sharePointIsolationPath = Join-Path $PackageRoot '01 Framework\ZZ-TenantIQSharePointIsolation.ps1'
+    $oneDriveIsolationPath = Join-Path $PackageRoot '01 Framework\ZZ-TenantIQOneDriveIsolation.ps1'
+    $isolationText = ''
+    if (Test-Path $sharePointIsolationPath -PathType Leaf) { $isolationText += Get-Content $sharePointIsolationPath -Raw }
+    if (Test-Path $oneDriveIsolationPath -PathType Leaf) { $isolationText += Get-Content $oneDriveIsolationPath -Raw }
+    $noSubmenuAliasShadowing =
+        $isolationText -notmatch 'Set-Alias\s+-Name\s+Start-TenantIQSharePointModule' -and
+        $isolationText -notmatch 'Set-Alias\s+-Name\s+Start-TenantIQOneDriveModule' -and
+        $main -match 'Invoke-TenantIQSharePointIsolatedModule' -and
+        $main -match 'Invoke-TenantIQOneDriveIsolatedModule'
+    $results.Add((Add-Result 'Packaged submenu command-resolution invariant' $noSubmenuAliasShadowing $(if($noSubmenuAliasShadowing){'SharePoint and OneDrive submenus own their public command names and invoke isolation only for assessments.'}else{'An alias can still shadow a SharePoint or OneDrive submenu command.'})))
 
     $exchangeModulePath = Join-Path $PackageRoot '01 Framework\Invoke-TenantIQExchangeModule.ps1'
     $exchangeExportMetadata = $false

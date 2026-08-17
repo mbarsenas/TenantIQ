@@ -1,6 +1,7 @@
-# TenantIQ OneDrive launcher isolation.
-# Alias precedence ensures the monolithic TenantIQ.ps1 function cannot route
-# OneDrive through a stale in-process SharePoint OAuth session.
+# TenantIQ OneDrive assessment isolation.
+# This implementation is called by the OneDrive submenu. Do not alias the
+# public submenu command name here: aliases take precedence over functions and
+# would bypass the submenu after an assessment completes.
 
 function Invoke-TenantIQOneDriveIsolatedModule {
     $TenantInput = Read-Host 'Enter the SharePoint tenant name (example: contoso or contoso.onmicrosoft.com)'
@@ -42,5 +43,3 @@ function Invoke-TenantIQOneDriveIsolatedModule {
     }
     Wait-TenantIQ
 }
-
-Set-Alias -Name Start-TenantIQOneDriveModule -Value Invoke-TenantIQOneDriveIsolatedModule -Scope Global -Force

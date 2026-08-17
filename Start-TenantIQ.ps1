@@ -6,7 +6,6 @@ $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Main = Join-Path $Root 'TenantIQ.ps1'
 $Prereq = Join-Path $Root '01 Framework\Test-TenantIQPrerequisites.ps1'
 $ConfigPath = Join-Path $Root 'TenantIQ.json'
-$FirstRunMarker = Join-Path $Root '.tenantiq-first-run-complete'
 $LicensePath = Join-Path $Root 'TenantIQ-License.json'
 $LicenseTool = Join-Path $Root 'Get-TenantIQLicenseStatus.ps1'
 $LicensePublicKey = Join-Path $Root 'TenantIQ-License-Public.pem'
@@ -110,7 +109,7 @@ else {
 Write-Host ''
 $null = Read-Host 'Press Enter to continue'
 
-if (-not (Test-Path $FirstRunMarker)) {
+if ($true) {
     Write-Host ''
     Write-Host '============================================================' -ForegroundColor DarkCyan
     Write-Host '                    Welcome to TenantIQ' -ForegroundColor Cyan
@@ -147,10 +146,6 @@ if (-not (Test-Path $FirstRunMarker)) {
 
     $null = Read-Host 'Press Enter to continue to TenantIQ'
 
-    try {
-        Set-Content -Path $FirstRunMarker -Value ('TenantIQ first run completed: {0}' -f (Get-Date).ToString('o')) -Encoding UTF8 -Force
-    }
-    catch {}
 }
 
 Write-Host ''

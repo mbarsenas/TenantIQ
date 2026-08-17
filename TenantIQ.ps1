@@ -335,10 +335,13 @@ function Start-TenantIQSharePointModule {
         $Choice = Read-Host 'Select'
 
         if ($Choice -eq '1') {
-            if (Ensure-TenantIQSharePointConnection) {
-                Start-TenantIQSharePointAssessment
+            if (Get-Command Invoke-TenantIQSharePointIsolatedModule -ErrorAction SilentlyContinue) {
+                Invoke-TenantIQSharePointIsolatedModule
             }
-            Wait-TenantIQ
+            elseif (Ensure-TenantIQSharePointConnection) {
+                Start-TenantIQSharePointAssessment
+                Wait-TenantIQ
+            }
         }
         elseif ($Choice -eq '2') {
             foreach ($Check in ($TenantIQSharePointHealthChecks | Sort-Object { [int]$_.Number })) {
@@ -381,10 +384,13 @@ function Start-TenantIQOneDriveModule {
         $Choice = Read-Host 'Select'
 
         if ($Choice -eq '1') {
-            if (Ensure-TenantIQSharePointConnection) {
-                Start-TenantIQOneDriveAssessment
+            if (Get-Command Invoke-TenantIQOneDriveIsolatedModule -ErrorAction SilentlyContinue) {
+                Invoke-TenantIQOneDriveIsolatedModule
             }
-            Wait-TenantIQ
+            elseif (Ensure-TenantIQSharePointConnection) {
+                Start-TenantIQOneDriveAssessment
+                Wait-TenantIQ
+            }
         }
         elseif ($Choice -eq '2') {
             foreach ($Check in ($TenantIQOneDriveHealthChecks | Sort-Object { [int]$_.Number })) {
@@ -517,4 +523,3 @@ while($true){
     }
     if($Choice -eq '0'){break}
 }
-

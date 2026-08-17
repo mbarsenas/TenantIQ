@@ -1,8 +1,7 @@
-# TenantIQ SharePoint Online launcher isolation.
-# The monolithic TenantIQ.ps1 defines Start-TenantIQSharePointModule after the
-# framework is loaded. An alias has higher PowerShell command precedence than a
-# function, so use a distinct implementation and bind the public command name
-# to it. This preserves the validated SharePoint 50-check engine unchanged.
+# TenantIQ SharePoint Online assessment isolation.
+# This implementation is called by the SharePoint submenu. Do not alias the
+# public submenu command name here: aliases take precedence over functions and
+# would bypass the submenu after an assessment completes.
 
 function Invoke-TenantIQSharePointIsolatedModule {
     $TenantInput = Read-Host 'Enter the SharePoint tenant name (example: contoso or contoso.onmicrosoft.com)'
@@ -44,5 +43,3 @@ function Invoke-TenantIQSharePointIsolatedModule {
     }
     Wait-TenantIQ
 }
-
-Set-Alias -Name Start-TenantIQSharePointModule -Value Invoke-TenantIQSharePointIsolatedModule -Scope Global -Force

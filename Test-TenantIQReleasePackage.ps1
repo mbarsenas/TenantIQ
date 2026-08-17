@@ -79,7 +79,24 @@ if (Test-Path $TenantIQMainPath -PathType Leaf) {
         $BannerValid = $BannerMatch.Success -and $BannerMatch.Value -match 'WindowSize\.Width' -and $BannerMatch.Value -match '\[Math\]::Max\(60' -and $BannerMatch.Value -match '\[Math\]::Min\(\$width,\s*120\)' -and $BannerMatch.Value -match 'TenantIQ - M365 Assessment Tool'
         $BannerDetail = if ($BannerValid) { 'Responsive console banner is canonical and width-aware.' } elseif (-not $BannerMatch.Success) { 'Show-Banner function was not found in TenantIQ.ps1.' } else { 'Show-Banner is present but required responsive width logic is missing.' }
         $Results.Add((Add-CheckResult -Name 'Responsive console banner guard' -Passed $BannerValid -Detail $BannerDetail))
-    } catch { $Results.Add((Add-CheckResult -Name 'Responsive console banner guard' -Passed $false -Detail $_.Exception.Message)) }
+
+        $ConfigVersion = ''
+        $ConfigFile = Join-Path $PackageRoot 'TenantIQ.json'
+        if (Test-Path $ConfigFile -PathType Leaf) {
+            $ConfigVersion = [string](Get-Content $ConfigFile -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop).Version
+        }
+        $DynamicMenuVersion = (
+            -not [string]::IsNullOrWhiteSpace($ConfigVersion) -and
+            $TenantIQMain -match '\$script:TenantIQDisplayVersion' -and
+            $TenantIQMain -match 'Version\s*:\s*\{0\}' -and
+            $TenantIQMain -notmatch '(?m)Write-Host\s+[''"]Version\s*:\s*\d+\.\d+\.\d+'
+        )
+        $VersionDetail = if ($DynamicMenuVersion) { "Main menu resolves version dynamically from TenantIQ.json ($ConfigVersion)." } else { 'Main menu contains a stale hard-coded version or does not use release metadata.' }
+        $Results.Add((Add-CheckResult -Name 'Main menu version uses release metadata' -Passed $DynamicMenuVersion -Detail $VersionDetail))
+    } catch {
+        $Results.Add((Add-CheckResult -Name 'Responsive console banner guard' -Passed $false -Detail $_.Exception.Message))
+        $Results.Add((Add-CheckResult -Name 'Main menu version uses release metadata' -Passed $false -Detail $_.Exception.Message))
+    }
 }
 
 $LauncherPath = Join-Path $PackageRoot 'Start-TenantIQ.ps1'

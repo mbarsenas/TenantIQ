@@ -64,7 +64,7 @@ if ($LicenseCustomer) { Write-Host ('Licensed To      : {0}' -f $LicenseCustomer
 if ($LicenseEdition) { Write-Host ('Edition          : {0}' -f $LicenseEdition) }
 Write-Host ''
 
-$LicenseEnforcement = [bool]($Config -and $Config.LicenseEnforcement)
+$LicenseEnforcement = if ($Config -and $Config.PSObject.Properties.Name -contains 'LicenseEnforcement') { [bool]$Config.LicenseEnforcement } else { $true }
 if ($LicenseEnforcement -and (
     -not $LicenseStatus -or
     -not [bool]$LicenseStatus.SignatureValid -or

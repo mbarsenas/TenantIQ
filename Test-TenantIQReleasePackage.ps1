@@ -93,6 +93,21 @@ if (Test-Path $TenantIQMainPath -PathType Leaf) {
         )
         $VersionDetail = if ($DynamicMenuVersion) { "Main menu resolves version dynamically from TenantIQ.json ($ConfigVersion)." } else { 'Main menu contains a stale hard-coded version or does not use release metadata.' }
         $Results.Add((Add-CheckResult -Name 'Main menu version uses release metadata' -Passed $DynamicMenuVersion -Detail $VersionDetail))
+
+        $DirectLicenseGatePresent = (
+            $TenantIQMain -match 'Enforce the signed customer license' -and
+            $TenantIQMain -match 'Get-TenantIQLicenseStatus\.ps1' -and
+            $TenantIQMain -match 'SignatureValid' -and
+            $TenantIQMain -match 'State\s+-ne\s+''ACTIVE''' -and
+            $TenantIQMain -match 'exit\s+3'
+        )
+        $DirectLicenseGateDetail = if ($DirectLicenseGatePresent) {
+            'Direct TenantIQ.ps1 execution blocks missing, invalid, expired, or tampered licenses.'
+        }
+        else {
+            'TenantIQ.ps1 can bypass signed-license startup enforcement.'
+        }
+        $Results.Add((Add-CheckResult -Name 'Direct application license enforcement present' -Passed $DirectLicenseGatePresent -Detail $DirectLicenseGateDetail))
     } catch {
         $Results.Add((Add-CheckResult -Name 'Responsive console banner guard' -Passed $false -Detail $_.Exception.Message))
         $Results.Add((Add-CheckResult -Name 'Main menu version uses release metadata' -Passed $false -Detail $_.Exception.Message))

@@ -42,3 +42,7 @@ Customer-Deliveries/
 
 .tenantiq-first-run-complete
 dist/
+
+# Generated root artifacts
+/*.csv
+/TenantIQ*.zip

@@ -106,7 +106,18 @@ if (Test-Path $LauncherPath -PathType Leaf) {
         $NoStaleVersionCopy = $LauncherText -notmatch 'TenantIQ v1\.0 provides' -and $LauncherText -notmatch 'v1\.0 release candidate'
         $DynamicVersionCopy = $LauncherText -match '\$Config\.Version'
         $Results.Add((Add-CheckResult -Name 'First-run version copy current' -Passed ($NoStaleVersionCopy -and $DynamicVersionCopy) -Detail $(if($NoStaleVersionCopy -and $DynamicVersionCopy){'First-run copy uses current release metadata.'}else{'First-run copy contains stale or hard-coded release language.'})))
-    } catch { $Results.Add((Add-CheckResult -Name 'First-run version copy current' -Passed $false -Detail $_.Exception.Message)) }
+
+        $LicenseGatePresent = (
+            $LauncherText -match '\$Config\.LicenseEnforcement' -and
+            $LauncherText -match 'SignatureValid' -and
+            $LauncherText -match '\$LicenseState\s+-ne\s+''ACTIVE''' -and
+            $LauncherText -match 'exit\s+3'
+        )
+        $Results.Add((Add-CheckResult -Name 'Signed license startup enforcement present' -Passed $LicenseGatePresent -Detail $(if($LicenseGatePresent){'Launcher blocks missing, invalid, expired, or tampered licenses.'}else{'Launcher does not contain the required signed-license startup gate.'})))
+    } catch {
+        $Results.Add((Add-CheckResult -Name 'First-run version copy current' -Passed $false -Detail $_.Exception.Message))
+        $Results.Add((Add-CheckResult -Name 'Signed license startup enforcement present' -Passed $false -Detail $_.Exception.Message))
+    }
 }
 
 $CustomerReadmePath = Join-Path $PackageRoot 'CUSTOMER-README.md'
@@ -168,7 +179,7 @@ if (Test-Path $PackageInfoPath) {
         $TroubleshootingMetadataOk = @($Info.TroubleshootingTools) -contains 'Test-TenantIQPrerequisites.ps1' -and @($Info.TroubleshootingTools) -contains 'Test-TenantIQTenantAccess.ps1'
         $Results.Add((Add-CheckResult -Name 'Metadata troubleshooting tools' -Passed $TroubleshootingMetadataOk -Detail ((@($Info.TroubleshootingTools)) -join ', ')))
         $Results.Add((Add-CheckResult -Name 'License key ID matches package metadata' -Passed ($PublicKeyId -and [string]$Info.LicenseKeyId -eq $PublicKeyId) -Detail ("Package={0}; PublicKey={1}" -f $Info.LicenseKeyId,$PublicKeyId)))
-        $Results.Add((Add-CheckResult -Name 'License launch enforcement disabled' -Passed (-not [bool]$Info.LicenseEnforcement) -Detail ([string]$Info.LicenseEnforcement)))
+        $Results.Add((Add-CheckResult -Name 'License launch enforcement enabled' -Passed ([bool]$Info.LicenseEnforcement) -Detail ([string]$Info.LicenseEnforcement)))
     } catch { $Results.Add((Add-CheckResult -Name 'PACKAGE-INFO.json parses' -Passed $false -Detail $_.Exception.Message)) }
 }
 

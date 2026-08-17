@@ -17,6 +17,17 @@ The console groups support actions into:
 - Release/customer package validation
 - RAG and assessment service checks
 - Support bundle creation
+- Licensed tenant allowance verification
+
+## Tenant allowance verification
+
+The support console exposes the Essentials/Professional tenant-limit self-test as option 22. It runs the authoritative customer-package test without duplicating its enforcement logic.
+
+Direct usage from the repository root:
+
+```powershell
+.\12 Support Tools\Test-TenantIQTenantAllowance.ps1
+```
 
 ## Support bundle
 

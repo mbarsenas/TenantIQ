@@ -184,6 +184,10 @@ function Show-TenantIQSupportMenu {
     Write-Host 'SUPPORT BUNDLE' -ForegroundColor Yellow
     Write-Host ' 21. Create TenantIQ support bundle'
     Write-Host ''
+
+    Write-Host 'LICENSE ENFORCEMENT' -ForegroundColor Yellow
+    Write-Host ' 22. Test licensed tenant allowance'
+    Write-Host ''
     Write-Host '  0. Exit'
     Write-Host ''
 }
@@ -214,6 +218,7 @@ while ($true) {
         '19' { Test-TenantIQRagHealth }
         '20' { Get-TenantIQAssessmentInventory }
         '21' { New-TenantIQSupportBundleInteractive }
+        '22' { Invoke-TenantIQSupportTool '12 Support Tools/Test-TenantIQTenantAllowance.ps1' }
         '0'  { break }
         default {
             Write-Host 'Invalid selection.' -ForegroundColor Yellow

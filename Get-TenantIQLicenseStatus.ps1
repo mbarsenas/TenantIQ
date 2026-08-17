@@ -194,7 +194,7 @@ Write-Host ('Key ID          : {0}' -f $(if ($Status.KeyId) { $Status.KeyId } el
 Write-Host ('Max Tenants     : {0}' -f $(if ($null -ne $Status.MaxTenants) { $Status.MaxTenants } else { 'N/A' }))
 Write-Host ('Expires         : {0}' -f $(if ($Status.ExpiresAt) { $Status.ExpiresAt.ToString('u') } else { 'N/A' }))
 Write-Host ('Days Remaining  : {0}' -f $(if ($null -ne $Status.DaysRemaining) { $Status.DaysRemaining } else { 'N/A' }))
-Write-Host ('Launch Enforcement: Disabled for v1.0 release candidate') -ForegroundColor Yellow
+Write-Host ('Launch Enforcement: Enabled by Start-TenantIQ.ps1 when TenantIQ.json LicenseEnforcement is true') -ForegroundColor Green
 Write-Host ''
 
 $Status

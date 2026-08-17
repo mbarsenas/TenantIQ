@@ -37,8 +37,9 @@ function Invoke-StripeApi {
 
 $subscription = Invoke-StripeApi -Method GET -Path ("subscriptions/{0}" -f $SubscriptionId)
 
-if ($subscription.livemode) {
-    throw 'This fulfillment command is currently restricted to Stripe test-mode subscriptions.'
+$liveFulfillmentEnabled = ([string]$env:TENANTIQ_LIVE_FULFILLMENT_ENABLED).Trim() -ceq 'true'
+if ($subscription.livemode -and -not $liveFulfillmentEnabled) {
+    throw 'Live Stripe license fulfillment is disabled. Set TENANTIQ_LIVE_FULFILLMENT_ENABLED to true to enable it explicitly.'
 }
 if ($subscription.status -ne 'active') {
     throw "Subscription is not active. Current status: $($subscription.status)"

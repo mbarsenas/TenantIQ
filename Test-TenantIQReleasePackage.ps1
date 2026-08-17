@@ -89,7 +89,7 @@ if (Test-Path $TenantIQMainPath -PathType Leaf) {
             -not [string]::IsNullOrWhiteSpace($ConfigVersion) -and
             $TenantIQMain -match '\$script:TenantIQDisplayVersion' -and
             $TenantIQMain -match 'Version\s*:\s*\{0\}' -and
-            $TenantIQMain -notmatch "(?m)Write-Host\s+['\"]Version\s*:\s*\d+\.\d+\.\d+"
+            $TenantIQMain -notmatch '(?m)Write-Host\s+[''"]Version\s*:\s*\d+\.\d+\.\d+'
         )
         $VersionDetail = if ($DynamicMenuVersion) { "Main menu resolves version dynamically from TenantIQ.json ($ConfigVersion)." } else { 'Main menu contains a stale hard-coded version or does not use release metadata.' }
         $Results.Add((Add-CheckResult -Name 'Main menu version uses release metadata' -Passed $DynamicMenuVersion -Detail $VersionDetail))

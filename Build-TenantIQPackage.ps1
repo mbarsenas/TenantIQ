@@ -31,6 +31,7 @@ $RequiredFiles = @(
     'Test-TenantIQTenantAccess.ps1',
     'Get-TenantIQVersion.ps1',
     'Get-TenantIQLicenseStatus.ps1',
+    'Test-TenantIQTenantAllowance.ps1',
     'Test-TenantIQReleasePackage.ps1',
     'QUICKSTART.md',
     'CUSTOMER-README.md',

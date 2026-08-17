@@ -4,6 +4,14 @@
 
 Stabilization and customer-package refresh based on the latest validated TenantIQ assessment engine.
 
+### Licensed tenant allowance
+
+- Enforces the signed `MaxTenants` allowance before workload assessments begin.
+- Essentials permits one registered Microsoft 365 tenant; Professional permits up to five.
+- Reassessing a registered tenant does not consume another tenant slot.
+- The same centralized guard covers all eight workload launch paths without changing assessment controls.
+- The main menu displays the registered tenant count, and release validation runs a six-case allowance self-test.
+
 ### Runtime and assessment stability
 
 - Preserves 416 registered controls across all 8 Microsoft 365 workloads.

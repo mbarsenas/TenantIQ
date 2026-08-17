@@ -44,6 +44,11 @@ function Start-TenantIQPurviewAssessment {
         return
     }
 
+    if (-not (Confirm-TenantIQExchangeTenantAllowance -Workload 'Microsoft Purview')) {
+        Write-Host 'The connected tenant is outside this license allowance.' -ForegroundColor Yellow
+        return
+    }
+
     $Checks = @(
         $TenantIQPurviewHealthChecks |
         Where-Object { $_.Enabled -eq $true -or $_.Status -eq 'Implemented' } |

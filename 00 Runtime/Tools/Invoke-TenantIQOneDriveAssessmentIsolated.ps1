@@ -35,6 +35,10 @@ try {
     Connect-SPOService -Url $AdminUrl -ErrorAction Stop
     $null = Get-SPOTenant -ErrorAction Stop
 
+    if (-not (Confirm-TenantIQTenantAllowance -TenantDomain "$Stem.onmicrosoft.com" -Workload 'OneDrive')) {
+        throw 'The connected tenant is outside this license allowance.'
+    }
+
     Start-TenantIQOneDriveAssessment
     exit 0
 }

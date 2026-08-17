@@ -44,6 +44,7 @@ $RequiredFiles = @(
     'Start-TenantIQ.ps1','TenantIQ.ps1','TenantIQ.json','TenantIQ-License.template.json','TenantIQ-License-Public.pem',
     'Install-TenantIQPrerequisites.ps1','Test-TenantIQPrerequisites.ps1','Test-TenantIQTenantAccess.ps1',
     'Get-TenantIQVersion.ps1','Get-TenantIQLicenseStatus.ps1',
+    'Test-TenantIQTenantAllowance.ps1',
     'QUICKSTART.md','CUSTOMER-README.md','CHANGELOG.md','PACKAGE-INFO.json','PACKAGE-SHA256.txt','06 Output\README.txt'
 )
 if ($IsCustomerDelivery) { $RequiredFiles += @('TenantIQ-License.json','CUSTOMER-DELIVERY.json','CUSTOMER-README.txt') }
@@ -108,10 +109,27 @@ if (Test-Path $TenantIQMainPath -PathType Leaf) {
             'TenantIQ.ps1 can bypass signed-license startup enforcement.'
         }
         $Results.Add((Add-CheckResult -Name 'Direct application license enforcement present' -Passed $DirectLicenseGatePresent -Detail $DirectLicenseGateDetail))
+
+        $TenantAllowanceGuardPresent = (
+            $TenantIQMain -match 'Confirm-TenantIQGraphTenantAllowance' -and
+            $TenantIQMain -match 'Confirm-TenantIQTeamsTenantAllowance' -and
+            $TenantIQMain -match 'Licensed Tenants'
+        )
+        $Results.Add((Add-CheckResult -Name 'Licensed tenant allowance guard present' -Passed $TenantAllowanceGuardPresent -Detail $(if($TenantAllowanceGuardPresent){'Tenant-aware workload launch gates and allowance display are present.'}else{'One or more tenant allowance launch guards are missing.'})))
     } catch {
         $Results.Add((Add-CheckResult -Name 'Responsive console banner guard' -Passed $false -Detail $_.Exception.Message))
         $Results.Add((Add-CheckResult -Name 'Main menu version uses release metadata' -Passed $false -Detail $_.Exception.Message))
     }
+}
+
+$TenantAllowanceSelfTest = Join-Path $PackageRoot 'Test-TenantIQTenantAllowance.ps1'
+if (Test-Path $TenantAllowanceSelfTest -PathType Leaf) {
+    try {
+        $AllowanceResult = & $TenantAllowanceSelfTest -Quiet 6>$null
+        if ($AllowanceResult -is [array]) { $AllowanceResult = $AllowanceResult | Select-Object -Last 1 }
+        $Results.Add((Add-CheckResult -Name 'Tenant allowance enforcement self-test' -Passed ([bool]$AllowanceResult.Passed) -Detail ("{0}/{1} cases passed" -f $AllowanceResult.PassedCases,$AllowanceResult.Cases)))
+    }
+    catch { $Results.Add((Add-CheckResult -Name 'Tenant allowance enforcement self-test' -Passed $false -Detail $_.Exception.Message)) }
 }
 
 $LauncherPath = Join-Path $PackageRoot 'Start-TenantIQ.ps1'

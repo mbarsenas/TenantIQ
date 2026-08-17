@@ -2,6 +2,8 @@
 
 TenantIQ is a read-only Microsoft 365 assessment platform that evaluates configuration, security, governance, and operational posture across eight Microsoft 365 workloads.
 
+TenantIQ enforces the tenant allowance in the signed customer license. Essentials permits one registered Microsoft 365 tenant and Professional permits up to five. Reassessing a registered tenant does not consume another slot.
+
 ## Coverage
 
 TenantIQ v1.1.0 contains 416 registered controls:

@@ -74,6 +74,10 @@ try {
         throw 'TenantIQ Exchange Online 50-check assessment runner is not loaded.'
     }
 
+    if (-not (Confirm-TenantIQExchangeTenantAllowance -Workload 'Exchange Online')) {
+        throw 'The connected tenant is outside this license allowance.'
+    }
+
     Start-TenantIQExchange50Assessment
     exit 0
 }

@@ -39,6 +39,10 @@ try {
     Connect-SPOService -Url $AdminUrl -ModernAuth $true -AuthenticationUrl 'https://login.microsoftonline.com/organizations' -ErrorAction Stop
     $null = Get-SPOTenant -ErrorAction Stop
 
+    if (-not (Confirm-TenantIQTenantAllowance -TenantDomain "$Stem.onmicrosoft.com" -Workload 'SharePoint Online')) {
+        throw 'The connected tenant is outside this license allowance.'
+    }
+
     Start-TenantIQSharePointAssessment
     exit 0
 }

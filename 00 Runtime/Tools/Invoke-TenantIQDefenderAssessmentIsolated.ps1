@@ -83,6 +83,10 @@ try {
         throw 'Microsoft Graph authentication completed without an active Defender context.'
     }
 
+    if (-not (Confirm-TenantIQGraphTenantAllowance -Workload 'Microsoft Defender')) {
+        throw 'The connected tenant is outside this license allowance.'
+    }
+
     Write-Host 'Microsoft Defender connections are ready.' -ForegroundColor Green
     Write-Host ''
 

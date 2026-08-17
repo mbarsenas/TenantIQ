@@ -280,6 +280,10 @@ function Ensure-TenantIQEntraConnection {
 
         if (-not $Context) { throw 'Microsoft Graph sign-in did not produce an active context.' }
 
+        if (-not (Confirm-TenantIQGraphTenantAllowance -Workload 'Entra ID')) {
+            throw 'The connected tenant is outside this license allowance.'
+        }
+
         Write-Host ''
         Write-Host 'Microsoft Graph is connected.' -ForegroundColor Green
         return $true
@@ -416,7 +420,12 @@ function Start-TenantIQTeamsModule {
         Write-Host '[0] Back to Modules'
         Write-Host ''
         switch (Read-Host 'Select') {
-            '1' { Start-TenantIQTeamsAssessment; Wait-TenantIQ }
+            '1' {
+                if ((Ensure-TenantIQTeamsConnection) -and (Confirm-TenantIQTeamsTenantAllowance)) {
+                    Start-TenantIQTeamsAssessment
+                }
+                Wait-TenantIQ
+            }
             '2' {
                 foreach ($Check in ($TenantIQTeamsHealthChecks | Sort-Object { [int]$_.Number })) { Write-Host ("[{0}] {1}" -f $Check.Number,$Check.Name) }
                 Wait-TenantIQ
@@ -465,7 +474,12 @@ function Start-TenantIQIntuneModule {
         Write-Host '[0] Back to Modules'
         Write-Host ''
         switch (Read-Host 'Select') {
-            '1' { Start-TenantIQIntuneAssessment; Wait-TenantIQ }
+            '1' {
+                if ((Ensure-TenantIQIntuneGraphConnection) -and (Confirm-TenantIQGraphTenantAllowance -Workload 'Microsoft Intune')) {
+                    Start-TenantIQIntuneAssessment
+                }
+                Wait-TenantIQ
+            }
             '2' {
                 foreach ($Check in ($TenantIQIntuneHealthChecks | Sort-Object { [int]$_.Number })) { Write-Host ("[{0}] {1}" -f $Check.Number,$Check.Name) }
                 Wait-TenantIQ
@@ -535,6 +549,12 @@ function Show-Banner {
     Write-Host ('+' + ('-' * $innerWidth) + '+') -ForegroundColor Cyan
     Write-Host ''
     Write-Host ("Version : {0}" -f $script:TenantIQDisplayVersion) -ForegroundColor DarkGray
+    if (Get-Command Get-TenantIQTenantAllowanceSummary -ErrorAction SilentlyContinue) {
+        $Allowance = Get-TenantIQTenantAllowanceSummary
+        if ($Allowance.Maximum -gt 0) {
+            Write-Host ("Licensed Tenants : {0} of {1}" -f $Allowance.Registered,$Allowance.Maximum) -ForegroundColor DarkGray
+        }
+    }
     Write-Host ''
 }
 

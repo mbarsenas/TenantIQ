@@ -65,6 +65,19 @@ if ($LicenseCustomer) { Write-Host ('Licensed To      : {0}' -f $LicenseCustomer
 if ($LicenseEdition) { Write-Host ('Edition          : {0}' -f $LicenseEdition) }
 Write-Host ''
 
+$LicenseEnforcement = [bool]($Config -and $Config.LicenseEnforcement)
+if ($LicenseEnforcement -and (
+    -not $LicenseStatus -or
+    -not [bool]$LicenseStatus.SignatureValid -or
+    $LicenseState -ne 'ACTIVE'
+)) {
+    Write-Host '[ERROR] TenantIQ requires an active, cryptographically valid customer license.' -ForegroundColor Red
+    Write-Host 'Run .\Get-TenantIQLicenseStatus.ps1 for license diagnostics, then contact TenantIQ support.' -ForegroundColor Yellow
+    Write-Host ''
+    $null = Read-Host 'Press Enter to exit'
+    exit 3
+}
+
 if (Test-Path $Prereq) {
     . $Prereq
     $Check = Test-TenantIQPrerequisites

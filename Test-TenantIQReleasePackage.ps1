@@ -110,7 +110,7 @@ if (Test-Path $LauncherPath -PathType Leaf) {
         $LicenseGatePresent = (
             $LauncherText -match '\$Config\.LicenseEnforcement' -and
             $LauncherText -match 'SignatureValid' -and
-            $LauncherText -match "\$LicenseState\s+-ne\s+'ACTIVE'" -and
+            $LauncherText -match '\$LicenseState\s+-ne\s+''ACTIVE''' -and
             $LauncherText -match 'exit\s+3'
         )
         $Results.Add((Add-CheckResult -Name 'Signed license startup enforcement present' -Passed $LicenseGatePresent -Detail $(if($LicenseGatePresent){'Launcher blocks missing, invalid, expired, or tampered licenses.'}else{'Launcher does not contain the required signed-license startup gate.'})))

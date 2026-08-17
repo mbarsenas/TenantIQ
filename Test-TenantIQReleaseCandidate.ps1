@@ -117,6 +117,17 @@ if (Test-Path $mainPath -PathType Leaf) {
     $submenuNav = $missingSubmenus.Count -eq 0
     $submenuDetail = if ($submenuNav) { 'All eight workload submenu loops remain persistent; SharePoint and OneDrive use explicit return labels.' } else { 'Missing submenu navigation invariants: ' + ($missingSubmenus -join ', ') }
     $results.Add((Add-Result 'Workload submenu navigation invariants' $submenuNav $submenuDetail))
+
+    $exchangeModulePath = Join-Path $PackageRoot '01 Framework\Invoke-TenantIQExchangeModule.ps1'
+    $exchangeExportMetadata = $false
+    if (Test-Path $exchangeModulePath -PathType Leaf) {
+        $exchangeModule = Get-Content $exchangeModulePath -Raw
+        $exchangeExportMetadata =
+            $exchangeModule -match '\$Result\.Check\s*=\s*\[string\]\$Check\.Name' -and
+            $exchangeModule -match '\$Result\.Category\s*=\s*\[string\]\$Check\.Category'
+    }
+    $exchangeExportDetail = if ($exchangeExportMetadata) { 'Exchange exports inherit authoritative registry control names and categories.' } else { 'Exchange export metadata normalization was not detected.' }
+    $results.Add((Add-Result 'Exchange export metadata normalization' $exchangeExportMetadata $exchangeExportDetail))
 }
 
 if ((Test-Path $configPath -PathType Leaf) -and (Test-Path $packageInfoPath -PathType Leaf)) {

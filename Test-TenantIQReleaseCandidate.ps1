@@ -115,9 +115,9 @@ if (Test-Path $mainPath -PathType Leaf) {
     $submenuPatterns = @(
         @{ Name='Exchange'; Pattern='function\s+Start-TenantIQExchangeModule\s*\{\s*while\s*\(\$true\)' },
         @{ Name='Entra ID'; Pattern='function\s+Start-TenantIQEntraModule\s*\{\s*while\s*\(\$true\)' },
-        @{ Name='SharePoint'; Pattern='function\s+Start-TenantIQSharePointModule\s*\{[\s\S]*?do\s*\{[\s\S]*?until\s*\(\$Choice\s+-eq\s+''0''\)' },
+        @{ Name='SharePoint'; Pattern='function\s+Show-TenantIQSharePointSubmenu\s*\{[\s\S]*?do\s*\{[\s\S]*?until\s*\(\$Choice\s+-eq\s+''0''\)' },
         @{ Name='Teams'; Pattern='function\s+Start-TenantIQTeamsModule\s*\{\s*while\s*\(\$true\)' },
-        @{ Name='OneDrive'; Pattern='function\s+Start-TenantIQOneDriveModule\s*\{[\s\S]*?do\s*\{[\s\S]*?until\s*\(\$Choice\s+-eq\s+''0''\)' },
+        @{ Name='OneDrive'; Pattern='function\s+Show-TenantIQOneDriveSubmenu\s*\{[\s\S]*?do\s*\{[\s\S]*?until\s*\(\$Choice\s+-eq\s+''0''\)' },
         @{ Name='Intune'; Pattern='function\s+Start-TenantIQIntuneModule\s*\{\s*while\s*\(\$true\)' },
         @{ Name='Defender'; Pattern='function\s+Start-TenantIQDefenderModule\s*\{\s*while\s*\(\$true\)' },
         @{ Name='Purview'; Pattern='function\s+Start-TenantIQPurviewModule\s*\{\s*while\s*\(\$true\)' }
@@ -135,9 +135,11 @@ if (Test-Path $mainPath -PathType Leaf) {
     $noSubmenuAliasShadowing =
         $isolationText -notmatch 'Set-Alias\s+-Name\s+Start-TenantIQSharePointModule' -and
         $isolationText -notmatch 'Set-Alias\s+-Name\s+Start-TenantIQOneDriveModule' -and
+        $main -match '''3''\s*\{\s*Show-TenantIQSharePointSubmenu\s*\}' -and
+        $main -match '''5''\s*\{\s*Show-TenantIQOneDriveSubmenu\s*\}' -and
         $main -match 'Invoke-TenantIQSharePointIsolatedModule' -and
         $main -match 'Invoke-TenantIQOneDriveIsolatedModule'
-    $results.Add((Add-Result 'Packaged submenu command-resolution invariant' $noSubmenuAliasShadowing $(if($noSubmenuAliasShadowing){'SharePoint and OneDrive submenus own their public command names and invoke isolation only for assessments.'}else{'An alias can still shadow a SharePoint or OneDrive submenu command.'})))
+    $results.Add((Add-Result 'Packaged submenu command-resolution invariant' $noSubmenuAliasShadowing $(if($noSubmenuAliasShadowing){'SharePoint and OneDrive use collision-proof submenu entry points and invoke isolation only for assessments.'}else{'A legacy alias can still shadow a SharePoint or OneDrive submenu command.'})))
 
     $exchangeModulePath = Join-Path $PackageRoot '01 Framework\Invoke-TenantIQExchangeModule.ps1'
     $exchangeExportMetadata = $false

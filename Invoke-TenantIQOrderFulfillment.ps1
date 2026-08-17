@@ -57,7 +57,7 @@ function New-TenantIQClaimUrl {
     } | Out-Null
 
     [pscustomobject]@{
-        ClaimUrl       = "$SiteUrl/claim?token=$claimToken"
+        ClaimUrl       = "$SiteUrl/claim?token=$([uri]::EscapeDataString($claimToken))&subscription=$([uri]::EscapeDataString($SubscriptionId))"
         ClaimExpiresAt = $claimExpiresAt
     }
 }
